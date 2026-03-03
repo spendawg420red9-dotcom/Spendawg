@@ -1,0 +1,210 @@
+import express from "express";
+import { createServer as createViteServer } from "vite";
+import { Server } from "socket.io";
+import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function startServer() {
+  const app = express();
+  const server = http.createServer(app);
+  const io = new Server(server, {
+    path: '/socket.io',
+    cors: { 
+      origin: "*",
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
+  });
+  const PORT = 3000;
+
+  app.use(express.json());
+
+  // In-memory data
+  const rooms: Record<string, {
+    id: string;
+    host: string;
+    players: any[];
+    status: 'waiting' | 'playing';
+    mapId: string;
+    isCustom: boolean;
+  }> = {};
+
+  const leaderboards = {
+    world: [] as any[],
+  };
+
+  io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
+
+    socket.on("create_room", (data) => {
+      console.log("Creating room:", data);
+      const roomId = data.roomId || Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      if (!rooms[roomId]) {
+        rooms[roomId] = {
+          id: roomId,
+          host: socket.id,
+          players: [],
+          status: 'waiting',
+          mapId: data.mapId || 'town',
+          isCustom: !!data.isCustom
+        };
+      } else {
+        rooms[roomId].host = socket.id;
+        rooms[roomId].mapId = data.mapId || 'town';
+        rooms[roomId].status = 'waiting';
+        rooms[roomId].isCustom = !!data.isCustom;
+      }
+      
+      if (!rooms[roomId].players.find((p: any) => p.id === socket.id)) {
+        rooms[roomId].players.push({ id: socket.id, name: data.name || 'Survivor', isHost: true });
+      }
+
+      socket.join(roomId);
+      console.log("Room created/re-hosted:", roomId);
+      socket.emit("room_created", rooms[roomId]);
+      io.to(roomId).emit("room_updated", rooms[roomId]);
+    });
+
+    socket.on("join_room", (data) => {
+      console.log("Joining room:", data);
+      const room = rooms[data.roomId];
+      if (!room) {
+        console.log("Room not found:", data.roomId);
+        socket.emit("error", "Room not found");
+        return;
+      }
+      if (room.players.length >= 4) {
+        console.log("Room full:", data.roomId);
+        socket.emit("error", "Room is full");
+        return;
+      }
+      if (room.status !== 'waiting') {
+        console.log("Game already started in room:", data.roomId);
+        socket.emit("error", "Game already started");
+        return;
+      }
+      
+      room.players.push({ id: socket.id, name: data.name || 'Survivor', isHost: false });
+      socket.join(data.roomId);
+      console.log("User joined room:", socket.id, data.roomId);
+      socket.emit("room_joined", room);
+      io.to(data.roomId).emit("room_updated", room);
+    });
+
+    socket.on("start_game", (roomId) => {
+      const room = rooms[roomId];
+      if (room && room.host === socket.id) {
+        room.status = 'playing';
+        io.to(roomId).emit("game_started", room);
+      }
+    });
+
+    socket.on("player_update", (data) => {
+      // data: { roomId, playerState }
+      socket.to(data.roomId).emit("player_updated", { id: socket.id, ...data.playerState });
+    });
+
+    socket.on("zombie_update", (data) => {
+      // Host sends zombie updates to clients
+      socket.to(data.roomId).emit("zombie_updated", data.zombies);
+    });
+
+    socket.on("game_event", (data) => {
+      // e.g. door opened, powerup spawned
+      socket.to(data.roomId).emit("game_event", data);
+    });
+
+    socket.on("admin_teleport", (data) => {
+      // data: { targetId, position }
+      // Send force_teleport to the specific target
+      io.to(data.targetId).emit("force_teleport", data.position);
+    });
+
+    socket.on("leave_room", (roomId) => {
+      const room = rooms[roomId];
+      if (room) {
+        room.players = room.players.filter((p: any) => p.id !== socket.id);
+        socket.leave(roomId);
+        if (room.players.length === 0) {
+          delete rooms[roomId];
+        } else {
+          if (room.host === socket.id) {
+            room.host = room.players[0].id;
+            room.players[0].isHost = true;
+          }
+          io.to(roomId).emit("room_updated", room);
+        }
+      }
+    });
+
+    socket.on("submit_score", (data) => {
+      leaderboards.world.push({
+        ...data,
+        date: new Date().toISOString(),
+      });
+      leaderboards.world.sort((a, b) => b.score - a.score);
+      if (leaderboards.world.length > 100) {
+        leaderboards.world = leaderboards.world.slice(0, 100);
+      }
+      io.emit("leaderboard_updated", leaderboards.world);
+    });
+
+    socket.on("get_leaderboard", () => {
+      socket.emit("leaderboard_updated", leaderboards.world);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+      for (const roomId in rooms) {
+        const room = rooms[roomId];
+        const playerIndex = room.players.findIndex(p => p.id === socket.id);
+        if (playerIndex !== -1) {
+          room.players.splice(playerIndex, 1);
+          if (room.players.length === 0) {
+            delete rooms[roomId];
+          } else {
+            if (room.host === socket.id) {
+              room.host = room.players[0].id;
+              room.players[0].isHost = true;
+            }
+            io.to(roomId).emit("room_updated", room);
+          }
+        }
+      }
+    });
+  });
+
+  // API routes FIRST
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(path.join(__dirname, "dist")));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    });
+  }
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();

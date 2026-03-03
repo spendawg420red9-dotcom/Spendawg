@@ -1,0 +1,4646 @@
+
+import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import { Sky, Stars, Plane, Box, Sphere, Cylinder, Grid, Float, useTexture, Sparkles, Text, Torus, Html } from '@react-three/drei';
+import { User } from 'lucide-react';
+import * as THREE from 'three';
+import { GameStatus, PowerUpType, MapConfig, WeaponCamo, PlayerScore, WeaponAttachment, Progression, ZombieType, GameSettings } from '../types';
+import { soundService } from '../services/soundService';
+
+interface SceneProps {
+  status: GameStatus;
+  mapConfig: MapConfig;
+  botCount?: number;
+  otherPlayers?: PlayerScore[];
+  onGameOver: () => void;
+  moveInput: React.RefObject<{ x: number; y: number }>;
+  lookInput: React.RefObject<{ x: number; y: number }>;
+  keyboardLookInput: React.RefObject<{ x: number; y: number }>;
+  shootRequest: React.RefObject<boolean>;
+  shootLeftRequest?: React.RefObject<boolean>;
+  phoneShootRequest?: React.RefObject<boolean>;
+  knifeRequest: React.RefObject<boolean>;
+  jumpRequest: React.RefObject<boolean>;
+  slideRequest: React.RefObject<boolean>;
+  grenadeRequest: React.RefObject<boolean>;
+  flashbangRequest: React.RefObject<boolean>;
+  monkeyBombRequest: React.RefObject<boolean>;
+  sprintRequest: React.RefObject<boolean>;
+  aimRequest: React.RefObject<boolean>;
+  onStatsUpdate: (update: any, playerId?: string, weaponUsed?: string) => void;
+  onPowerUp: (type: PowerUpType) => void;
+  onInteractAvailable: (info: { type: string; cost: number; id: string } | null) => void;
+  onBotInteract?: (botId: string, interactableId: string, cost: number) => void;
+  onGameEvent?: (event: any) => void;
+  isHost?: boolean;
+  syncedZombies?: any[] | null;
+  playerPosRef?: React.RefObject<THREE.Vector3>;
+  openDoors: string[];
+  teleportTarget: THREE.Vector3 | null;
+  onTeleportComplete: () => void;
+  teleportToPlayerId?: string | null;
+  onTeleportToPlayerComplete?: () => void;
+  teleportPlayerToMeId?: string | null;
+  onTeleportPlayerToMeComplete?: () => void;
+  gameState: { 
+    round: number; 
+    isReloading: boolean; 
+    ammo: number; 
+    perks: string[]; 
+    weaponTier: number; 
+    weaponName: string;
+    attachments: WeaponAttachment[];
+    instaKill: boolean;
+    doublePoints: boolean;
+    nukeTrigger: boolean;
+    monkeyBombActive: boolean;
+    healthRefillsBought: number;
+    godMode: boolean;
+    selectedCamo: WeaponCamo;
+    hasBowie: boolean;
+    isDowned: boolean;
+    downedTimer: number;
+    zombiesRemaining: number;
+    hp: number;
+  };
+  heartPositions: THREE.Vector3[];
+  collectedHearts: boolean[];
+  dragonActive: boolean;
+  dragonHealth: number;
+  setDragonHealth: (hp: number) => void;
+  onDragonDefeated: () => void;
+  killAllZombies: boolean;
+  setKillAllZombies: (val: boolean) => void;
+  teleportZombiesToMe: boolean;
+  setTeleportZombiesToMe: (val: boolean) => void;
+  spawnZombieType: ZombieType | null;
+  onSpawnZombieComplete: () => void;
+  changeAllZombiesType: ZombieType | null;
+  onChangeAllZombiesComplete: () => void;
+  onRed9Blessing: () => void;
+  onRed9Curse: () => void;
+  red9BlessingClaimed: boolean;
+  red9CurseActive: boolean;
+  onEasterEggTriggered: () => void;
+  onUnlockAchievement: (id: string) => void;
+  fireSaleActive: boolean;
+  zombieBloodActive: boolean;
+  playerName?: string;
+  botNames?: string[];
+  thirdPersonMode?: boolean;
+  progression: Progression;
+  gameSettings: GameSettings;
+  gameMode: 'standard' | 'dead_ops';
+}
+
+interface BotData {
+  id: string;
+  name: string;
+  position: THREE.Vector3;
+  targetId: string | null;
+  targetInteractableId: string | null;
+  lastShot: number;
+  hp: number;
+  maxHp: number;
+  isDowned: boolean;
+  downedTimer: number;
+  points: number;
+  variant: number;
+  isReviving: boolean;
+}
+
+interface ZombieData {
+  id: string;
+  position: THREE.Vector3;
+  hp: number;
+  maxHp: number;
+  speed: number;
+  lastAttack: number;
+  hitFlash: number;
+  variant: number;
+  stunTimer: number;
+  type: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute';
+  turnDirection?: number;
+  turnTimer?: number;
+  timeNotClose?: number;
+}
+
+interface Projectile {
+  id: string;
+  type: 'grenade' | 'flashbang' | 'monkeyBomb';
+  position: THREE.Vector3;
+  velocity: THREE.Vector3;
+  timer: number;
+}
+
+interface Wall {
+  pos: THREE.Vector3;
+  size: THREE.Vector3;
+}
+
+interface Effect {
+  id: string;
+  type: 'tracer' | 'impact' | 'explosion' | 'flash' | 'blood';
+  pos: THREE.Vector3;
+  dir?: THREE.Vector3;
+  velocity?: THREE.Vector3;
+  life: number;
+  color: string;
+  scale?: number;
+}
+
+const WEAPONS_STATS: Record<string, { clip: number, damage: number, rate: number, color: string, barrelLen: number, twoHanded: boolean, recoil: number }> = {
+  'M1911': { clip: 8, damage: 65, rate: 200, color: '#999', barrelLen: 0.25, twoHanded: false, recoil: 0.15 },
+  'MP5': { clip: 30, damage: 55, rate: 100, color: '#333', barrelLen: 0.4, twoHanded: true, recoil: 0.1 },
+  'GALIL': { clip: 35, damage: 85, rate: 120, color: '#554433', barrelLen: 0.6, twoHanded: true, recoil: 0.12 },
+  'REMINGTON': { clip: 8, damage: 280, rate: 800, color: '#222', barrelLen: 0.5, twoHanded: true, recoil: 0.3 },
+  'HAMR': { clip: 125, damage: 75, rate: 130, color: '#4a4a4a', barrelLen: 0.7, twoHanded: true, recoil: 0.18 },
+  'RPD': { clip: 100, damage: 70, rate: 125, color: '#2a2a2a', barrelLen: 0.65, twoHanded: true, recoil: 0.15 },
+  'DSR-50': { clip: 5, damage: 800, rate: 1500, color: '#1a1a1a', barrelLen: 0.85, twoHanded: true, recoil: 0.5 },
+  'RAY GUN': { clip: 20, damage: 1000, rate: 180, color: '#ff0000', barrelLen: 0.35, twoHanded: false, recoil: 0.05 },
+  'MUSTANG & SALLY': { clip: 1212, damage: 500, rate: 150, color: '#ff00ff', barrelLen: 0.25, twoHanded: false, recoil: 0.2 },
+  'MP115 KOLLIDER': { clip: 40, damage: 110, rate: 80, color: '#00ffff', barrelLen: 0.4, twoHanded: true, recoil: 0.08 },
+  'LAMENTATION': { clip: 50, damage: 180, rate: 100, color: '#00ff00', barrelLen: 0.6, twoHanded: true, recoil: 0.1 },
+  'PUNISHMENT': { clip: 12, damage: 600, rate: 600, color: '#ff8800', barrelLen: 0.5, twoHanded: true, recoil: 0.4 },
+  'HAMR DOWN': { clip: 150, damage: 160, rate: 110, color: '#ffffff', barrelLen: 0.7, twoHanded: true, recoil: 0.15 },
+  'RELATIVISTIC PUNISHER': { clip: 120, damage: 150, rate: 100, color: '#ff0000', barrelLen: 0.65, twoHanded: true, recoil: 0.12 },
+  'DEAD SPECIMEN REACTOR': { clip: 10, damage: 2000, rate: 1200, color: '#000000', barrelLen: 0.85, twoHanded: true, recoil: 0.6 },
+  'PORTER\'S X2 RAY GUN': { clip: 40, damage: 2500, rate: 150, color: '#ff0000', barrelLen: 0.35, twoHanded: false, recoil: 0.05 },
+  'AK-47': { clip: 30, damage: 95, rate: 110, color: '#4b3621', barrelLen: 0.6, twoHanded: true, recoil: 0.15 },
+  'SCAR-H': { clip: 20, damage: 110, rate: 130, color: '#c2b280', barrelLen: 0.6, twoHanded: true, recoil: 0.18 },
+  'STRIKER': { clip: 12, damage: 220, rate: 400, color: '#333333', barrelLen: 0.45, twoHanded: true, recoil: 0.35 },
+  'VECTOR': { clip: 40, damage: 45, rate: 60, color: '#1a1a1a', barrelLen: 0.35, twoHanded: true, recoil: 0.08 },
+  'WUNDERWAFFE DG-2': { clip: 3, damage: 5000, rate: 1000, color: '#00ffff', barrelLen: 0.5, twoHanded: false, recoil: 0.1 },
+  'THUNDERGUN': { clip: 2, damage: 10000, rate: 1200, color: '#888888', barrelLen: 0.6, twoHanded: true, recoil: 0.4 },
+  'REZNOV\'S REVENGE': { clip: 45, damage: 180, rate: 100, color: '#8b0000', barrelLen: 0.6, twoHanded: true, recoil: 0.12 },
+  'AGAMEMNON': { clip: 30, damage: 220, rate: 120, color: '#ffd700', barrelLen: 0.6, twoHanded: true, recoil: 0.15 },
+  'STRIKE-OUT': { clip: 24, damage: 450, rate: 350, color: '#ff4500', barrelLen: 0.45, twoHanded: true, recoil: 0.3 },
+  'KINETIC CONVERTER': { clip: 60, damage: 90, rate: 50, color: '#adff2f', barrelLen: 0.35, twoHanded: true, recoil: 0.05 },
+  'WUNDERWAFFE DG-3 JZ': { clip: 6, damage: 10000, rate: 800, color: '#ffffff', barrelLen: 0.5, twoHanded: false, recoil: 0.08 },
+  'ZEUS CANNON': { clip: 4, damage: 20000, rate: 1000, color: '#ffffff', barrelLen: 0.6, twoHanded: true, recoil: 0.3 },
+  'M14': { clip: 10, damage: 120, rate: 300, color: '#5c4033', barrelLen: 0.55, twoHanded: true, recoil: 0.25 },
+  'OLYMPIA': { clip: 2, damage: 350, rate: 500, color: '#3d2b1f', barrelLen: 0.5, twoHanded: true, recoil: 0.4 },
+  'PYTHON': { clip: 6, damage: 250, rate: 400, color: '#71706e', barrelLen: 0.3, twoHanded: false, recoil: 0.35 },
+  'FAMAS': { clip: 30, damage: 70, rate: 80, color: '#4a5d23', barrelLen: 0.5, twoHanded: true, recoil: 0.1 },
+  'PPSH-41': { clip: 71, damage: 50, rate: 60, color: '#2b2b2b', barrelLen: 0.45, twoHanded: true, recoil: 0.08 },
+  'M118': { clip: 20, damage: 250, rate: 250, color: '#a0522d', barrelLen: 0.55, twoHanded: true, recoil: 0.2 },
+  'HADES': { clip: 2, damage: 800, rate: 400, color: '#8b4513', barrelLen: 0.5, twoHanded: true, recoil: 0.35 },
+  'COBRA': { clip: 6, damage: 600, rate: 300, color: '#c0c0c0', barrelLen: 0.3, twoHanded: false, recoil: 0.3 },
+  'G116': { clip: 45, damage: 140, rate: 70, color: '#556b2f', barrelLen: 0.5, twoHanded: true, recoil: 0.08 },
+  'THE REAPER': { clip: 115, damage: 90, rate: 50, color: '#333333', barrelLen: 0.45, twoHanded: true, recoil: 0.05 },
+  'THOMPSON': { clip: 20, damage: 80, rate: 100, color: '#3d2b1f', barrelLen: 0.45, twoHanded: true, recoil: 0.12 },
+  'MP40': { clip: 32, damage: 75, rate: 110, color: '#2b2b2b', barrelLen: 0.5, twoHanded: true, recoil: 0.1 },
+  'STG-44': { clip: 30, damage: 90, rate: 120, color: '#4b3621', barrelLen: 0.6, twoHanded: true, recoil: 0.14 },
+  'BROWNING M1919': { clip: 100, damage: 95, rate: 130, color: '#333333', barrelLen: 0.7, twoHanded: true, recoil: 0.2 },
+  'TYPE 100': { clip: 30, damage: 65, rate: 90, color: '#5c4033', barrelLen: 0.5, twoHanded: true, recoil: 0.08 },
+  'GIBS-O-MATIC': { clip: 40, damage: 180, rate: 80, color: '#ff0000', barrelLen: 0.45, twoHanded: true, recoil: 0.08 },
+  'THE AFTERBURNER': { clip: 64, damage: 160, rate: 90, color: '#00ff00', barrelLen: 0.5, twoHanded: true, recoil: 0.08 },
+  'SPATZ-447 +': { clip: 60, damage: 200, rate: 100, color: '#0000ff', barrelLen: 0.6, twoHanded: true, recoil: 0.1 },
+  'B115 ACCELERATOR': { clip: 150, damage: 220, rate: 110, color: '#ffff00', barrelLen: 0.7, twoHanded: true, recoil: 0.15 },
+  '1001 SAMURAIS': { clip: 60, damage: 150, rate: 70, color: '#ff00ff', barrelLen: 0.5, twoHanded: true, recoil: 0.05 },
+  'Bowie Knife': { clip: 0, damage: 2000, rate: 0, color: '#ffffff', barrelLen: 0.3, twoHanded: false, recoil: 0 },
+  'DEATH_MACHINE': { clip: 999, damage: 150, rate: 30, color: '#00ffff', barrelLen: 0.8, twoHanded: true, recoil: 0.1 }
+};
+
+const CAMO_PROPS: Record<string, { color?: string, emissive?: string, emissiveIntensity?: number, metalness?: number, roughness?: number, texture?: string }> = {
+  'gold': { color: '#ffd700', metalness: 0.9, roughness: 0.1, emissive: '#ffd700', emissiveIntensity: 0.5 },
+  'diamond': { color: '#e0f7fa', metalness: 0.5, roughness: 0.1, emissive: '#e0f7fa', emissiveIntensity: 1, texture: 'https://picsum.photos/seed/diamond/256/256' },
+  'dark_matter': { color: '#4a148c', metalness: 0.8, roughness: 0.2, emissive: '#7b1fa2', emissiveIntensity: 2, texture: 'https://picsum.photos/seed/nebula/256/256' },
+  'cherry_blossom': { color: '#f8bbd0', metalness: 0.3, roughness: 0.7, texture: 'https://picsum.photos/seed/cherry/256/256' },
+  'dragon': { color: '#b71c1c', metalness: 0.7, roughness: 0.3, emissive: '#ff5252', emissiveIntensity: 1, texture: 'https://picsum.photos/seed/dragon/256/256' },
+  'ice': { color: '#e1f5fe', metalness: 0.9, roughness: 0.05, emissive: '#81d4fa', emissiveIntensity: 1.5 },
+  'magma': { color: '#bf360c', metalness: 0.5, roughness: 0.5, emissive: '#ff3d00', emissiveIntensity: 3, texture: 'https://picsum.photos/seed/lava/256/256' },
+  'nebula': { color: '#1a237e', metalness: 0.9, roughness: 0.1, emissive: '#311b92', emissiveIntensity: 2, texture: 'https://picsum.photos/seed/space/256/256' },
+  'red_hex': { color: '#800000', metalness: 0.6, roughness: 0.4, emissive: '#ff0000', emissiveIntensity: 0.5, texture: 'https://picsum.photos/seed/hex/256/256' },
+  'into_the_void': { color: '#000000', metalness: 0.9, roughness: 0.1, emissive: '#4b0082', emissiveIntensity: 2, texture: 'https://picsum.photos/seed/void/256/256' },
+  'cosmic': { color: '#1a237e', metalness: 0.8, roughness: 0.2, emissive: '#00bcd4', emissiveIntensity: 1.5, texture: 'https://picsum.photos/seed/cosmic/256/256' },
+};
+
+const checkAABB = (pos: THREE.Vector3, boxPos: THREE.Vector3, size: THREE.Vector3, buffer: number = 0.4) => {
+  return (
+    pos.x > boxPos.x - size.x / 2 - buffer &&
+    pos.x < boxPos.x + size.x / 2 + buffer &&
+    pos.z > boxPos.z - size.z / 2 - buffer &&
+    pos.z < boxPos.z + size.z / 2 + buffer &&
+    pos.y > boxPos.y - size.y / 2 - buffer &&
+    pos.y < boxPos.y + size.y / 2 + buffer
+  );
+};
+
+const checkCircleRect = (circlePos: THREE.Vector3, radius: number, rectPos: THREE.Vector3, rectSize: THREE.Vector3) => {
+  const closestX = Math.max(rectPos.x - rectSize.x / 2, Math.min(circlePos.x, rectPos.x + rectSize.x / 2));
+  const closestZ = Math.max(rectPos.z - rectSize.z / 2, Math.min(circlePos.z, rectPos.z + rectSize.z / 2));
+  const distanceX = circlePos.x - closestX;
+  const distanceZ = circlePos.z - closestZ;
+  return (distanceX * distanceX) + (distanceZ * distanceZ) < (radius * radius);
+};
+
+const Debris: React.FC<{ count: number; range: number }> = React.memo(({ count, range }) => {
+  const debris = useMemo(() => {
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      const x = (Math.random() - 0.5) * range;
+      const z = (Math.random() - 0.5) * range;
+      const scale = 0.2 + Math.random() * 0.3;
+      const rot = [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI];
+      items.push({ pos: [x, 0.1, z], scale: [scale, scale, scale], rot });
+    }
+    return items;
+  }, [count, range]);
+
+  return (
+    <group>
+      {debris.map((d, i) => (
+        <Box key={i} args={d.scale as any} position={d.pos as any} rotation={d.rot as any}>
+          <meshStandardMaterial color="#444" roughness={0.9} />
+        </Box>
+      ))}
+    </group>
+  );
+});
+
+const StreetLight: React.FC<{ pos: [number, number, number]; color?: string }> = React.memo(({ pos, color = "#ffeedd" }) => {
+  return (
+    <group position={pos}>
+      {/* Base */}
+      <Cylinder args={[0.3, 0.4, 0.5]} position={[0, 0.25, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.8} roughness={0.2} />
+      </Cylinder>
+      {/* Pole */}
+      <Cylinder args={[0.1, 0.15, 8]} position={[0, 4, 0]}>
+        <meshStandardMaterial color="#333" metalness={0.8} roughness={0.2} />
+      </Cylinder>
+      {/* Arm */}
+      <Cylinder args={[0.05, 0.05, 2]} position={[0.8, 7.8, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <meshStandardMaterial color="#333" metalness={0.8} roughness={0.2} />
+      </Cylinder>
+      {/* Lamp Housing */}
+      <Box args={[0.6, 0.2, 0.4]} position={[1.8, 7.8, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.8} roughness={0.2} />
+      </Box>
+      {/* Bulb */}
+      <Box args={[0.4, 0.1, 0.2]} position={[1.8, 7.7, 0]}>
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={5} />
+      </Box>
+      {/* Light Source */}
+      <spotLight position={[1.8, 7.5, 0]} angle={Math.PI / 3} penumbra={0.5} intensity={60} distance={40} color={color} />
+    </group>
+  );
+});
+
+const EnterableBuilding: React.FC<{ pos: THREE.Vector3; size: THREE.Vector3; color: string; label: string; lightColor: string; isOpen?: boolean }> = React.memo(({ pos, size, color, label, lightColor, isOpen }) => {
+  const thickness = 0.5;
+  const doorWidth = 4;
+  const wallTextureOriginal = useTexture('https://picsum.photos/seed/brickwall/512/512');
+  const roofTexture = useTexture('https://picsum.photos/seed/roofing/512/512');
+  const floorTexture = useTexture('https://picsum.photos/seed/woodfloor/512/512');
+  const posterTexture = useTexture('https://picsum.photos/seed/poster/256/384');
+  
+  const wallTexture = useMemo(() => {
+    const t = wallTextureOriginal.clone();
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(size.x / 4, size.y / 4);
+    t.needsUpdate = true;
+    return t;
+  }, [wallTextureOriginal, size.x, size.y]);
+  
+  const windows = useMemo(() => {
+    const win = [];
+    const rows = Math.floor(size.y / 3);
+    const colsX = Math.floor(size.x / 4);
+    
+    // Front windows (above door)
+    for (let r = 1; r < rows; r++) {
+      for (let c = 0; c < colsX; c++) {
+        const x = -size.x/2 + (c + 0.5) * (size.x / colsX);
+        if (Math.abs(x) < doorWidth/2 && r === 0) continue; // Skip door area on ground floor
+        win.push({ pos: [x, -size.y/2 + r * 3 + 1.5, size.z/2 + 0.26], args: [1, 1.5, 0.1] });
+      }
+    }
+    // Back windows
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < colsX; c++) {
+        const x = -size.x/2 + (c + 0.5) * (size.x / colsX);
+        win.push({ pos: [x, -size.y/2 + r * 3 + 1.5, -size.z/2 - 0.26], args: [1, 1.5, 0.1] });
+      }
+    }
+    return win;
+  }, [size]);
+
+  return (
+    <group position={pos}>
+      {/* Floor */}
+      <Plane rotation={[-Math.PI / 2, 0, 0]} args={[size.x, size.z]} position={[0, -size.y / 2 + 0.01, 0]}>
+        <meshStandardMaterial color="#300" map={floorTexture} roughness={1} />
+      </Plane>
+      
+      {/* Walls */}
+      <Box args={[size.x, size.y, thickness]} position={[0, 0, -size.z / 2]}>
+        <meshStandardMaterial color={color} map={wallTexture} />
+      </Box>
+      <Box args={[thickness, size.y, size.z]} position={[-size.x / 2, 0, 0]}>
+        <meshStandardMaterial color={color} map={wallTexture} />
+      </Box>
+      <Box args={[thickness, size.y, size.z]} position={[size.x / 2, 0, 0]}>
+        <meshStandardMaterial color={color} map={wallTexture} />
+      </Box>
+      
+      {/* Corner Pillars */}
+      <Box args={[1, size.y, 1]} position={[-size.x/2, 0, -size.z/2]}>
+         <meshStandardMaterial color="#222" map={wallTexture} />
+      </Box>
+      <Box args={[1, size.y, 1]} position={[size.x/2, 0, -size.z/2]}>
+         <meshStandardMaterial color="#222" map={wallTexture} />
+      </Box>
+      <Box args={[1, size.y, 1]} position={[-size.x/2, 0, size.z/2]}>
+         <meshStandardMaterial color="#222" map={wallTexture} />
+      </Box>
+      <Box args={[1, size.y, 1]} position={[size.x/2, 0, size.z/2]}>
+         <meshStandardMaterial color="#222" map={wallTexture} />
+      </Box>
+
+      {/* Front Wall with Doorway */}
+      <group position={[0, 0, size.z / 2]}>
+        <Box args={[(size.x - doorWidth) / 2, size.y, thickness]} position={[-(size.x + doorWidth) / 4, 0, 0]}>
+          <meshStandardMaterial color={color} map={wallTexture} />
+        </Box>
+        <Box args={[(size.x - doorWidth) / 2, size.y, thickness]} position={[(size.x + doorWidth) / 4, 0, 0]}>
+          <meshStandardMaterial color={color} map={wallTexture} />
+        </Box>
+        <Box args={[doorWidth, size.y / 2, thickness]} position={[0, size.y / 4, 0]}>
+          <meshStandardMaterial color={color} map={wallTexture} />
+        </Box>
+        {/* Door Frame */}
+        <Box args={[0.2, size.y/2, 0.6]} position={[-doorWidth/2 - 0.1, -size.y/4, 0]}>
+          <meshStandardMaterial color="#111" />
+        </Box>
+        <Box args={[0.2, size.y/2, 0.6]} position={[doorWidth/2 + 0.1, -size.y/4, 0]}>
+          <meshStandardMaterial color="#111" />
+        </Box>
+        <Box args={[doorWidth + 0.4, 0.2, 0.6]} position={[0, 0, 0]}>
+          <meshStandardMaterial color="#111" />
+        </Box>
+        {/* The Door Itself (if closed) */}
+        {!isOpen && (
+          <Box args={[doorWidth, size.y / 2, 0.2]} position={[0, -size.y/4, 0]}>
+            <meshStandardMaterial color="#333" metalness={0.5} roughness={0.8} />
+          </Box>
+        )}
+      </group>
+
+      {/* Awning */}
+      <Box args={[doorWidth + 2, 0.2, 2]} position={[0, 0.5, size.z/2 + 1]} rotation={[0.2, 0, 0]}>
+        <meshStandardMaterial color={color} />
+      </Box>
+
+      {/* Windows */}
+      {windows.map((w, i) => (
+        <Box key={i} args={w.args as any} position={w.pos as any}>
+          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={0.5} transparent opacity={0.6} />
+        </Box>
+      ))}
+
+      {/* Posters/Graffiti */}
+      <Box args={[1.5, 2, 0.05]} position={[size.x/3, -size.y/4, size.z/2 + 0.26]} rotation={[0, 0, 0.1]}>
+        <meshStandardMaterial map={posterTexture} transparent opacity={0.8} />
+      </Box>
+
+      {/* Roof */}
+      <Box args={[size.x + 0.5, thickness, size.z + 0.5]} position={[0, size.y / 2, 0]}>
+        <meshStandardMaterial color="#222" map={roofTexture} />
+      </Box>
+      
+      {/* Roof Trim */}
+      <Box args={[size.x + 1, 0.5, size.z + 1]} position={[0, size.y / 2 - 0.25, 0]}>
+        <meshStandardMaterial color="#111" />
+      </Box>
+      
+      {/* Roof Decorations (AC Units, Vents) */}
+      <Box args={[1.5, 1, 1.5]} position={[size.x/4, size.y/2 + 0.5, size.z/4]}>
+        <meshStandardMaterial color="#444" metalness={0.8} />
+      </Box>
+      <Cylinder args={[0.4, 0.4, 0.8]} position={[-size.x/4, size.y/2 + 0.4, -size.z/4]}>
+        <meshStandardMaterial color="#333" metalness={0.9} />
+      </Cylinder>
+      {/* Antenna */}
+      <Cylinder args={[0.05, 0.05, 3]} position={[size.x/3, size.y/2 + 1.5, -size.z/3]}>
+        <meshStandardMaterial color="#888" metalness={1} />
+      </Cylinder>
+      <Box args={[0.5, 0.5, 0.5]} position={[size.x/3, size.y/2 + 0.25, -size.z/3]}>
+        <meshStandardMaterial color="#333" />
+      </Box>
+
+      {/* Water Tower on Roof */}
+      <group position={[-size.x / 4, size.y / 2 + 1, size.z / 4]}>
+        <Cylinder args={[0.1, 0.1, 2]} position={[-0.8, 0, -0.8]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Cylinder>
+        <Cylinder args={[0.1, 0.1, 2]} position={[0.8, 0, -0.8]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Cylinder>
+        <Cylinder args={[0.1, 0.1, 2]} position={[-0.8, 0, 0.8]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Cylinder>
+        <Cylinder args={[0.1, 0.1, 2]} position={[0.8, 0, 0.8]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Cylinder>
+        <Cylinder args={[1.5, 1.5, 2]} position={[0, 1.5, 0]}>
+          <meshStandardMaterial color="#5d4037" map={floorTexture} />
+        </Cylinder>
+        <Cylinder args={[1.6, 1.6, 0.2]} position={[0, 2.6, 0]}>
+          <meshStandardMaterial color="#222" />
+        </Cylinder>
+      </group>
+
+      {/* Exterior Props */}
+      {/* Trash Can */}
+      <Cylinder args={[0.4, 0.3, 0.8]} position={[size.x/2 + 1, -size.y/2 + 0.4, size.z/2 - 1]}>
+        <meshStandardMaterial color="#2a3b2a" roughness={0.8} />
+      </Cylinder>
+      {/* Crate */}
+      <Box args={[0.8, 0.8, 0.8]} position={[-size.x/2 - 1, -size.y/2 + 0.4, size.z/2 - 2]} rotation={[0, 0.5, 0]}>
+        <meshStandardMaterial color="#5d4037" map={floorTexture} />
+      </Box>
+
+      {/* Street Light */}
+      <group position={[size.x / 2 + 0.5, size.y / 2 - 1, size.z / 2 + 0.5]}>
+        <Cylinder args={[0.05, 0.05, 2]} position={[0, 0, 0]}>
+          <meshStandardMaterial color="#222" />
+        </Cylinder>
+        <Box args={[0.5, 0.1, 0.1]} position={[-0.25, 1, 0]}>
+          <meshStandardMaterial color="#222" />
+        </Box>
+        <Cylinder args={[0.2, 0.2, 0.2]} position={[-0.5, 0.9, 0]}>
+          <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={2} />
+        </Cylinder>
+        <pointLight position={[-0.5, 0.8, 0]} intensity={5} distance={10} color="#ffaa77" />
+      </group>
+
+      {/* Dumpster */}
+      <group position={[-size.x / 2 - 1.5, -size.y / 2 + 0.75, 0]}>
+        <Box args={[1.5, 1.5, 2]}>
+          <meshStandardMaterial color="#1b3b22" roughness={0.9} />
+        </Box>
+        <Box args={[1.6, 0.1, 2.1]} position={[0, 0.75, 0]} rotation={[0.1, 0, 0]}>
+          <meshStandardMaterial color="#111" />
+        </Box>
+      </group>
+
+      {/* Fire Escape */}
+      <group position={[size.x / 2 + 0.5, 0, 0]}>
+        <Box args={[1, 0.1, 2]} position={[0, 0, 0]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Box>
+        <Box args={[1, 0.1, 2]} position={[0, size.y / 3, 0]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Box>
+        <Box args={[0.1, size.y, 0.1]} position={[-0.4, 0, 0.9]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Box>
+        <Box args={[0.1, size.y, 0.1]} position={[0.4, 0, 0.9]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Box>
+        <Box args={[0.1, size.y, 0.1]} position={[-0.4, 0, -0.9]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Box>
+        <Box args={[0.1, size.y, 0.1]} position={[0.4, 0, -0.9]}>
+          <meshStandardMaterial color="#222" metalness={0.8} />
+        </Box>
+      </group>
+
+      {/* Vines */}
+      <Box args={[0.1, size.y * 0.8, 1]} position={[-size.x / 2 - 0.05, 0, size.z / 4]}>
+        <meshStandardMaterial color="#2e7d32" roughness={0.9} />
+      </Box>
+      <Box args={[0.1, size.y * 0.6, 1.5]} position={[size.x / 2 + 0.05, -size.y * 0.1, -size.z / 4]}>
+        <meshStandardMaterial color="#2e7d32" roughness={0.9} />
+      </Box>
+
+      {/* Interior Decorations */}
+      {/* Shelves */}
+      <Box args={[0.5, 2, 3]} position={[-size.x/2 + 0.5, -size.y/2 + 1, -size.z/2 + 2]}>
+        <meshStandardMaterial color="#3e2723" />
+      </Box>
+      <Box args={[0.5, 0.1, 3]} position={[-size.x/2 + 0.5, -size.y/2 + 0.5, -size.z/2 + 2]}>
+        <meshStandardMaterial color="#5d4037" />
+      </Box>
+      <Box args={[0.5, 0.1, 3]} position={[-size.x/2 + 0.5, -size.y/2 + 1.0, -size.z/2 + 2]}>
+        <meshStandardMaterial color="#5d4037" />
+      </Box>
+      <Box args={[0.5, 0.1, 3]} position={[-size.x/2 + 0.5, -size.y/2 + 1.5, -size.z/2 + 2]}>
+        <meshStandardMaterial color="#5d4037" />
+      </Box>
+
+      {/* Table */}
+      <Box args={[2, 0.1, 1]} position={[size.x/4, -size.y/2 + 0.8, 0]}>
+        <meshStandardMaterial color="#5d4037" />
+      </Box>
+      <Cylinder args={[0.1, 0.1, 0.8]} position={[size.x/4 - 0.8, -size.y/2 + 0.4, -0.4]}>
+        <meshStandardMaterial color="#3e2723" />
+      </Cylinder>
+      <Cylinder args={[0.1, 0.1, 0.8]} position={[size.x/4 + 0.8, -size.y/2 + 0.4, -0.4]}>
+        <meshStandardMaterial color="#3e2723" />
+      </Cylinder>
+      <Cylinder args={[0.1, 0.1, 0.8]} position={[size.x/4 - 0.8, -size.y/2 + 0.4, 0.4]}>
+        <meshStandardMaterial color="#3e2723" />
+      </Cylinder>
+      <Cylinder args={[0.1, 0.1, 0.8]} position={[size.x/4 + 0.8, -size.y/2 + 0.4, 0.4]}>
+        <meshStandardMaterial color="#3e2723" />
+      </Cylinder>
+
+      {/* Interior Counter */}
+      <Box args={[size.x / 2, 1, 0.8]} position={[-size.x / 4, -size.y / 2 + 0.5, 0]}>
+        <meshStandardMaterial color="#4e342e" />
+      </Box>
+      
+      {/* Interior Rug */}
+      <Plane rotation={[-Math.PI / 2, 0, 0]} args={[size.x * 0.6, size.z * 0.6]} position={[0, -size.y / 2 + 0.02, 0]}>
+        <meshStandardMaterial color="#8b0000" roughness={0.9} />
+      </Plane>
+
+      {/* Ceiling Light */}
+      <Box args={[0.5, 0.1, 2]} position={[0, size.y/2 - 0.1, 0]}>
+        <meshStandardMaterial color="#eee" emissive="#eee" emissiveIntensity={2} />
+      </Box>
+
+      {/* Sign */}
+      {label && (
+        <group position={[0, size.y/2 + 1, size.z/2 + 0.1]}>
+          <Box args={[label.length * 0.6, 1.2, 0.2]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+          <Text position={[0, 0, 0.11]} fontSize={0.8} color={lightColor} outlineWidth={0.05} outlineColor="#000">
+            {label}
+          </Text>
+          {/* Simple glowing indicator for sign */}
+          <Box args={[label.length * 0.5, 0.1, 0.21]} position={[0, -0.4, 0]}>
+            <meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={5} />
+          </Box>
+        </group>
+      )}
+
+      {/* Side Neon Sign */}
+      {label && (
+        <group position={[-size.x / 2 - 0.1, size.y / 4, 0]} rotation={[0, -Math.PI / 2, 0]}>
+          <Box args={[label.length * 0.4, 0.8, 0.1]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+          <Text position={[0, 0, 0.06]} fontSize={0.5} color={lightColor} outlineWidth={0.02} outlineColor="#000">
+            {label}
+          </Text>
+          <Box args={[label.length * 0.35, 0.05, 0.11]} position={[0, -0.3, 0]}>
+            <meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={3} />
+          </Box>
+        </group>
+      )}
+
+      <pointLight position={[0, -size.y / 2 + 2, 0]} intensity={60} color={lightColor} distance={size.x * 3} />
+    </group>
+  );
+});
+
+const WeaponMaterial: React.FC<{ camo: WeaponCamo; stats: any; materialRef: React.RefObject<THREE.MeshStandardMaterial> }> = ({ camo, stats, materialRef }) => {
+  const camoProps = CAMO_PROPS[camo];
+  const camoTexture = camoProps?.texture ? useTexture(camoProps.texture) : null;
+  const defaultTexture = useTexture('https://picsum.photos/seed/metal/512/512');
+  
+  return (
+    <meshStandardMaterial 
+      ref={materialRef}
+      color={camoProps?.color || stats?.color || '#222'} 
+      map={camoTexture || defaultTexture}
+      metalness={camoProps?.metalness ?? 0.8}
+      roughness={camoProps?.roughness ?? 0.2}
+      emissive={camoProps?.emissive || '#000'}
+      emissiveIntensity={camoProps?.emissiveIntensity || 0}
+      transparent={camo === 'ice' || camo === 'dark_matter'}
+      opacity={camo === 'ice' ? 0.8 : 1}
+    />
+  );
+};
+
+const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?: WeaponAttachment[] }> = ({ weaponName, camo, attachments = [] }) => {
+  const stats = WEAPONS_STATS[weaponName];
+  const camoProps = CAMO_PROPS[camo];
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
+  const leftMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
+
+  const isSniper = weaponName.includes('DSR') || weaponName.includes('REACTOR');
+  const isLMG = weaponName.includes('HAMR') || weaponName.includes('RPD') || weaponName.includes('REAPER') || weaponName.includes('PUNISHER');
+  const isRayGun = weaponName.includes('RAY GUN');
+  const isSpecial = weaponName.includes('WUNDERWAFFE') || weaponName.includes('THUNDERGUN') || weaponName.includes('ZEUS');
+  const isPistol = weaponName.includes('M1911') || weaponName.includes('MUSTANG') || weaponName.includes('PYTHON') || weaponName.includes('COBRA');
+  const isShotgun = weaponName.includes('REMINGTON') || weaponName.includes('PUNISHMENT') || weaponName.includes('STRIKER') || weaponName.includes('STRIKE-OUT') || weaponName.includes('OLYMPIA') || weaponName.includes('HADES');
+  const isSMG = weaponName.includes('MP5') || weaponName.includes('M118') || weaponName.includes('AK74U') || weaponName.includes('AK74FU2') || weaponName.includes('MP40') || weaponName.includes('AFTERBURNER');
+  const isAssaultRifle = !isSniper && !isLMG && !isRayGun && !isSpecial && !isPistol && !isShotgun && !isSMG;
+  const isPap = weaponName.includes('&') || 
+                weaponName.includes('KOLLIDER') || 
+                weaponName.includes('LAMENTATION') || 
+                weaponName.includes('PUNISHMENT') || 
+                weaponName.includes('DOWN') || 
+                weaponName.includes('PUNISHER') || 
+                weaponName.includes('REACTOR') || 
+                weaponName.includes('PORTER') ||
+                weaponName.includes('REVENGE') ||
+                weaponName.includes('AGAMEMNON') ||
+                weaponName.includes('STRIKE-OUT') ||
+                weaponName.includes('CONVERTER') ||
+                weaponName.includes('JZ') ||
+                weaponName.includes('ZEUS') ||
+                weaponName.includes('M118') ||
+                weaponName.includes('HADES') ||
+                weaponName.includes('COBRA') ||
+                weaponName.includes('G116') ||
+                weaponName.includes('REAPER') ||
+                weaponName.includes('GIBS') ||
+                weaponName.includes('AFTERBURNER') ||
+                weaponName.includes('SPATZ') ||
+                weaponName.includes('ACCELERATOR') ||
+                weaponName.includes('SAMURAIS');
+
+  const renderAttachments = (isLeft: boolean = false) => {
+    return (
+      <group>
+        {attachments.includes('red_dot') && !isSniper && (
+          <group position={[0, 0.1, 0]}>
+            <Box args={[0.04, 0.02, 0.08]} position={[0, 0, 0]}>
+              <meshStandardMaterial color="#222" />
+            </Box>
+            <Box args={[0.03, 0.04, 0.01]} position={[0, 0.03, -0.03]}>
+              <meshStandardMaterial color="#111" />
+            </Box>
+            <Box args={[0.02, 0.02, 0.01]} position={[0, 0.03, -0.03]}>
+              <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} />
+            </Box>
+          </group>
+        )}
+        {attachments.includes('acog') && !isSniper && (
+          <group position={[0, 0.12, 0]}>
+            <Cylinder args={[0.03, 0.03, 0.15, 8]} rotation={[Math.PI / 2, 0, 0]}>
+              <meshStandardMaterial color="#222" />
+            </Cylinder>
+            <Cylinder args={[0.02, 0.02, 0.01, 8]} position={[0, 0, -0.076]} rotation={[Math.PI / 2, 0, 0]}>
+              <meshStandardMaterial color="#00ff00" emissive="#00ff00" emissiveIntensity={1} />
+            </Cylinder>
+          </group>
+        )}
+        {attachments.includes('foregrip') && (
+          <Cylinder args={[0.015, 0.015, 0.1]} position={[0, -0.1, -0.15]} rotation={[0.2, 0, 0]}>
+            <meshStandardMaterial color="#111" />
+          </Cylinder>
+        )}
+        {attachments.includes('extended_mag') && (
+          <Box args={[0.03, 0.15, 0.05]} position={[0, -0.15, 0.05]} rotation={[0.1, 0, 0]}>
+            <meshStandardMaterial color="#333" />
+          </Box>
+        )}
+        {attachments.includes('laser_sight') && (
+          <group position={[0.03, 0, -0.15]}>
+            <Box args={[0.02, 0.02, 0.06]}>
+              <meshStandardMaterial color="#111" />
+            </Box>
+            <Cylinder args={[0.002, 0.002, 5]} position={[0, 0, -2.5]} rotation={[Math.PI / 2, 0, 0]}>
+              <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} transparent opacity={0.5} />
+            </Cylinder>
+          </group>
+        )}
+        {attachments.includes('suppressor') && (
+          <Cylinder args={[0.025, 0.025, 0.15]} position={[0, 0.03, -((stats?.barrelLen || 0.4) / 2 + 0.2) - 0.075]} rotation={[Math.PI / 2, 0, 0]}>
+            <meshStandardMaterial color="#111" />
+          </Cylinder>
+        )}
+      </group>
+    );
+  };
+
+  if (weaponName === 'Bowie Knife') {
+    return (
+      <group>
+        {/* Handle */}
+        <Box args={[0.04, 0.06, 0.2]} position={[0, 0, 0.15]}>
+           <meshStandardMaterial color="#444" />
+        </Box>
+        {/* Guard */}
+        <Box args={[0.12, 0.02, 0.04]} position={[0, 0, 0.05]}>
+           <meshStandardMaterial color="#666" metalness={0.8} roughness={0.2} />
+        </Box>
+        {/* Blade */}
+        <Box args={[0.01, 0.08, 0.5]} position={[0, 0, -0.2]}>
+           <meshStandardMaterial color="#eee" metalness={0.9} roughness={0.1} />
+        </Box>
+        {/* Glow for visibility */}
+        <pointLight intensity={1.5} color="#fff" distance={1} />
+      </group>
+    );
+  }
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      // Animate PaP (if no camo)
+      if (isPap && camo === 'none') {
+        const time = state.clock.elapsedTime;
+        materialRef.current.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.3;
+        materialRef.current.emissive.setHSL((time * 0.1) % 1, 1, 0.5);
+        // Make it look metallic and shiny
+        materialRef.current.metalness = 0.9;
+        materialRef.current.roughness = 0.1;
+        
+        if (leftMaterialRef.current) {
+          leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+          leftMaterialRef.current.emissive.copy(materialRef.current.emissive);
+          leftMaterialRef.current.metalness = materialRef.current.metalness;
+          leftMaterialRef.current.roughness = materialRef.current.roughness;
+        }
+      }
+
+      // Animate Dark Matter
+      if (camo === 'dark_matter') {
+        const time = state.clock.elapsedTime;
+        materialRef.current.emissiveIntensity = 2 + Math.sin(time * 2) * 0.5;
+        materialRef.current.color.setHSL(0.75 + Math.sin(time * 0.1) * 0.05, 0.8, 0.2);
+        
+        if (leftMaterialRef.current) {
+          leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+          leftMaterialRef.current.color.copy(materialRef.current.color);
+        }
+      }
+      // Animate Magma
+      if (camo === 'magma') {
+        const time = state.clock.elapsedTime;
+        materialRef.current.emissiveIntensity = 3 + Math.sin(time * 5) * 1;
+        // Shift hue slightly for flowing lava effect
+        materialRef.current.emissive.setHSL(0.05 + Math.sin(time) * 0.02, 1, 0.5);
+        
+        if (leftMaterialRef.current) {
+          leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+          leftMaterialRef.current.emissive.copy(materialRef.current.emissive);
+        }
+      }
+      // Animate Ice
+      if (camo === 'ice') {
+        materialRef.current.opacity = 0.6 + Math.sin(state.clock.elapsedTime) * 0.1;
+        if (leftMaterialRef.current) leftMaterialRef.current.opacity = materialRef.current.opacity;
+      }
+      // Animate Nebula
+      if (camo === 'nebula') {
+         const time = state.clock.elapsedTime;
+         materialRef.current.emissiveIntensity = 1.5 + Math.sin(time * 0.5) * 0.5;
+         materialRef.current.color.setHSL(0.6 + Math.sin(time * 0.2) * 0.1, 0.8, 0.2);
+         
+         if (leftMaterialRef.current) {
+           leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+           leftMaterialRef.current.color.copy(materialRef.current.color);
+         }
+      }
+      // Animate Red Hex
+      if (camo === 'red_hex') {
+         const time = state.clock.elapsedTime;
+         materialRef.current.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.3;
+         if (leftMaterialRef.current) leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+      }
+      // Animate Into The Void
+      if (camo === 'into_the_void') {
+         const time = state.clock.elapsedTime;
+         materialRef.current.emissiveIntensity = 2 + Math.sin(time * 1.5) * 1;
+         materialRef.current.color.setHSL(0.75, 1, 0.1 + Math.sin(time) * 0.1);
+         
+         if (leftMaterialRef.current) {
+           leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+           leftMaterialRef.current.color.copy(materialRef.current.color);
+         }
+      }
+      // Animate Cosmic
+      if (camo === 'cosmic') {
+         const time = state.clock.elapsedTime;
+         materialRef.current.emissiveIntensity = 1.5 + Math.sin(time * 2) * 0.5;
+         materialRef.current.emissive.setHSL(0.5 + Math.sin(time * 0.5) * 0.1, 1, 0.5);
+         
+         if (leftMaterialRef.current) {
+           leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
+           leftMaterialRef.current.emissive.copy(materialRef.current.emissive);
+         }
+      }
+    }
+  });
+
+  const gunMesh = (
+    <group position={[0, 0, 0]}>
+      {/* Base Weapon Body based on type */}
+      {isPistol && (
+        <group>
+          {/* Pistol Slide */}
+          <Box args={[0.08, 0.08, 0.3]} position={[0, 0.05, -0.05]}>
+            <WeaponMaterial key={camo + '_slide'} camo={camo} stats={stats} materialRef={materialRef} />
+          </Box>
+          {/* Pistol Grip */}
+          <Box args={[0.06, 0.15, 0.08]} position={[0, -0.05, 0.05]} rotation={[0.2, 0, 0]}>
+            <WeaponMaterial key={camo + '_grip'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* Trigger Guard */}
+          <Box args={[0.02, 0.05, 0.05]} position={[0, -0.02, -0.02]}>
+            <meshStandardMaterial color="#222" />
+          </Box>
+        </group>
+      )}
+
+      {isShotgun && (
+        <group>
+          {/* Shotgun Receiver */}
+          <Box args={[0.1, 0.12, 0.3]} position={[0, 0, 0]}>
+            <WeaponMaterial key={camo + '_receiver'} camo={camo} stats={stats} materialRef={materialRef} />
+          </Box>
+          {/* Shotgun Barrel */}
+          <Cylinder args={[0.03, 0.03, 0.5]} position={[0, 0.03, -0.35]} rotation={[Math.PI / 2, 0, 0]}>
+            <WeaponMaterial key={camo + '_barrel'} camo={camo} stats={{...stats, color: '#222'}} materialRef={null as any} />
+          </Cylinder>
+          {/* Shotgun Pump/Underbarrel */}
+          <Cylinder args={[0.04, 0.04, 0.25]} position={[0, -0.03, -0.3]} rotation={[Math.PI / 2, 0, 0]}>
+            <WeaponMaterial key={camo + '_pump'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Cylinder>
+          {/* Shotgun Stock */}
+          <Box args={[0.08, 0.15, 0.3]} position={[0, -0.05, 0.25]} rotation={[-0.1, 0, 0]}>
+            <WeaponMaterial key={camo + '_stock'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+        </group>
+      )}
+
+      {isSMG && (
+        <group>
+          {/* SMG Receiver */}
+          <Box args={[0.08, 0.1, 0.25]} position={[0, 0, 0]}>
+            <WeaponMaterial key={camo + '_receiver'} camo={camo} stats={stats} materialRef={materialRef} />
+          </Box>
+          {/* SMG Barrel */}
+          <Cylinder args={[0.02, 0.02, 0.3]} position={[0, 0.02, -0.25]} rotation={[Math.PI / 2, 0, 0]}>
+            <WeaponMaterial key={camo + '_barrel'} camo={camo} stats={{...stats, color: '#222'}} materialRef={null as any} />
+          </Cylinder>
+          {/* SMG Magazine (Straight or Curved) */}
+          <Box args={[0.04, 0.2, 0.06]} position={[0, -0.15, -0.05]} rotation={[0.1, 0, 0]}>
+            <WeaponMaterial key={camo + '_mag'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* SMG Grip */}
+          <Box args={[0.06, 0.15, 0.08]} position={[0, -0.1, 0.1]} rotation={[0.2, 0, 0]}>
+            <WeaponMaterial key={camo + '_grip'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* SMG Stock (Folded or Extended) */}
+          <Box args={[0.04, 0.04, 0.25]} position={[0, 0, 0.25]}>
+            <WeaponMaterial key={camo + '_stock'} camo={camo} stats={{...stats, color: '#222'}} materialRef={null as any} />
+          </Box>
+        </group>
+      )}
+
+      {isAssaultRifle && (
+        <group>
+          {/* AR Receiver */}
+          <Box args={[0.09, 0.12, 0.35]} position={[0, 0, 0]}>
+            <WeaponMaterial key={camo + '_receiver'} camo={camo} stats={stats} materialRef={materialRef} />
+          </Box>
+          {/* AR Handguard */}
+          <Box args={[0.08, 0.1, 0.3]} position={[0, 0.01, -0.3]}>
+            <WeaponMaterial key={camo + '_handguard'} camo={camo} stats={{...stats, color: '#222'}} materialRef={null as any} />
+          </Box>
+          {/* AR Barrel */}
+          <Cylinder args={[0.015, 0.015, 0.2]} position={[0, 0.02, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+            <WeaponMaterial key={camo + '_barrel'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Cylinder>
+          {/* AR Magazine */}
+          <Box args={[0.05, 0.2, 0.08]} position={[0, -0.15, -0.05]} rotation={[0.1, 0, 0]}>
+            <WeaponMaterial key={camo + '_mag'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* AR Grip */}
+          <Box args={[0.06, 0.15, 0.08]} position={[0, -0.1, 0.15]} rotation={[0.2, 0, 0]}>
+            <WeaponMaterial key={camo + '_grip'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* AR Stock */}
+          <Box args={[0.06, 0.15, 0.25]} position={[0, -0.05, 0.3]} rotation={[-0.1, 0, 0]}>
+            <WeaponMaterial key={camo + '_stock'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* AR Sights */}
+          <Box args={[0.02, 0.04, 0.02]} position={[0, 0.08, -0.4]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+          <Box args={[0.02, 0.04, 0.02]} position={[0, 0.08, 0.1]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+        </group>
+      )}
+
+      {/* Generic fallback for others (LMGs, Snipers, Specials) if not matched above */}
+      {(!isPistol && !isShotgun && !isSMG && !isAssaultRifle) && (
+        <group>
+          {/* Main Body */}
+          <Box args={[0.1, 0.12, 0.4]} position={[0, 0, 0]}>
+            <WeaponMaterial key={camo} camo={camo} stats={stats} materialRef={materialRef} />
+          </Box>
+          
+          {/* Barrel */}
+          <Box args={[0.06, 0.06, stats?.barrelLen || 0.4]} position={[0, 0.03, -((stats?.barrelLen || 0.4) / 2 + 0.2)]}>
+            <WeaponMaterial key={camo + '_barrel'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          
+          {/* Grip */}
+          <Box args={[0.08, 0.25, 0.1]} position={[0, -0.15, 0.1]} rotation={[0.2, 0, 0]}>
+            <WeaponMaterial key={camo + '_grip'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+        </group>
+      )}
+
+      {/* Scope for Snipers */}
+      {isSniper && (
+        <group position={[0, 0.1, -0.1]}>
+          <Cylinder args={[0.04, 0.04, 0.3]} rotation={[Math.PI / 2, 0, 0]}>
+            <WeaponMaterial key={camo + '_scope'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Cylinder>
+          <Box args={[0.01, 0.05, 0.01]} position={[0, -0.05, 0]}>
+            <WeaponMaterial key={camo + '_scope_mount'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+          </Box>
+          {/* Lens Reflection */}
+          <Cylinder args={[0.035, 0.035, 0.01]} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.15]}>
+             <meshStandardMaterial color="#00ffff" metalness={1} roughness={0} emissive="#00ffff" emissiveIntensity={0.5} />
+          </Cylinder>
+        </group>
+      )}
+
+      {/* Drum Mag for LMGs */}
+      {isLMG && (
+        <Cylinder args={[0.15, 0.15, 0.12, 16]} position={[0, -0.15, -0.1]} rotation={[0, 0, Math.PI / 2]}>
+          <WeaponMaterial key={camo + '_mag'} camo={camo} stats={stats} materialRef={null as any} />
+        </Cylinder>
+      )}
+
+      {/* Stock for Two-Handed Weapons (Generic fallback) */}
+      {stats?.twoHanded && !isShotgun && !isSMG && !isAssaultRifle && (
+        <Box args={[0.08, 0.15, 0.3]} position={[0, -0.05, 0.35]} rotation={[-0.1, 0, 0]}>
+          <WeaponMaterial key={camo + '_stock'} camo={camo} stats={stats} materialRef={null as any} />
+        </Box>
+      )}
+
+      {/* Ray Gun Specifics */}
+      {isRayGun && (
+        <group position={[0, 0.05, -0.2]}>
+          <Sphere args={[0.08, 16, 16]} scale={[1, 1, 0.5]}>
+            <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} />
+          </Sphere>
+          <pointLight intensity={5} color="#ff0000" distance={2} />
+          {/* Ray Gun Rings */}
+          <Torus args={[0.1, 0.01, 8, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -0.3]}>
+            <meshStandardMaterial color="#ff0000" emissive="#ff0000" />
+          </Torus>
+          <Torus args={[0.08, 0.01, 8, 16]} rotation={[Math.PI/2, 0, 0]} position={[0, 0, -0.4]}>
+            <meshStandardMaterial color="#ff0000" emissive="#ff0000" />
+          </Torus>
+        </group>
+      )}
+
+      {/* Special Weapon Effects */}
+      {isSpecial && (
+        <group position={[0, 0.05, -0.3]}>
+          <Float speed={5} rotationIntensity={2} floatIntensity={1}>
+            <Box args={[0.05, 0.05, 0.05]}>
+              <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={10} />
+            </Box>
+          </Float>
+          <pointLight intensity={10} color="#00ffff" distance={3} />
+          {/* Energy Arcs */}
+          <Sparkles count={20} scale={0.5} size={2} speed={0.4} opacity={1} color="#00ffff" />
+        </group>
+      )}
+
+      {/* Pack-A-Punch Visual Effects */}
+      {isPap && camo === 'none' && (
+        <group>
+          {/* PaP Glow */}
+          <pointLight intensity={2} color="#00ffff" distance={1.5} position={[0, 0.1, -0.1]} />
+          <pointLight intensity={2} color="#ff00ff" distance={1.5} position={[0, -0.1, 0.1]} />
+          {/* PaP Energy Particles */}
+          <Sparkles count={15} scale={0.8} size={1.5} speed={0.5} opacity={0.6} color="#00ffff" />
+          <Sparkles count={15} scale={0.8} size={1.5} speed={0.5} opacity={0.6} color="#ff00ff" />
+        </group>
+      )}
+
+      {/* Attachments */}
+      {renderAttachments()}
+
+      {/* Camo Effects */}
+      {camo === 'dark_matter' && (
+        <group>
+          <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+            <Sphere args={[0.05, 8, 8]} position={[0, 0.1, -0.2]}>
+              <meshStandardMaterial color="#7b1fa2" emissive="#7b1fa2" emissiveIntensity={5} transparent opacity={0.6} />
+            </Sphere>
+          </Float>
+          <Sparkles count={30} scale={0.8} size={3} speed={0.2} opacity={0.5} color="#ab47bc" />
+        </group>
+      )}
+      {camo === 'magma' && (
+        <group>
+           <pointLight position={[0, 0.1, -0.3]} intensity={5} color="#ff3d00" distance={2} />
+           <Sparkles count={15} scale={0.6} size={4} speed={0.8} opacity={0.8} color="#ff3d00" />
+        </group>
+      )}
+      {camo === 'ice' && (
+        <group>
+          <Box args={[0.12, 0.14, 0.42]} position={[0, 0, 0]}>
+            <meshStandardMaterial color="#81d4fa" transparent opacity={0.3} metalness={1} roughness={0} />
+          </Box>
+          <Sparkles count={20} scale={0.7} size={2} speed={0.1} opacity={0.6} color="#e0f7fa" />
+        </group>
+      )}
+      {camo === 'nebula' && (
+        <group>
+          <Stars radius={1} depth={1} count={50} factor={0.1} saturation={1} fade speed={1} />
+          <Sparkles count={40} scale={1} size={1} speed={0.2} opacity={0.8} color="#ffffff" />
+        </group>
+      )}
+      {camo === 'dragon' && (
+        <group>
+           <Box args={[0.02, 0.05, 0.3]} position={[0.06, 0.05, 0]} rotation={[0, 0, 0.2]}>
+              <meshStandardMaterial color="#800" roughness={0.8} />
+           </Box>
+           <Box args={[0.02, 0.05, 0.3]} position={[-0.06, 0.05, 0]} rotation={[0, 0, -0.2]}>
+              <meshStandardMaterial color="#800" roughness={0.8} />
+           </Box>
+           <Sparkles count={10} scale={0.5} size={3} speed={1} opacity={0.5} color="#ff0000" />
+        </group>
+      )}
+      {camo === 'cherry_blossom' && (
+         <Sparkles count={15} scale={0.6} size={4} speed={0.3} opacity={0.8} color="#f8bbd0" />
+      )}
+
+      {/* PaP Effects */}
+      {isPap && camo === 'none' && (
+        <group>
+           <Sparkles count={15} scale={0.8} size={3} speed={0.4} opacity={0.6} color="#ff00ff" />
+           <pointLight intensity={2} color="#ff00ff" distance={1} />
+        </group>
+      )}
+
+      <spotLight position={[0, 0, -0.5]} intensity={10} angle={0.4} penumbra={0.5} distance={30} color="#fff" />
+    </group>
+  );
+
+  if (weaponName === 'MUSTANG & SALLY') {
+    return (
+      <group>
+        <group position={[-0.5, 0, 0]}>
+          <group position={[0, 0, 0]}>
+            {/* Main Body */}
+            <Box args={[0.1, 0.12, 0.4]} position={[0, 0, 0]}>
+              <WeaponMaterial key={camo + '_left'} camo={camo} stats={stats} materialRef={leftMaterialRef} />
+            </Box>
+            
+            {/* Barrel */}
+            <Box args={[0.06, 0.06, stats?.barrelLen || 0.4]} position={[0, 0.03, -((stats?.barrelLen || 0.4) / 2 + 0.2)]}>
+              <WeaponMaterial key={camo + '_barrel_left'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+            </Box>
+            
+            {/* Grip */}
+            <Box args={[0.08, 0.25, 0.1]} position={[0, -0.15, 0.1]} rotation={[0.2, 0, 0]}>
+              <WeaponMaterial key={camo + '_grip_left'} camo={camo} stats={{...stats, color: '#111'}} materialRef={null as any} />
+            </Box>
+
+            {/* Attachments */}
+            {renderAttachments(true)}
+
+            {/* Camo Effects */}
+            {camo === 'dark_matter' && (
+              <group>
+                <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+                  <Sphere args={[0.05, 8, 8]} position={[0, 0.1, -0.2]}>
+                    <meshStandardMaterial color="#7b1fa2" emissive="#7b1fa2" emissiveIntensity={5} transparent opacity={0.6} />
+                  </Sphere>
+                </Float>
+                <Sparkles count={30} scale={0.8} size={3} speed={0.2} opacity={0.5} color="#ab47bc" />
+              </group>
+            )}
+            {camo === 'magma' && (
+              <group>
+                 <pointLight position={[0, 0.1, -0.3]} intensity={5} color="#ff3d00" distance={2} />
+                 <Sparkles count={15} scale={0.6} size={4} speed={0.8} opacity={0.8} color="#ff3d00" />
+              </group>
+            )}
+            {camo === 'ice' && (
+              <group>
+                <Box args={[0.12, 0.14, 0.42]} position={[0, 0, 0]}>
+                  <meshStandardMaterial color="#81d4fa" transparent opacity={0.3} metalness={1} roughness={0} />
+                </Box>
+                <Sparkles count={20} scale={0.7} size={2} speed={0.1} opacity={0.6} color="#e0f7fa" />
+              </group>
+            )}
+            {camo === 'nebula' && (
+              <group>
+                <Stars radius={1} depth={1} count={50} factor={0.1} saturation={1} fade speed={1} />
+                <Sparkles count={40} scale={1} size={1} speed={0.2} opacity={0.8} color="#ffffff" />
+              </group>
+            )}
+            {camo === 'dragon' && (
+              <group>
+                 <Box args={[0.02, 0.05, 0.3]} position={[0.06, 0.05, 0]} rotation={[0, 0, 0.2]}>
+                    <meshStandardMaterial color="#800" roughness={0.8} />
+                 </Box>
+                 <Box args={[0.02, 0.05, 0.3]} position={[-0.06, 0.05, 0]} rotation={[0, 0, -0.2]}>
+                    <meshStandardMaterial color="#800" roughness={0.8} />
+                 </Box>
+                 <Sparkles count={10} scale={0.5} size={3} speed={1} opacity={0.5} color="#ff0000" />
+              </group>
+            )}
+            {camo === 'cherry_blossom' && (
+               <Sparkles count={15} scale={0.6} size={4} speed={0.3} opacity={0.8} color="#f8bbd0" />
+            )}
+
+            {/* PaP Effects */}
+            {isPap && camo === 'none' && (
+              <group>
+                 <Sparkles count={15} scale={0.8} size={3} speed={0.4} opacity={0.6} color="#ff00ff" />
+                 <pointLight intensity={2} color="#ff00ff" distance={1} />
+              </group>
+            )}
+
+            <spotLight position={[0, 0, -0.5]} intensity={10} angle={0.4} penumbra={0.5} distance={30} color="#fff" />
+          </group>
+        </group>
+        <group position={[0, 0, 0]}>
+          {gunMesh}
+        </group>
+      </group>
+    );
+  }
+
+  return gunMesh;
+};
+
+const WallBuy: React.FC<{ pos: THREE.Vector3; rotation?: [number, number, number]; weaponName: string; cost: number }> = ({ pos, rotation, weaponName, cost }) => {
+  return (
+    <group position={pos} rotation={rotation ? new THREE.Euler(...rotation) : new THREE.Euler(0, 0, 0)}>
+      {/* Chalk Outline / Background */}
+      <Box args={[1.5, 0.8, 0.1]} position={[0, 0, -0.1]}>
+         <meshStandardMaterial color="#222" transparent opacity={0.8} />
+      </Box>
+      <Box args={[1.6, 0.9, 0.05]} position={[0, 0, -0.15]}>
+         <meshStandardMaterial color="#fff" />
+      </Box>
+      
+      {/* Weapon Model */}
+      <group scale={[0.8, 0.8, 0.8]} rotation={[0, -Math.PI / 2, 0]} position={[0, 0, 0.3]}>
+         <WeaponModel weaponName={weaponName} camo="none" />
+      </group>
+      
+      {/* Text Info */}
+      <Text position={[0, -0.6, 0.1]} fontSize={0.2} color="#fff" outlineWidth={0.02} outlineColor="#000">
+        {weaponName}
+      </Text>
+      <Text position={[0, -0.85, 0.1]} fontSize={0.2} color="#ffff00" outlineWidth={0.02} outlineColor="#000">
+        {cost}
+      </Text>
+      
+      {/* Light */}
+      <pointLight intensity={5} color="#fff" distance={3} />
+    </group>
+  );
+};
+
+
+
+const Gravestone: React.FC<{ position: THREE.Vector3, rotation?: [number, number, number] }> = ({ position, rotation = [0, -Math.PI / 2, 0] }) => {
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Base */}
+      <Box args={[4, 0.5, 3]} position={[0, 0.25, 0]}>
+        <meshStandardMaterial color="#2a2a2a" roughness={0.9} />
+      </Box>
+      {/* Stone */}
+      <Box args={[3, 5, 0.8]} position={[0, 2.75, 0]}>
+        <meshStandardMaterial color="#3a3a3a" roughness={0.8} />
+      </Box>
+      {/* Text */}
+      <group position={[0, 2.75, 0.41]}>
+        <Text position={[0, 1.8, 0]} fontSize={0.5} color="#aa0000" anchorX="center" anchorY="middle">
+          Red9
+        </Text>
+        <Text position={[0, 1.2, 0]} fontSize={0.25} color="#cccccc" anchorX="center" anchorY="middle">
+          we love you
+        </Text>
+        <Text position={[0, 0.8, 0]} fontSize={0.3} color="#cccccc" anchorX="center" anchorY="middle">
+          &
+        </Text>
+        <Text position={[0, 0.4, 0]} fontSize={0.25} color="#cccccc" anchorX="center" anchorY="middle">
+          will always miss you
+        </Text>
+        <Text position={[0, -0.4, 0]} fontSize={0.2} color="#cccccc" anchorX="center" anchorY="middle">
+          only god can judge me
+        </Text>
+        <Text position={[0, -1.2, 0]} fontSize={0.18} color="#888888" anchorX="center" anchorY="middle">
+          2003-08-27 - 2021-04-04
+        </Text>
+      </group>
+      {/* Light to make it visible at night */}
+      <pointLight position={[0, 3, 2]} intensity={10} color="#ff0000" distance={15} />
+    </group>
+  );
+};
+
+const TexturedObject: React.FC<{ type: 'box' | 'wall' | 'cylinder', args: any, pos: any, rotation?: any, color: string, texture: string }> = ({ type, args, pos, rotation, color, texture }) => {
+  const tex = useTexture(texture);
+  if (type === 'cylinder') {
+    return (
+      <Cylinder args={args} position={pos} rotation={rotation}>
+        <meshStandardMaterial color={color} map={tex} />
+      </Cylinder>
+    );
+  }
+  return (
+    <Box args={args} position={pos} rotation={rotation}>
+      <meshStandardMaterial color={color} map={tex} />
+    </Box>
+  );
+};
+
+const PlainObject: React.FC<{ type: 'box' | 'wall' | 'cylinder', args: any, pos: any, rotation?: any, color: string }> = ({ type, args, pos, rotation, color }) => {
+  if (type === 'cylinder') {
+    return (
+      <Cylinder args={args} position={pos} rotation={rotation}>
+        <meshStandardMaterial color={color} />
+      </Cylinder>
+    );
+  }
+  return (
+    <Box args={args} position={pos} rotation={rotation}>
+      <meshStandardMaterial color={color} />
+    </Box>
+  );
+};
+
+interface PowerUp {
+  id: string;
+  type: PowerUpType;
+  position: THREE.Vector3;
+  timer: number;
+}
+
+const PowerUpModel: React.FC<{ type: PowerUpType }> = ({ type }) => {
+  let color = '#ffaa00';
+  let label = 'NUKE';
+  
+  switch (type) {
+    case 'MAX_AMMO': color = '#00ff00'; label = 'MAX AMMO'; break;
+    case 'INSTA_KILL': color = '#ff0000'; label = 'INSTA-KILL'; break;
+    case 'DOUBLE_POINTS': color = '#ffff00'; label = 'DOUBLE POINTS'; break;
+    case 'NUKE': color = '#ffaa00'; label = 'NUKE'; break;
+    case 'DEATH_MACHINE': color = '#00ffff'; label = 'DEATH MACHINE'; break;
+    case 'FIRE_SALE': color = '#ff4400'; label = 'FIRE SALE'; break;
+    case 'ZOMBIE_BLOOD': color = '#800000'; label = 'ZOMBIE BLOOD'; break;
+    case 'GEM': color = '#00ffff'; label = 'GEM'; break;
+    case 'GRENADE': color = '#ff4400'; label = 'GRENADE'; break;
+    case 'FLASHBANG': color = '#ffffff'; label = 'FLASHBANG'; break;
+    case 'MONKEY_BOMB': color = '#ff0000'; label = 'MONKEY BOMB'; break;
+  }
+  
+  return (
+    <group>
+      <Float speed={2} rotationIntensity={1} floatIntensity={0.5}>
+        <Box args={[0.5, 0.5, 0.5]}>
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2} />
+        </Box>
+        <Text position={[0, 0.6, 0]} fontSize={0.3} color={color} outlineWidth={0.02} outlineColor="#000">
+          {label}
+        </Text>
+      </Float>
+      <pointLight color={color} intensity={2} distance={3} />
+      <Sparkles count={20} scale={1} size={2} speed={1} opacity={0.8} color={color} />
+    </group>
+  );
+};
+
+const Rain = ({ playerPosRef }: { playerPosRef: React.RefObject<THREE.Vector3> }) => {
+  const count = 8000;
+  const positions = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 100;
+      pos[i * 3 + 1] = Math.random() * 50;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 100;
+    }
+    return pos;
+  }, []);
+
+  const points = useRef<THREE.Points>(null);
+
+  useFrame((state, delta) => {
+    if (points.current && playerPosRef.current) {
+      const positions = points.current.geometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < count; i++) {
+        positions[i * 3 + 1] -= delta * 45;
+        if (positions[i * 3 + 1] < 0) {
+          positions[i * 3 + 1] = 50;
+        }
+      }
+      points.current.geometry.attributes.position.needsUpdate = true;
+      points.current.position.set(playerPosRef.current.x, 0, playerPosRef.current.z);
+    }
+  });
+
+  return (
+    <points ref={points}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial color="#ccddff" size={0.25} transparent opacity={0.8} sizeAttenuation />
+    </points>
+  );
+};
+
+const Bus = ({ position }: { position: THREE.Vector3 }) => {
+  const texture = useTexture('https://picsum.photos/seed/bus/512/512');
+  return (
+    <group position={position}>
+      {/* Bus Body */}
+      <Box args={[10, 7, 30]} position={[0, 3.5, 0]}>
+        <meshStandardMaterial color="#475569" map={texture} />
+      </Box>
+      {/* Tedd */}
+      <Box args={[2, 3, 2]} position={[0, 1.5, 12]}>
+         <meshStandardMaterial color="#1e293b" />
+      </Box>
+      <Html position={[0, 4, 12]} center>
+         <div className="text-white font-bold bg-black/50 px-2 rounded">TEDD</div>
+      </Html>
+    </group>
+  );
+};
+
+export const Scene: React.FC<SceneProps> = ({ 
+  status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, monkeyBombRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
+  spawnZombieType, onSpawnZombieComplete, changeAllZombiesType, onChangeAllZombiesComplete,
+  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, gameMode = 'standard'
+}) => {
+  const { camera, scene } = useThree();
+  const [weather, setWeather] = useState<'clear' | 'rain' | 'fog'>('clear');
+  const weatherTimer = useRef<number>(0);
+  
+  // Tranzit Logic
+  const busPos = useRef(new THREE.Vector3(0, 0, 0));
+  const busTargetIndex = useRef(0);
+  const lavaCooldown = useRef(0);
+  const BUS_PATH = useMemo(() => [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-150, 0, 0),
+    new THREE.Vector3(-100, 0, 100),
+    new THREE.Vector3(100, 0, 100),
+    new THREE.Vector3(0, 0, -150)
+  ], []);
+
+  // Dynamic Weather Logic
+  useEffect(() => {
+    if (gameSettings.weatherType !== 'dynamic') {
+      setWeather(gameSettings.weatherType);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const rand = Math.random();
+      if (rand < 0.4) setWeather('rain');
+      else if (rand < 0.7) setWeather('fog');
+      else setWeather('clear');
+    }, 15000); // Change weather every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [gameSettings.weatherType]);
+
+  useEffect(() => {
+    if (weather === 'rain') {
+      soundService.playThunder();
+    }
+  }, [weather]);
+
+  // Custom Music Logic
+  useEffect(() => {
+    if (!gameSettings.musicEnabled || status === GameStatus.GAMEOVER) {
+      soundService.stopMusic();
+      return;
+    }
+
+    if (gameSettings.customMusicUrl) {
+        soundService.playMusic(gameSettings.customMusicUrl);
+    }
+  }, [gameSettings.musicEnabled, gameSettings.customMusicUrl, status]);
+
+  // Volume Control
+  useEffect(() => {
+    soundService.setVolume(gameSettings.sfxVolume);
+    soundService.setMusicVolume(gameSettings.musicVolume);
+  }, [gameSettings.sfxVolume, gameSettings.musicVolume]);
+
+  const spawnPowerUp = (pos: THREE.Vector3, type: PowerUpType) => {
+    powerUpsRef.current.push({
+      id: Math.random().toString(),
+      type,
+      position: pos.clone().add(new THREE.Vector3(0, 1, 0)),
+      timer: 30
+    });
+    setPowerUpIds(powerUpsRef.current.map(p => p.id));
+  };
+
+  const handleZombieDeath = (zombie: ZombieData, isHeadshot: boolean, weaponName: string) => {
+    // Stats
+    const points = isHeadshot ? 100 : 60;
+    onStatsUpdate({ points, kills: 1, headshots: isHeadshot ? 1 : 0 }, undefined, weaponName);
+
+    // Effects
+    if (zombie.type === 'inferno') {
+       soundService.playExplosion();
+       effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: zombie.position.clone(), life: 0.5, color: '#ff4400', scale: 2.0 });
+       if (playerPos.current.distanceTo(zombie.position) < 5) {
+         onStatsUpdate({ hp: -30 });
+       }
+    } else if (zombie.type === 'parasite') {
+       effects.current.push({ id: Math.random().toString(), type: 'flash', pos: zombie.position.clone(), life: 0.5, color: '#800080', scale: 1.5 });
+    }
+
+    // Powerups / Gems
+    if (gameMode === 'dead_ops') {
+        // High chance for Gems in Dead Ops
+        if (Math.random() < 0.4) {
+            spawnPowerUp(zombie.position, 'GEM');
+        }
+        // Chance for equipment in Dead Ops
+        if (Math.random() < 0.05) {
+            const eqTypes: PowerUpType[] = ['GRENADE', 'FLASHBANG', 'MONKEY_BOMB'];
+            const type = eqTypes[Math.floor(Math.random() * eqTypes.length)];
+            spawnPowerUp(zombie.position, type);
+        }
+    } else {
+        // Standard Powerups
+        if (Math.random() < 0.03) {
+            const types: PowerUpType[] = ['MAX_AMMO', 'INSTA_KILL', 'DOUBLE_POINTS', 'NUKE', 'DEATH_MACHINE', 'FIRE_SALE', 'ZOMBIE_BLOOD'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            spawnPowerUp(zombie.position, type);
+        }
+    }
+  };
+
+  // Fog Adjustment removed from useEffect and moved to JSX for better reactivity
+  const botsRef = useRef<BotData[]>([]);
+  const [botIds, setBotIds] = useState<string[]>([]);
+  const zombieRefs = useRef<ZombieData[]>([]);
+  const [zombieIds, setZombieIds] = useState<string[]>([]);
+  const powerUpsRef = useRef<PowerUp[]>([]);
+  const [powerUpIds, setPowerUpIds] = useState<string[]>([]);
+  const projectiles = useRef<Projectile[]>([]);
+  const effects = useRef<Effect[]>([]);
+  
+  const currentGravePos = useMemo(() => {
+    if (mapConfig.id === 'bunker') return new THREE.Vector3(-59.1, 0, 0);
+    if (mapConfig.id === 'nuketown') return new THREE.Vector3(-40, 0, 10);
+    if (mapConfig.id === 'farm') return new THREE.Vector3(-20, 0, 10);
+    return new THREE.Vector3(115, 0, 0);
+  }, [mapConfig.id]);
+
+  const currentGraveRot = useMemo(() => {
+    if (mapConfig.id === 'bunker') return [0, Math.PI / 2, 0] as [number, number, number];
+    if (mapConfig.id === 'nuketown') return [0, -Math.PI / 2, 0] as [number, number, number];
+    return [0, -Math.PI / 2, 0] as [number, number, number];
+  }, [mapConfig.id]);
+
+  // Sync bots and other players with otherPlayers prop
+  useEffect(() => {
+    if (otherPlayers.length > 0) {
+      // 1. Initialize bots if needed
+      if (botsRef.current.length === 0 && botCount > 0) {
+        const newBots: BotData[] = [];
+        for (let i = 0; i < botCount; i++) {
+          const spawnIndex = (i + 1) % mapConfig.spawnPoints.length;
+          const spawn = mapConfig.spawnPoints[spawnIndex];
+          newBots.push({
+            id: `bot-${i}`,
+            name: botNames && botNames[i] ? botNames[i] : `Bot ${i + 1}`,
+            position: new THREE.Vector3(spawn[0], 0, spawn[2]),
+            targetId: null,
+            targetInteractableId: null,
+            lastShot: 0,
+            hp: 150,
+            maxHp: 150,
+            isDowned: false,
+            downedTimer: 0,
+            points: 500,
+            variant: otherPlayers.find(p => p.id === `bot-${i}`)?.variant || Math.floor(Math.random() * 1000),
+            isReviving: false
+          });
+        }
+        botsRef.current = newBots;
+      }
+      
+      // 2. Add/Update other players
+      let changed = false;
+      otherPlayers.forEach(player => {
+        let bot = botsRef.current.find(b => b.id === player.id);
+        if (bot) {
+          // Update existing bot/player
+          if (bot.hp !== player.hp || bot.isDowned !== player.isDowned || bot.points !== player.points || bot.downedTimer !== player.downedTimer || bot.isReviving !== player.isReviving) {
+             bot.hp = player.hp;
+             bot.isDowned = player.isDowned;
+             bot.points = player.points;
+             bot.downedTimer = player.downedTimer || 0;
+             bot.isReviving = player.isReviving || false;
+             changed = true;
+          }
+          // Update position for other players (not local bots)
+          if (!player.isBot && player.position) {
+            bot.position.copy(player.position);
+          }
+        } else if (!player.isBot) {
+          // Add new online player
+          botsRef.current.push({
+            id: player.id,
+            name: player.name,
+            position: player.position ? new THREE.Vector3(player.position.x, player.position.y, player.position.z) : new THREE.Vector3(0, 0, 0),
+            targetId: null,
+            targetInteractableId: null,
+            lastShot: 0,
+            hp: player.hp,
+            maxHp: 150,
+            isDowned: player.isDowned,
+            downedTimer: 0,
+            points: player.points,
+            variant: player.variant || Math.floor(Math.random() * 1000),
+            isReviving: player.isReviving || false
+          });
+          changed = true;
+        }
+      });
+
+      if (changed || botsRef.current.length !== botIds.length) {
+        setBotIds([...botsRef.current.map(b => b.id)]);
+      }
+    }
+  }, [otherPlayers, botCount, mapConfig.spawnPoints, botNames, botIds.length]);
+
+  const isShooting = useRef(false);
+  const internalPlayerPos = useRef(new THREE.Vector3(0, 1.2, 15));
+  const playerPos = externalPlayerPosRef || internalPlayerPos;
+  const easterEggTimer = useRef(0);
+  const easterEggBullets = useRef(0);
+  const easterEggTriggered = useRef(false);
+  const winterCooldown = useRef(0);
+  const verticalVelocity = useRef(0);
+  const isGrounded = useRef(true);
+  
+  const isSliding = useRef(false);
+  const slideTime = useRef(0);
+  const slideDir = useRef(new THREE.Vector3());
+  const slideSpeed = useRef(0);
+  const timeSinceLastMove = useRef(0);
+  const bloodWolfTimer = useRef(0);
+
+  const playerRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const targetRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  
+  const viewmodelRef = useRef<THREE.Group>(null);
+  const knifeRef = useRef<THREE.Group>(null);
+  
+  const flashTimer = useRef(0);
+  const lastShotTimeRight = useRef(0);
+  const lastShotTimeLeft = useRef(0);
+  const lastFiredLeft = useRef(false);
+  const lastKnifeTime = useRef(0);
+  const isKnifing = useRef(false);
+  const knifeAnimProgress = useRef(0);
+  
+  const weaponRecoil = useRef(0);
+
+  const zombiesToSpawnThisRound = useRef(0);
+  const isRoundTransitioning = useRef(false);
+  const roundStarted = useRef(false);
+  const lastSpawnTime = useRef(0);
+  const lastReportedRemaining = useRef(-1);
+
+  const dragonLastAttack = useRef(0);
+  const dragonFireTimer = useRef(0);
+  
+  const red9JumpCount = useRef(0);
+  const red9ShootCount = useRef(0);
+  const lastJumpTime = useRef(0);
+  const dragonPos = useRef(new THREE.Vector3());
+  const dragonRotY = useRef(0);
+  const dragonGroupRef = useRef<THREE.Group>(null);
+
+  const preBossRoundZombies = useRef(0);
+  const wasDragonActive = useRef(false);
+  const wasReloading = useRef(false);
+  const wasAiming = useRef(false);
+
+  const [spectrumCamo, setSpectrumCamo] = useState<WeaponCamo>('gold');
+  
+  useEffect(() => {
+    if (gameState.selectedCamo === 'spectrum') {
+      const camos: WeaponCamo[] = ['gold', 'diamond', 'dark_matter', 'cherry_blossom', 'dragon', 'ice', 'magma', 'nebula', 'red_hex', 'into_the_void', 'cosmic'];
+      let idx = 0;
+      const interval = setInterval(() => {
+        idx = (idx + 1) % camos.length;
+        setSpectrumCamo(camos[idx]);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [gameState.selectedCamo]);
+
+  const displayCamo = gameState.selectedCamo === 'spectrum' ? spectrumCamo : gameState.selectedCamo;
+
+  useEffect(() => {
+    if (dragonActive && !wasDragonActive.current) {
+      wasDragonActive.current = true;
+      preBossRoundZombies.current = zombiesToSpawnThisRound.current;
+      zombiesToSpawnThisRound.current = 100;
+      zombieRefs.current = [];
+      setZombieIds([]);
+    } else if (!dragonActive && wasDragonActive.current) {
+      wasDragonActive.current = false;
+      if (status === GameStatus.PLAYING) {
+        zombiesToSpawnThisRound.current = preBossRoundZombies.current;
+      }
+      preBossRoundZombies.current = 0;
+    }
+  }, [dragonActive, status]);
+
+  const interactables = useMemo(() => {
+    const items = mapConfig.interactables.map(i => ({
+      ...i,
+      pos: new THREE.Vector3(...i.pos)
+    }));
+    
+    mapConfig.objects.forEach(obj => {
+      if (obj.type === 'building' && obj.doorId && !openDoors.includes(obj.doorId)) {
+        const size = new THREE.Vector3(...obj.args);
+        const pos = new THREE.Vector3(...obj.pos);
+        items.push({
+          id: obj.doorId,
+          type: `Open ${obj.label} Door`,
+          cost: obj.doorCost || 1000,
+          pos: new THREE.Vector3(pos.x, 1.5, pos.z + size.z/2 + 2),
+          color: '#fff'
+        });
+      }
+    });
+
+    heartPositions.forEach((pos, i) => {
+      if (!collectedHearts[i]) {
+        items.push({
+          id: `heart_${i}`,
+          type: `Dragon Heart ${i + 1}`,
+          cost: 0,
+          pos: pos,
+          color: '#ff0000'
+        });
+      }
+    });
+
+    if (collectedHearts.every(h => h) && !dragonActive && mapConfig.craftingTablePos) {
+      items.push({
+        id: 'summon_dragon',
+        type: 'Summon Dragon',
+        cost: 0,
+        pos: new THREE.Vector3(...mapConfig.craftingTablePos),
+        color: '#ffaa00'
+      });
+    }
+
+    return items;
+  }, [mapConfig, openDoors, heartPositions, collectedHearts, dragonActive]);
+
+  const collisionWalls = useMemo(() => {
+    const walls: Wall[] = [];
+    const doorWidth = 4;
+    
+    mapConfig.objects.forEach(obj => {
+      if (obj.type === 'building') {
+        const t = 0.5;
+        const size = new THREE.Vector3(...obj.args);
+        const pos = new THREE.Vector3(...obj.pos);
+        walls.push({ pos: new THREE.Vector3(pos.x, pos.y, pos.z - size.z/2), size: new THREE.Vector3(size.x, size.y, t) });
+        walls.push({ pos: new THREE.Vector3(pos.x - size.x/2, pos.y, pos.z), size: new THREE.Vector3(t, size.y, size.z) });
+        walls.push({ pos: new THREE.Vector3(pos.x + size.x/2, pos.y, pos.z), size: new THREE.Vector3(t, size.y, size.z) });
+        const segmentWidth = (size.x - doorWidth) / 2;
+        const segmentCenterOffset = (size.x + doorWidth) / 4;
+        walls.push({ pos: new THREE.Vector3(pos.x - segmentCenterOffset, pos.y, pos.z + size.z/2), size: new THREE.Vector3(segmentWidth, size.y, t) });
+        walls.push({ pos: new THREE.Vector3(pos.x + segmentCenterOffset, pos.y, pos.z + size.z/2), size: new THREE.Vector3(segmentWidth, size.y, t) });
+        
+        if (obj.doorId && !openDoors.includes(obj.doorId)) {
+           walls.push({ 
+             pos: new THREE.Vector3(pos.x, pos.y - size.y/4, pos.z + size.z/2), 
+             size: new THREE.Vector3(doorWidth, size.y/2, t) 
+           });
+        }
+      } else if (obj.type === 'box' || obj.type === 'wall') {
+        walls.push({ pos: new THREE.Vector3(...obj.pos), size: new THREE.Vector3(...obj.args) });
+      }
+    });
+    return walls;
+  }, [mapConfig, openDoors]);
+
+  // Initial Spawn (Mount only)
+  useEffect(() => {
+    zombieRefs.current = [];
+    setZombieIds([]);
+    if (mapConfig.spawnPoints && mapConfig.spawnPoints.length > 0) {
+      const randomSpawnArr = mapConfig.spawnPoints[Math.floor(Math.random() * mapConfig.spawnPoints.length)];
+      const randomSpawn = new THREE.Vector3(...randomSpawnArr);
+      playerPos.current.copy(randomSpawn);
+    }
+    targetRot.current.set(0, 0, 0);
+    verticalVelocity.current = 0;
+    isGrounded.current = true;
+    dragonPos.current.set(0, 0, 0);
+
+    // Initialize bots
+    if (botCount && botCount > 0) {
+      const newBots: BotData[] = [];
+      for (let i = 0; i < botCount; i++) {
+        const spawn = mapConfig.spawnPoints ? mapConfig.spawnPoints[Math.floor(Math.random() * mapConfig.spawnPoints.length)] : [0, 0, 0];
+        newBots.push({
+          id: `bot-${i}`,
+          name: botNames?.[i] || `Bot ${i+1}`,
+          position: new THREE.Vector3(spawn[0], spawn[1] + 1, spawn[2]),
+          targetId: null,
+          targetInteractableId: null,
+          lastShot: 0,
+          hp: 150,
+          maxHp: 150,
+          isDowned: false,
+          downedTimer: 0,
+          points: 500,
+          variant: Math.floor(Math.random() * 5),
+          isReviving: false
+        });
+      }
+      botsRef.current = newBots;
+      setBotIds(newBots.map(b => b.id));
+    } else {
+      botsRef.current = [];
+      setBotIds([]);
+    }
+  }, []);
+
+  // Round Management
+  useEffect(() => {
+    zombiesToSpawnThisRound.current = 10 + (gameState.round - 1) * 4;
+    roundStarted.current = true;
+    isRoundTransitioning.current = false;
+    lastReportedRemaining.current = -1;
+
+    // Achievements for round progression
+    if (gameState.round >= 20) {
+      if (mapConfig.id === 'town') onUnlockAchievement('town_hero');
+      if (mapConfig.id === 'farm') onUnlockAchievement('farm_hand');
+    }
+    if (gameState.round >= 25) {
+      if (mapConfig.id === 'nuketown') onUnlockAchievement('nuke_survivor');
+    }
+  }, [gameState.round, mapConfig.id]);
+
+  // Perk Achievement Check
+  useEffect(() => {
+    const totalPerks = 14; // Approximate count of perks available
+    if (gameState.perks.length >= totalPerks) {
+      if (mapConfig.id === 'town') onUnlockAchievement('town_perkaholic');
+      if (mapConfig.id === 'farm') onUnlockAchievement('farm_perkaholic');
+      if (mapConfig.id === 'nuketown') onUnlockAchievement('nuke_perkaholic');
+    }
+  }, [gameState.perks, mapConfig.id]);
+
+  // Pause/Resume Status
+  useEffect(() => {
+    roundStarted.current = status === GameStatus.PLAYING;
+  }, [status]);
+
+  const gameTime = useRef(0);
+
+  const resolveCollision = (pos: THREE.Vector3, moveVec: THREE.Vector3, radius: number) => {
+    let collided = false;
+    // Check X axis
+    const nextPosX = pos.clone().add(new THREE.Vector3(moveVec.x, 0, 0));
+    for (const wall of collisionWalls) {
+      if (checkCircleRect(nextPosX, radius, wall.pos, wall.size)) {
+        moveVec.x = 0;
+        collided = true;
+        break;
+      }
+    }
+    // Check Z axis
+    const nextPosZ = pos.clone().add(new THREE.Vector3(0, 0, moveVec.z));
+    for (const wall of collisionWalls) {
+      if (checkCircleRect(nextPosZ, radius, wall.pos, wall.size)) {
+        moveVec.z = 0;
+        collided = true;
+        break;
+      }
+    }
+    return collided;
+  };
+
+  const checkCollision = (pos: THREE.Vector3, radius: number) => {
+    for (const wall of collisionWalls) {
+      if (checkCircleRect(pos, radius, wall.pos, wall.size)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const getValidZombieSpawnPos = (targetPos: THREE.Vector3, minRadius: number, maxRadius: number) => {
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = minRadius + Math.random() * (maxRadius - minRadius);
+      const pos = new THREE.Vector3(targetPos.x + Math.cos(angle) * radius, 0, targetPos.z + Math.sin(angle) * radius);
+      if (!checkCollision(pos, 1.0)) {
+        return pos;
+      }
+    }
+    // Fallback to a map spawn point if we can't find a valid random spot
+    if (mapConfig.spawnPoints && mapConfig.spawnPoints.length > 0) {
+       const sp = mapConfig.spawnPoints[Math.floor(Math.random() * mapConfig.spawnPoints.length)];
+       return new THREE.Vector3(sp[0], 0, sp[2]);
+    }
+    return new THREE.Vector3(targetPos.x, 0, targetPos.z + minRadius); // Final fallback
+  };
+
+  useFrame((state, rawDelta) => {
+    if (status !== GameStatus.PLAYING) return;
+
+    // Teleport to player
+    if (teleportToPlayerId) {
+      const target = botsRef.current.find(b => b.id === teleportToPlayerId);
+      if (target) {
+        playerPos.current.copy(target.position);
+        verticalVelocity.current = 0;
+        slideSpeed.current = 0;
+        if (onTeleportToPlayerComplete) onTeleportToPlayerComplete();
+      } else {
+         if (onTeleportToPlayerComplete) onTeleportToPlayerComplete();
+      }
+    }
+
+    // Teleport player/bot to me
+    if (teleportPlayerToMeId) {
+      const target = botsRef.current.find(b => b.id === teleportPlayerToMeId);
+      if (target) {
+        target.position.copy(playerPos.current);
+        target.targetId = null;
+        target.targetInteractableId = null;
+        if (onTeleportPlayerToMeComplete) onTeleportPlayerToMeComplete();
+      } else {
+         if (onTeleportPlayerToMeComplete) onTeleportPlayerToMeComplete();
+      }
+    }
+
+    const delta = Math.min(rawDelta, 0.1);
+    gameTime.current += delta * 1000;
+
+    if (killAllZombies) {
+      zombieRefs.current.forEach(z => {
+        z.hp = 0;
+        onStatsUpdate({ points: 60, kills: 1 });
+      });
+      zombieRefs.current = [];
+      setZombieIds([]);
+      zombiesToSpawnThisRound.current = 0; // Ensure no more zombies spawn this round
+      setKillAllZombies(false);
+    }
+
+    if (teleportZombiesToMe) {
+      zombieRefs.current.forEach(z => {
+        // Teleport to a circle around player
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 2 + Math.random() * 3; // Slightly tighter radius
+        z.position.x = playerPos.current.x + Math.cos(angle) * radius;
+        z.position.z = playerPos.current.z + Math.sin(angle) * radius;
+        z.position.y = 0; // Ensure they are on the ground, not at player camera height
+      });
+      // Force update zombie positions visually by updating state with a fresh array
+      setZombieIds([...zombieRefs.current.map(z => z.id)]);
+      setTeleportZombiesToMe(false);
+    }
+
+    if (spawnZombieType) {
+      const spawnPos = getValidZombieSpawnPos(playerPos.current, 10, 20);
+      const newZombie: ZombieData = {
+        id: Math.random().toString(36).substr(2, 9),
+        position: spawnPos.clone(),
+        hp: 100 * Math.pow(1.1, gameState.round - 1),
+        maxHp: 100 * Math.pow(1.1, gameState.round - 1),
+        speed: (1.5 + Math.random() * 0.5) * (gameState.round > 5 ? 1.2 : 1),
+        type: spawnZombieType,
+        variant: Math.floor(Math.random() * 4),
+        lastAttack: 0,
+        hitFlash: 0,
+        stunTimer: 0,
+        timeNotClose: 0,
+        turnDirection: 0,
+        turnTimer: 0
+      };
+      zombieRefs.current.push(newZombie);
+      setZombieIds(prev => [...prev, newZombie.id]);
+      onSpawnZombieComplete();
+    }
+
+    if (changeAllZombiesType) {
+      zombieRefs.current.forEach(z => {
+        z.type = changeAllZombiesType;
+      });
+      // Force update visually
+      setZombieIds([...zombieRefs.current.map(z => z.id)]);
+      onChangeAllZombiesComplete();
+    }
+
+    if (teleportTarget) {
+      playerPos.current.copy(teleportTarget);
+      verticalVelocity.current = 0;
+      isGrounded.current = true;
+      onTeleportComplete();
+    }
+
+    // Aim Assist Logic
+    if (aimRequest.current && !wasAiming.current) {
+      let closestZombie: ZombieData | null = null;
+      let minAngle = Infinity;
+      const playerForward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(targetRot.current.x, targetRot.current.y, 0, 'YXZ'));
+
+      zombieRefs.current.forEach(z => {
+        const targetPos = z.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+        const toZombie = targetPos.clone().sub(playerPos.current);
+        const dist = toZombie.length();
+        if (dist < 30) { // Max assist range
+          toZombie.normalize();
+          const angle = playerForward.angleTo(toZombie);
+          // Check if zombie is within a reasonable cone (e.g., 20 degrees)
+          if (angle < THREE.MathUtils.degToRad(20) && angle < minAngle) {
+            minAngle = angle;
+            closestZombie = z;
+          }
+        }
+      });
+
+      if (closestZombie) {
+        const z = closestZombie as ZombieData;
+        // Aim at head/chest height (approx 1.5 units up)
+        const targetPos = z.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+        
+        const dummy = new THREE.Object3D();
+        dummy.position.copy(playerPos.current);
+        dummy.lookAt(targetPos);
+        dummy.rotation.reorder('YXZ');
+        
+        const pitch = dummy.rotation.x;
+        let yaw = dummy.rotation.y + Math.PI;
+        
+        // Ensure we take the shortest path for yaw
+        while (yaw - targetRot.current.y > Math.PI) yaw -= 2 * Math.PI;
+        while (yaw - targetRot.current.y < -Math.PI) yaw += 2 * Math.PI;
+        
+        // Snap to target
+        targetRot.current.x = pitch;
+        targetRot.current.y = yaw;
+      }
+    }
+    wasAiming.current = aimRequest.current;
+
+    const sensitivity = 0.8;
+    const keyboardSensitivity = 2.0 * delta; // Adjust keyboard look speed here
+    
+    if (gameMode === 'dead_ops') {
+       // Dead Ops Arcade Rotation Logic
+       // Check for gamepad input OR on-screen joystick input (now mapped to keyboardLookInput)
+       const hasGamepadInput = Math.abs(keyboardLookInput.current.x) > 0.1 || Math.abs(keyboardLookInput.current.y) > 0.1;
+       
+       if (hasGamepadInput) {
+          const angle = Math.atan2(-keyboardLookInput.current.x, keyboardLookInput.current.y);
+          targetRot.current.y = angle;
+       } else {
+          // Mouse input (relative) - fallback if no stick input
+          targetRot.current.y -= lookInput.current.x * sensitivity;
+       }
+       
+       // Lock pitch for top-down view
+       targetRot.current.x = 0;
+    } else {
+       // Standard FPS Rotation Logic
+       targetRot.current.y -= lookInput.current.x * sensitivity;
+       targetRot.current.x -= lookInput.current.y * sensitivity;
+       
+       targetRot.current.y -= keyboardLookInput.current.x * keyboardSensitivity;
+       targetRot.current.x -= keyboardLookInput.current.y * keyboardSensitivity;
+       
+       targetRot.current.x = THREE.MathUtils.clamp(targetRot.current.x, -Math.PI / 2.2, Math.PI / 2.2);
+    }
+
+    playerRot.current.x = THREE.MathUtils.lerp(playerRot.current.x, targetRot.current.x, 0.4);
+    playerRot.current.y = THREE.MathUtils.lerp(playerRot.current.y, targetRot.current.y, 0.4);
+    lookInput.current = { x: 0, y: 0 };
+
+    if (winterCooldown.current > 0) winterCooldown.current -= delta;
+
+    // Jumping Logic
+    if (jumpRequest.current && isGrounded.current && gameMode !== 'dead_ops') {
+      verticalVelocity.current = 20;
+      isGrounded.current = false;
+      soundService.playThrow(); // Using throw sound as a placeholder for jump grunt/thud
+      
+      // Red9 Easter Egg Jump Detection
+      if (!red9BlessingClaimed) {
+        const dist = playerPos.current.distanceTo(currentGravePos);
+        if (dist < 6) {
+          const now = Date.now();
+          if (now - lastJumpTime.current > 1000) { 
+             red9JumpCount.current++;
+             lastJumpTime.current = now;
+             if (red9JumpCount.current >= 3) {
+               onRed9Blessing();
+             }
+          }
+        } else {
+          red9JumpCount.current = 0;
+        }
+      }
+    }
+
+    // Gravity
+    if (!isGrounded.current) {
+      verticalVelocity.current -= 18 * delta;
+      playerPos.current.y += verticalVelocity.current * delta;
+      if (playerPos.current.y <= 1.2) {
+        playerPos.current.y = 1.2;
+        verticalVelocity.current = 0;
+        isGrounded.current = true;
+      }
+    }
+
+    // Improved Sliding Logic: Increased duration, speed, and reduced friction for more distance
+    if (slideRequest.current && sprintRequest.current && !isSliding.current && isGrounded.current) {
+      isSliding.current = true;
+      slideTime.current = gameState.perks.includes('blaze') ? 2.5 : 1.8; 
+      slideSpeed.current = gameState.perks.includes('slider') ? 45 : (gameState.perks.includes('blaze') ? 35 : 28); 
+      
+      if (gameMode === 'dead_ops') {
+         // In Dead Ops, slide in the direction of movement (joystick input)
+         // If no movement input, slide forward relative to rotation (fallback)
+         if (Math.abs(moveInput.current.x) > 0.1 || Math.abs(moveInput.current.y) > 0.1) {
+             // Calculate direction from input
+             // Input Y is forward (-Z), Input X is right (+X)
+             const dir = new THREE.Vector3(moveInput.current.x, 0, -moveInput.current.y).normalize();
+             slideDir.current.copy(dir);
+         } else {
+             const forwardVec = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
+             slideDir.current.copy(forwardVec);
+         }
+      } else {
+         const forwardVec = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
+         slideDir.current.copy(forwardVec);
+      }
+      
+      soundService.playKnife(); // Placeholder sound
+      
+      // PHD Flopper Effect: Explosion on slide
+      if (gameState.perks.includes('phd')) {
+        soundService.playExplosion();
+        effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: playerPos.current.clone(), life: 0.5, color: '#9333ea', scale: 1.5 });
+        zombieRefs.current.forEach(z => {
+          const d = z.position.distanceTo(playerPos.current);
+          if (d < 6) {
+            z.hp -= 500;
+            z.hitFlash = 1.0;
+            onStatsUpdate({ points: 10, hit: true });
+            if (z.hp <= 0) {
+              onStatsUpdate({ points: 100, kills: 1 }, undefined, 'PHD Flopper');
+              if (gameState.perks.includes('vulture') && Math.random() < 0.3) onStatsUpdate({ points: 50 });
+            }
+          }
+        });
+      }
+    }
+
+    let speed = gameState.perks.includes('stamin') ? 11 : 7.5;
+    if (gameState.perks.includes('blaze')) speed *= 1.2;
+    if (sprintRequest.current && !aimRequest.current) speed *= 1.6;
+    if (aimRequest.current) speed *= 0.6;
+
+    // ADS FOV Logic
+    let adsFov = 50;
+    if (gameState.attachments.includes('acog')) adsFov = 35;
+    else if (gameState.attachments.includes('red_dot')) adsFov = 45;
+
+    const targetFov = aimRequest.current ? adsFov : 75;
+    if ((camera as THREE.PerspectiveCamera).fov) {
+      (camera as THREE.PerspectiveCamera).fov = THREE.MathUtils.lerp((camera as THREE.PerspectiveCamera).fov, targetFov, delta * 10);
+      camera.updateProjectionMatrix();
+    }
+
+    if (gameState.isReloading && !wasReloading.current) {
+      wasReloading.current = true;
+      if (gameState.perks.includes('electric') && gameState.ammo === 0) {
+        soundService.playExplosion(); // Reuse explosion sound
+        effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: playerPos.current.clone(), life: 0.5, color: '#00ffff', scale: 2 });
+        zombieRefs.current.forEach(z => {
+          if (z.position.distanceTo(playerPos.current) < 8) {
+            z.hp -= 1000;
+            z.hitFlash = 1.0;
+            z.stunTimer = 2.0;
+          }
+        });
+        zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
+        setZombieIds(zombieRefs.current.map(z => z.id));
+      }
+    } else if (!gameState.isReloading) {
+      wasReloading.current = false;
+    }
+
+    // Tranzit Bus & Lava Logic
+    if (mapConfig.id === 'tranzit') {
+       // Bus Logic
+       const target = BUS_PATH[busTargetIndex.current];
+       const dir = target.clone().sub(busPos.current).normalize();
+       const dist = busPos.current.distanceTo(target);
+       
+       if (dist < 1) {
+          busTargetIndex.current = (busTargetIndex.current + 1) % BUS_PATH.length;
+       } else {
+          const move = dir.clone().multiplyScalar(10 * delta); // 10 units/sec
+          busPos.current.add(move);
+          
+          // Move player if on bus (simple distance check for now)
+          // Bus is roughly 10x30
+          const dx = Math.abs(playerPos.current.x - busPos.current.x);
+          const dz = Math.abs(playerPos.current.z - busPos.current.z);
+          // Check if player is roughly on top of the bus
+          if (dx < 6 && dz < 16 && Math.abs(playerPos.current.y - (busPos.current.y + 3.5)) < 3) {
+             playerPos.current.add(move);
+          }
+       }
+
+       // Lava Logic
+       if (lavaCooldown.current <= 0) {
+          mapConfig.objects.forEach(obj => {
+             if (obj.type === 'plane' && obj.texture?.includes('lava')) {
+                // Check bounds (AABB)
+                const halfWidth = (obj.args?.[0] || 20) / 2;
+                const halfDepth = (obj.args?.[2] || 20) / 2;
+                if (Math.abs(playerPos.current.x - obj.pos[0]) < halfWidth &&
+                    Math.abs(playerPos.current.z - obj.pos[2]) < halfDepth) {
+                       onStatsUpdate({ hp: -10 });
+                       lavaCooldown.current = 1.0; // 1 second cooldown
+                }
+             }
+          });
+       } else {
+          lavaCooldown.current -= delta;
+       }
+    }
+
+    let forward: THREE.Vector3;
+    let right: THREE.Vector3;
+
+    if (gameMode === 'dead_ops') {
+      // Absolute movement for Dead Ops (Top-Down)
+      forward = new THREE.Vector3(0, 0, -1);
+      right = new THREE.Vector3(1, 0, 0);
+      
+      // For gamepad (twin-stick), we might want to override rotation logic here if lookInput represents axis
+      // But for now, we'll let the existing rotation logic handle it, or we can override it if needed.
+      // If lookInput is axis (gamepad), we can set rotation directly:
+      if (Math.abs(lookInput.current.x) > 0.1 || Math.abs(lookInput.current.y) > 0.1) {
+         // Check if this is likely gamepad input (values between -1 and 1)
+         // or just mouse delta. Mouse delta can be large.
+         // This is a heuristic.
+         // Ideally we'd know the input source.
+      }
+    } else {
+      forward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
+      right = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
+    }
+    
+    let moveVector = new THREE.Vector3();
+    if (gameState.isDowned) {
+      moveVector.set(0, 0, 0);
+    } else if (isSliding.current) {
+      moveVector.addScaledVector(slideDir.current, slideSpeed.current);
+      // Reduced friction: changed pow base from 0.1 to 0.4 to maintain speed longer
+      slideSpeed.current *= Math.pow(0.4, delta); 
+      slideTime.current -= delta;
+      
+      // Slider Wine / Blaze Phase: Damage zombies you slide through
+      if (gameState.perks.includes('slider') || gameState.perks.includes('blaze')) {
+        const baseDamageMultiplier = gameState.perks.includes('blaze') ? 300 : 200;
+        const prestigeMultiplier = 1 + ((gameState as any).prestige || 0) * 0.1;
+        const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+        const damageMultiplier = baseDamageMultiplier * prestigeMultiplier * levelMultiplier;
+        const radius = gameState.perks.includes('blaze') ? 3 : 2;
+        
+        if (gameState.perks.includes('blaze') && Math.random() < 0.2) {
+          effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: playerPos.current.clone(), life: 0.2, color: '#ff4400', scale: 0.5 });
+        }
+
+        zombieRefs.current.forEach(z => {
+          if (z.position.distanceTo(playerPos.current) < radius) {
+            z.hp -= damageMultiplier * delta * 60;
+            z.hitFlash = 1.0;
+            if (z.hp <= 0) {
+              onStatsUpdate({ points: 130, kills: 1 }, undefined, 'Slider');
+              if (gameState.perks.includes('vulture') && Math.random() < 0.3) onStatsUpdate({ points: 50 });
+            }
+          }
+        });
+        zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
+        setZombieIds(zombieRefs.current.map(z => z.id));
+      }
+
+      if (slideTime.current <= 0 || slideSpeed.current < speed) {
+        isSliding.current = false;
+      }
+    } else {
+      moveVector.addScaledVector(forward, moveInput.current.y).addScaledVector(right, moveInput.current.x);
+      if (moveVector.length() > 1) moveVector.normalize();
+      moveVector.multiplyScalar(speed);
+    }
+
+    const nextPosX = playerPos.current.clone();
+    nextPosX.x += moveVector.x * delta;
+    let collidedX = false;
+    for (const wall of collisionWalls) {
+      if (checkAABB(nextPosX, wall.pos, wall.size)) {
+        collidedX = true;
+        break;
+      }
+    }
+    if (!collidedX) {
+      playerPos.current.x = nextPosX.x;
+    }
+
+    const nextPosZ = playerPos.current.clone();
+    nextPosZ.z += moveVector.z * delta;
+    let collidedZ = false;
+    for (const wall of collisionWalls) {
+      if (checkAABB(nextPosZ, wall.pos, wall.size)) {
+        collidedZ = true;
+        break;
+      }
+    }
+    if (!collidedZ) {
+      playerPos.current.z = nextPosZ.z;
+    }
+
+    // Camera height adjustment for sliding/crouching/downed
+    const targetCamHeight = gameState.isDowned ? 0.2 : (isSliding.current ? 0.6 : 1.2);
+    playerPos.current.y = THREE.MathUtils.lerp(playerPos.current.y, targetCamHeight, 0.2);
+
+    // Stronghold Logic
+    const isMoving = Math.abs(moveInput.current.x) > 0.1 || Math.abs(moveInput.current.y) > 0.1;
+    if (isMoving) {
+      timeSinceLastMove.current = 0;
+    } else {
+      timeSinceLastMove.current += delta;
+    }
+    
+    // Blood Wolf Logic
+    if (gameState.perks.includes('blood')) {
+      bloodWolfTimer.current += delta;
+      if (bloodWolfTimer.current > 5.0) {
+        bloodWolfTimer.current = 0;
+        const closestZombie = zombieRefs.current.reduce((closest, z) => {
+          const d = z.position.distanceTo(playerPos.current);
+          return d < closest.dist ? { dist: d, z } : closest;
+        }, { dist: 20, z: null as ZombieData | null }); // Max range 20
+
+        if (closestZombie.z) {
+          closestZombie.z.hp -= 1000; // Big damage
+          closestZombie.z.hitFlash = 1.0;
+          soundService.playShoot('Bowie Knife'); // Reuse sound
+          effects.current.push({ id: Math.random().toString(), type: 'blood', pos: closestZombie.z.position.clone().add(new THREE.Vector3(0, 1, 0)), life: 0.5, color: '#ff0000', scale: 2.0 });
+          if (closestZombie.z.hp <= 0) {
+             onStatsUpdate({ points: 60, kills: 1 }, undefined, 'Blood Wolf');
+          }
+        }
+      }
+    }
+
+    if (gameMode === 'dead_ops') {
+      camera.position.copy(playerPos.current).add(new THREE.Vector3(0, 20, 10)); // High angle top-down
+      camera.lookAt(playerPos.current);
+    } else {
+      camera.position.copy(playerPos.current);
+      camera.quaternion.setFromEuler(playerRot.current);
+    }
+
+    const currentRemainingCount = zombiesToSpawnThisRound.current + zombieRefs.current.length;
+    if (currentRemainingCount !== lastReportedRemaining.current) {
+      lastReportedRemaining.current = currentRemainingCount;
+      onStatsUpdate({ zombiesRemaining: currentRemainingCount });
+    }
+
+    // Power-up Logic
+    let powerUpsChanged = false;
+    powerUpsRef.current.forEach(p => {
+      p.timer -= delta;
+      if (p.timer <= 0) {
+        p.id = 'EXPIRED';
+        powerUpsChanged = true;
+      } else {
+        const dist = playerPos.current.distanceTo(p.position);
+        if (dist < 2) {
+          onPowerUp(p.type);
+          p.id = 'COLLECTED';
+          powerUpsChanged = true;
+        }
+      }
+    });
+    if (powerUpsChanged) {
+      powerUpsRef.current = powerUpsRef.current.filter(p => p.id !== 'EXPIRED' && p.id !== 'COLLECTED');
+      setPowerUpIds(powerUpsRef.current.map(p => p.id));
+    }
+
+    const weapon = WEAPONS_STATS[gameState.weaponName] || WEAPONS_STATS['M1911'];
+    const now = gameTime.current;
+
+    if (grenadeRequest.current || flashbangRequest.current || monkeyBombRequest.current) {
+       soundService.playThrow();
+       const type = grenadeRequest.current ? 'grenade' : (flashbangRequest.current ? 'flashbang' : 'monkeyBomb');
+       const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+       projectiles.current.push({
+         id: Math.random().toString(),
+         type,
+         position: playerPos.current.clone().add(direction.clone().multiplyScalar(0.5)),
+         velocity: direction.clone().multiplyScalar(15).add(new THREE.Vector3(0, 5, 0)),
+         timer: type === 'grenade' ? 2.5 : (type === 'flashbang' ? 1.5 : 6.0)
+       });
+       if (type === 'monkeyBomb') {
+         soundService.playMonkeyMusic();
+         onStatsUpdate({ monkeyBombActive: true });
+       }
+    }
+
+    projectiles.current.forEach(p => {
+       p.velocity.y -= delta * 15;
+       p.position.add(p.velocity.clone().multiplyScalar(delta));
+       p.timer -= delta;
+       if (p.position.y < 0.1) {
+         p.position.y = 0.1;
+         p.velocity.y *= -0.3;
+         p.velocity.x *= 0.5;
+         p.velocity.z *= 0.5;
+       }
+         if (p.timer <= 0) {
+         if (p.type === 'grenade' || p.type === 'monkeyBomb') {
+            soundService.playExplosion();
+            if (p.type === 'monkeyBomb') {
+              onStatsUpdate({ monkeyBombActive: false });
+            }
+            effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: p.position.clone(), life: 0.5, color: p.type === 'grenade' ? '#ff4400' : '#ff0000', scale: p.type === 'monkeyBomb' ? 1.5 : 1 });
+            zombieRefs.current.forEach(z => {
+              const d = z.position.distanceTo(p.position);
+              const range = p.type === 'monkeyBomb' ? 12 : 8;
+              if (d < range) {
+                const prestigeMultiplier = 1 + ((gameState as any).prestige || 0) * 0.1;
+                const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+                const damage = (range - d) * (p.type === 'monkeyBomb' ? 400 : 300) * prestigeMultiplier * levelMultiplier;
+                z.hp -= damage;
+                z.hitFlash = 1.0;
+                onStatsUpdate({ points: 10, hit: true });
+                if (z.hp <= 0) {
+                  handleZombieDeath(z, false, p.type === 'grenade' ? 'Grenade' : 'Monkey Bomb');
+                }
+              }
+            });
+         } else {
+            soundService.playFlash();
+            effects.current.push({ id: Math.random().toString(), type: 'flash', pos: p.position.clone(), life: 0.3, color: '#ffffff', scale: 1 });
+            zombieRefs.current.forEach(z => {
+              const d = z.position.distanceTo(p.position);
+              if (d < 12) {
+                z.stunTimer = 6.0;
+                const damage = (12 - d) * 100;
+                z.hp -= damage;
+                z.hitFlash = 1.0;
+                onStatsUpdate({ points: 10, hit: true });
+                if (z.hp <= 0) {
+                  onStatsUpdate({ points: 100, kills: 1, equipmentKills: 1 }, undefined, 'Flashbang');
+                  // Power-up drops disabled
+                  /*
+                  if (Math.random() < 0.03) {
+                     const types: PowerUpType[] = ['MAX_AMMO', 'INSTA_KILL', 'DOUBLE_POINTS', 'NUKE'];
+                     const type = types[Math.floor(Math.random() * types.length)];
+                     powerUpsRef.current.push({
+                       id: Math.random().toString(),
+                       type,
+                       position: z.position.clone().add(new THREE.Vector3(0, 1, 0)),
+                       timer: 30
+                     });
+                     setPowerUpIds(powerUpsRef.current.map(p => p.id));
+                  }
+                  */
+                }
+              }
+            });
+            if (playerPos.current.distanceTo(p.position) < 10) onStatsUpdate({ flashPlayer: true });
+         }
+         p.id = 'DEAD';
+       }
+    });
+    projectiles.current = projectiles.current.filter(p => p.id !== 'DEAD');
+
+    if (knifeRequest.current && !isKnifing.current && now - lastKnifeTime.current > 800 && gameMode !== 'dead_ops') {
+      isKnifing.current = true;
+      knifeAnimProgress.current = 0;
+      lastKnifeTime.current = now;
+      soundService.playKnife();
+      const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      let hitAny = false;
+      zombieRefs.current.forEach(z => {
+        const toZombie = z.position.clone().sub(playerPos.current);
+        const dist = toZombie.length();
+        if (dist < 3.5) {
+          toZombie.normalize();
+          const angle = direction.dot(toZombie);
+          if (angle > 0.6) {
+             hitAny = true;
+             const prestigeMultiplier = 1 + ((gameState as any).prestige || 0) * 0.1;
+             const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+             const damage = gameState.instaKill ? 999999 : (gameState.hasBowie ? 2000 : 500) * prestigeMultiplier * levelMultiplier;
+             z.hp -= damage;
+             z.hitFlash = 1.0;
+             onStatsUpdate({ points: 10, hit: true });
+             if (z.hp <= 0) {
+               onStatsUpdate({ points: 130, kills: 1, knifeKills: 1 }, undefined, gameState.hasBowie ? 'Bowie Knife' : 'Knife');
+               if (gameState.perks.includes('razor')) onStatsUpdate({ hp: 20 });
+               // Power-up drops disabled
+               /*
+               if (Math.random() < 0.03) {
+                  const types: PowerUpType[] = ['MAX_AMMO', 'INSTA_KILL', 'DOUBLE_POINTS', 'NUKE'];
+                  const type = types[Math.floor(Math.random() * types.length)];
+                  powerUpsRef.current.push({
+                    id: Math.random().toString(),
+                    type,
+                    position: z.position.clone().add(new THREE.Vector3(0, 1, 0)),
+                    timer: 30
+                  });
+                  setPowerUpIds(powerUpsRef.current.map(p => p.id));
+               }
+               */
+             }
+          }
+        }
+      });
+      if (hitAny) soundService.playKnifeHit();
+      zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
+      setZombieIds(zombieRefs.current.map(z => z.id));
+    }
+
+    if (isKnifing.current) {
+      knifeAnimProgress.current += delta * 6;
+      if (knifeAnimProgress.current >= 1) {
+        isKnifing.current = false;
+        knifeAnimProgress.current = 0;
+      }
+    }
+
+    const currentRate = weapon.rate * (gameState.perks.includes('double') ? 0.6 : 1);
+    
+    let isShootingRight = shootRequest.current;
+    let isShootingLeft = gameState.weaponName === 'MUSTANG & SALLY' && shootLeftRequest?.current;
+    isShooting.current = isShootingRight || isShootingLeft;
+
+    if (gameState.weaponName === 'MUSTANG & SALLY' && phoneShootRequest?.current) {
+      if (now - Math.max(lastShotTimeRight.current, lastShotTimeLeft.current) > currentRate / 2) {
+        if (lastFiredLeft.current) {
+          isShootingRight = true;
+          isShootingLeft = false;
+        } else {
+          isShootingLeft = true;
+          isShootingRight = false;
+        }
+      } else {
+        isShootingRight = false;
+        isShootingLeft = false;
+      }
+    } else if (phoneShootRequest?.current) {
+      isShootingRight = true;
+    }
+
+    let currentAmmo = gameState.ammo;
+
+    const processShot = (isLeft: boolean) => {
+      const lastTime = isLeft ? lastShotTimeLeft : lastShotTimeRight;
+      let canShoot = false;
+      if (gameState.weaponName === 'MUSTANG & SALLY') {
+        const mustang = Math.floor(currentAmmo / 100);
+        const sally = currentAmmo % 100;
+        canShoot = isLeft ? mustang > 0 : sally > 0;
+      } else {
+        canShoot = currentAmmo > 0;
+      }
+
+      if (!isKnifing.current && now - lastTime.current > currentRate && canShoot && !gameState.isReloading) {
+        lastTime.current = now;
+        if (gameState.weaponName === 'MUSTANG & SALLY') {
+          lastFiredLeft.current = isLeft;
+          if (gameMode !== 'dead_ops') {
+            let mustang = Math.floor(currentAmmo / 100);
+            let sally = currentAmmo % 100;
+            if (isLeft) mustang--;
+            else sally--;
+            currentAmmo = mustang * 100 + sally;
+          }
+        } else {
+          if (gameMode !== 'dead_ops') {
+            currentAmmo--;
+          }
+        }
+        onStatsUpdate({ ammo: currentAmmo });
+        
+        const box = interactables.find(i => i.id === 'box');
+        const boxPos = box ? box.pos : new THREE.Vector3(0, 0, 0);
+        const distToBox = playerPos.current.distanceTo(new THREE.Vector3(boxPos.x, 0.75, boxPos.z));
+        const isLookingUp = camera.rotation.x > 1.3;
+        if (distToBox < 4 && isLookingUp && !easterEggTriggered.current) {
+          easterEggBullets.current++;
+          if (easterEggBullets.current >= 10) {
+            onUnlockAchievement('red9_blessing');
+          }
+        }
+
+        if (currentAmmo === 0 && gameState.perks.includes('electric')) {
+          soundService.playFlash();
+          effects.current.push({ id: Math.random().toString(), type: 'flash', pos: playerPos.current.clone(), life: 0.3, color: '#06b2d2', scale: 1 });
+          zombieRefs.current.forEach(z => {
+            if (z.position.distanceTo(playerPos.current) < 5) z.stunTimer = 3.0;
+          });
+        }
+
+        weaponRecoil.current = 1.0;
+        flashTimer.current = 0.08;
+        soundService.playShoot(gameState.weaponName);
+        const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
+        const muzzleOffset = isLeft ? new THREE.Vector3(-0.25, -0.3, -0.5) : new THREE.Vector3(0.25, -0.3, -0.5);
+        const muzzlePos = camera.position.clone().add(muzzleOffset.applyQuaternion(camera.quaternion)).add(direction.clone().multiplyScalar(0.6));
+        
+        if (!gameState.attachments.includes('suppressor')) {
+          effects.current.push({ 
+            id: Math.random().toString(), 
+            type: 'flash', 
+            pos: muzzlePos, 
+            life: 0.08, 
+            color: '#ffaa00', 
+            scale: 0.2 
+          });
+        }
+
+        let baseSpread = gameState.perks.includes('deadshot') ? 0.005 : 0.02;
+        if (gameState.attachments.includes('laser_sight') && !aimRequest.current) baseSpread *= 0.5;
+        if (gameState.attachments.includes('foregrip')) baseSpread *= 0.7;
+
+        const spread = baseSpread * (aimRequest.current && !isLeft ? 0.2 : 1.0);
+        const spreadVec = new THREE.Vector3((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread);
+        const ray = new THREE.Raycaster(camera.position, direction.add(spreadVec).normalize());
+        
+        if (!red9CurseActive) {
+          const graveBox = new THREE.Box3().setFromCenterAndSize(currentGravePos.clone().add(new THREE.Vector3(0, 2.75, 0)), new THREE.Vector3(3, 5, 1));
+          if (ray.ray.intersectBox(graveBox, new THREE.Vector3())) {
+             red9ShootCount.current++;
+             if (red9ShootCount.current >= 5) {
+               onRed9Curse();
+             }
+             effects.current.push({
+               id: Math.random().toString(),
+               type: 'flash',
+               pos: currentGravePos.clone().add(new THREE.Vector3(0, 1, 0)),
+               life: 0.2,
+               color: '#ffff00',
+               scale: 0.5
+             });
+          }
+        }
+        
+        let closestHit = { dist: 100, zombie: null as ZombieData | null, isHeadshot: false, hitPos: new THREE.Vector3(), isDragon: false };
+        
+        zombieRefs.current.forEach(z => {
+          const bodyBox = new THREE.Box3().setFromCenterAndSize(z.position.clone().add(new THREE.Vector3(0, 0.9, 0)), new THREE.Vector3(0.6, 1.8, 0.4));
+          const headBox = new THREE.Box3().setFromCenterAndSize(z.position.clone().add(new THREE.Vector3(0, 2, 0)), new THREE.Vector3(0.4, 0.4, 0.4));
+          const headIntersection = ray.ray.intersectBox(headBox, new THREE.Vector3());
+          const bodyIntersection = ray.ray.intersectBox(bodyBox, new THREE.Vector3());
+          
+          if (headIntersection) {
+            const d = headIntersection.distanceTo(camera.position);
+            if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: true, hitPos: headIntersection.clone(), isDragon: false };
+          } else if (bodyIntersection) {
+            const d = bodyIntersection.distanceTo(camera.position);
+            if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: false, hitPos: bodyIntersection.clone(), isDragon: false };
+          }
+        });
+
+        if (dragonActive) {
+          const dragonBox = new THREE.Box3().setFromCenterAndSize(dragonPos.current, new THREE.Vector3(10, 10, 10));
+          const dragonIntersection = ray.ray.intersectBox(dragonBox, new THREE.Vector3());
+          if (dragonIntersection) {
+            const d = dragonIntersection.distanceTo(camera.position);
+            if (d < closestHit.dist) {
+              closestHit = { dist: d, zombie: null, isHeadshot: false, hitPos: dragonIntersection.clone(), isDragon: true };
+            }
+          }
+        }
+        
+        let floorHitPos = null;
+        if (!closestHit.zombie && !closestHit.isDragon) {
+          if (direction.y < 0) {
+            const distanceToFloor = -camera.position.y / direction.y;
+            if (distanceToFloor > 0 && distanceToFloor < 50) {
+              floorHitPos = camera.position.clone().add(direction.clone().multiplyScalar(distanceToFloor));
+            }
+          }
+        }
+        
+        const tracerEnd = (closestHit.zombie || closestHit.isDragon) ? direction.clone().multiplyScalar(closestHit.dist).add(camera.position) : (floorHitPos || direction.clone().multiplyScalar(50).add(camera.position));
+        effects.current.push({
+          id: Math.random().toString(),
+          type: 'tracer',
+          pos: camera.position.clone().add(muzzleOffset.applyQuaternion(camera.quaternion)).add(direction.clone().multiplyScalar(0.5)),
+          dir: tracerEnd.clone(),
+          life: 0.1,
+          color: gameState.weaponName === 'RAY GUN' ? '#00ff00' : '#ffffaa'
+        });
+        
+        if (closestHit.zombie) {
+          const multiplier = closestHit.isHeadshot ? (gameState.perks.includes('deadshot') ? 6.0 : 4.0) : 1.0;
+          const prestigeMultiplier = 1 + ((gameState as any).prestige || 0) * 0.1;
+          const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+          let damage = gameState.instaKill ? 999999 : (weapon.damage * multiplier * (gameState.perks.includes('double') ? 2 : 1) * prestigeMultiplier * levelMultiplier);
+          
+          if (gameState.perks.includes('stronghold') && timeSinceLastMove.current > 2.0) {
+            damage *= 1.5;
+          }
+
+          if (gameState.perks.includes('elemental') && Math.random() < 0.2) {
+             const effectType = ['fire', 'ice', 'electric', 'wind'][Math.floor(Math.random() * 4)];
+             if (effectType === 'fire') {
+               damage += 200;
+               effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: closestHit.hitPos, life: 0.3, color: '#ff4400', scale: 0.5 });
+             } else if (effectType === 'ice') {
+               closestHit.zombie.stunTimer = 3.0;
+               effects.current.push({ id: Math.random().toString(), type: 'flash', pos: closestHit.hitPos, life: 0.3, color: '#a5f3fc', scale: 0.5 });
+             } else if (effectType === 'electric') {
+               zombieRefs.current.forEach(z => {
+                 if (z.position.distanceTo(closestHit.zombie!.position) < 5) z.stunTimer = 1.5;
+               });
+               effects.current.push({ id: Math.random().toString(), type: 'flash', pos: closestHit.hitPos, life: 0.3, color: '#06b2d2', scale: 1.0 });
+             } else if (effectType === 'wind') {
+               const pushDir = closestHit.zombie.position.clone().sub(playerPos.current).normalize().multiplyScalar(2);
+               closestHit.zombie.position.add(pushDir);
+               effects.current.push({ id: Math.random().toString(), type: 'flash', pos: closestHit.hitPos, life: 0.3, color: '#ffffff', scale: 0.8 });
+             }
+          }
+
+          closestHit.zombie.hp -= damage;
+          closestHit.zombie.hitFlash = 1.0;
+          
+          effects.current.push({
+            id: Math.random().toString(),
+            type: 'blood',
+            pos: closestHit.hitPos,
+            life: 0.3,
+            color: closestHit.zombie.type === 'inferno' ? '#ff4400' : (closestHit.zombie.type === 'parasite' ? '#800080' : '#990000'),
+            scale: closestHit.isHeadshot ? 1.5 : 1.0
+          });
+          
+          const pointsAwarded = closestHit.isHeadshot ? 30 : 10;
+          onStatsUpdate({ points: pointsAwarded, hit: true });
+          
+          if (closestHit.zombie.hp <= 0) {
+            handleZombieDeath(closestHit.zombie, closestHit.isHeadshot, gameState.weaponName);
+
+            if (gameState.perks.includes('vulture') && Math.random() < 0.3) {
+              onStatsUpdate({ points: 50 });
+            }
+          }
+        } else if (closestHit.isDragon) {
+          const prestigeMultiplier = 1 + ((gameState as any).prestige || 0) * 0.1;
+          const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+          const damage = weapon.damage * (gameState.perks.includes('double') ? 2 : 1) * prestigeMultiplier * levelMultiplier;
+          setDragonHealth(dragonHealth - damage);
+          onStatsUpdate({ points: 10, hit: true });
+          
+          effects.current.push({
+            id: Math.random().toString(),
+            type: 'blood',
+            pos: closestHit.hitPos,
+            life: 0.3,
+            color: '#ffaa00',
+            scale: 3.0
+          });
+
+          if (dragonHealth - damage <= 0) {
+            onDragonDefeated();
+            onUnlockAchievement('boss_slayer');
+          }
+        }
+        zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
+        setZombieIds(zombieRefs.current.map(z => z.id));
+        
+        if (gameState.weaponName === 'MUSTANG & SALLY') {
+          soundService.playExplosion();
+          const explosionPos = floorHitPos || tracerEnd.clone();
+          effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: explosionPos, life: 0.5, color: '#ff00ff', scale: 1.5 });
+          zombieRefs.current.forEach(z => {
+            const d = z.position.distanceTo(explosionPos);
+            if (d < 8) {
+              const prestigeMultiplier = 1 + ((gameState as any).prestige || 0) * 0.1;
+              const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+              const damage = (8 - d) * 500 * prestigeMultiplier * levelMultiplier;
+              z.hp -= damage;
+              z.hitFlash = 1.0;
+              onStatsUpdate({ points: 10, hit: true });
+              if (z.hp <= 0) {
+                onStatsUpdate({ points: 100, kills: 1 }, undefined, gameState.weaponName);
+              }
+            }
+          });
+          zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
+          setZombieIds(zombieRefs.current.map(z => z.id));
+        }
+      }
+    };
+
+    if (isShootingRight) processShot(false);
+    if (isShootingLeft) processShot(true);
+
+    // Update Viewmodel Position & Sway
+    if (viewmodelRef.current) {
+      // Base offset relative to camera
+      const offset = new THREE.Vector3(0.25, -0.3, -0.5);
+      
+      // Apply bobbing based on movement
+      const isMoving = Math.abs(moveInput.current.x) > 0.1 || Math.abs(moveInput.current.y) > 0.1;
+      if (isMoving && isGrounded.current) {
+        const bobSpeed = sprintRequest.current ? 15 : 10;
+        const bobAmount = sprintRequest.current ? 0.05 : 0.02;
+        offset.y += Math.sin(state.clock.elapsedTime * bobSpeed) * bobAmount;
+        offset.x += Math.cos(state.clock.elapsedTime * bobSpeed * 0.5) * bobAmount;
+      }
+
+      // Apply recoil
+      if (weaponRecoil.current > 0) {
+        offset.z += weaponRecoil.current * 0.2;
+        offset.y += weaponRecoil.current * 0.1;
+        weaponRecoil.current = THREE.MathUtils.lerp(weaponRecoil.current, 0, 0.1);
+      }
+
+      // Apply to camera transform
+      viewmodelRef.current.position.copy(camera.position).add(offset.clone().applyQuaternion(camera.quaternion));
+      viewmodelRef.current.quaternion.copy(camera.quaternion);
+      
+      // Hide gun when knifing
+      viewmodelRef.current.visible = !isKnifing.current;
+    }
+
+    // Update Knife Position
+    if (knifeRef.current) {
+       if (isKnifing.current) {
+         const p = knifeAnimProgress.current;
+         // Fast stab and slash animation
+         const easeP = 1 - Math.pow(1 - p, 3);
+         
+         const x = 0.6 - easeP * 1.2;
+         const y = -0.2 - Math.sin(easeP * Math.PI) * 0.2;
+         const z = -0.4 - Math.sin(easeP * Math.PI) * 0.6;
+         
+         const swingOffset = new THREE.Vector3(x, y, z);
+         
+         knifeRef.current.position.copy(camera.position).add(swingOffset.applyQuaternion(camera.quaternion));
+         knifeRef.current.quaternion.copy(camera.quaternion);
+         
+         // Point forward and slightly inward
+         knifeRef.current.rotateX(-Math.PI / 2.5); // Point mostly forward, slightly up
+         knifeRef.current.rotateY(Math.PI / 3 - easeP * (Math.PI / 1.5)); // Slash across
+         knifeRef.current.rotateZ(Math.PI / 6); // Slight tilt
+         
+         knifeRef.current.visible = true;
+       } else {
+         knifeRef.current.visible = false;
+       }
+    }
+
+    effects.current = effects.current.filter(e => {
+      if (e.velocity) {
+        e.pos.add(e.velocity.clone().multiplyScalar(delta));
+      }
+      return (e.life -= delta) > 0;
+    });
+
+    // Bot Logic
+    botsRef.current.forEach(bot => {
+      // Ensure bot stays on ground
+      bot.position.y = 0;
+
+      if (bot.isDowned) {
+        // Downed bots don't move or shoot
+        return;
+      }
+
+      // 1. Check if anyone needs reviving (Player or other bots)
+      let reviveTarget: { position: THREE.Vector3, id: string, isBot: boolean } | null = null;
+      
+      // Check player
+      if (gameState.isDowned) {
+        const distToPlayer = bot.position.distanceTo(playerPos.current);
+        if (distToPlayer < 15) {
+          reviveTarget = { position: playerPos.current, id: 'player', isBot: false };
+        }
+      }
+      
+      // Check other bots
+      if (!reviveTarget) {
+        botsRef.current.forEach(otherBot => {
+          if (otherBot.id !== bot.id && otherBot.isDowned) {
+            const dist = bot.position.distanceTo(otherBot.position);
+            if (dist < 15) {
+              reviveTarget = { position: otherBot.position, id: otherBot.id, isBot: true };
+            }
+          }
+        });
+      }
+
+      if (reviveTarget) {
+        const toTarget = reviveTarget.position.clone().sub(bot.position);
+        toTarget.y = 0;
+        const dist = toTarget.length();
+        
+        if (dist > 1.5) {
+          if (bot.isReviving) {
+            bot.isReviving = false;
+            onStatsUpdate({ isReviving: false }, bot.id);
+          }
+          toTarget.normalize();
+          bot.position.add(toTarget.multiplyScalar(6 * delta)); // Move faster to revive
+        } else {
+          // Close enough to revive
+          if (!bot.isReviving) {
+            bot.isReviving = true;
+            onStatsUpdate({ isReviving: true }, bot.id);
+          }
+          if (now - bot.lastShot > 3000) { // Reuse lastShot as a timer for revive progress
+            bot.lastShot = now;
+            bot.isReviving = false;
+            if (reviveTarget.isBot) {
+              const targetBot = botsRef.current.find(b => b.id === reviveTarget!.id);
+              if (targetBot) {
+                targetBot.isDowned = false;
+                targetBot.hp = targetBot.maxHp;
+                onStatsUpdate({ isDowned: false, hp: targetBot.maxHp, isReviving: false }, targetBot.id);
+                onStatsUpdate({ revives: 1, isReviving: false }, bot.id); // Give bot credit
+              }
+            } else {
+              onStatsUpdate({ isDowned: false, hp: 100, isReviving: false }); // Revive player
+              onStatsUpdate({ revives: 1, isReviving: false }, bot.id); // Give bot credit
+            }
+          }
+        }
+        return; // Prioritize reviving
+      } else {
+        if (bot.isReviving) {
+          bot.isReviving = false;
+          onStatsUpdate({ isReviving: false }, bot.id);
+        }
+      }
+
+      // 2. Normal combat logic
+      let closestZombie: ZombieData | null = null;
+      let minDist = Infinity;
+      zombieRefs.current.forEach(z => {
+        const dist = z.position.distanceTo(bot.position);
+        if (dist < minDist) {
+          minDist = dist;
+          closestZombie = z;
+        }
+      });
+
+      // 3. Opportunistic Interaction
+      if (Math.random() < 0.05) {
+        const nearby = interactables.find(i => i.pos.distanceTo(bot.position) < 3.0);
+        if (nearby) {
+          let cost = nearby.cost;
+          if (fireSaleActive && nearby.id === 'box') cost = 10;
+          if (bot.points >= cost) {
+            if (onBotInteract) onBotInteract(bot.id, nearby.id, cost);
+            bot.targetInteractableId = null;
+          }
+        }
+      }
+
+      if (closestZombie && minDist < 30) {
+        bot.targetId = closestZombie.id;
+        
+        // Move towards zombie if too far, back away if too close
+        const toZombie = closestZombie.position.clone().sub(bot.position);
+        toZombie.y = 0;
+        toZombie.normalize();
+        
+        if (minDist > 10) {
+          const moveVec = toZombie.clone().multiplyScalar(4 * delta);
+          resolveCollision(bot.position, moveVec, 0.5);
+          bot.position.add(moveVec);
+        } else if (minDist < 5) {
+          const moveVec = toZombie.clone().multiplyScalar(-4 * delta);
+          resolveCollision(bot.position, moveVec, 0.5);
+          bot.position.add(moveVec);
+        }
+
+        // Shoot logic
+        if (now - bot.lastShot > 200) { // Bot fire rate
+          bot.lastShot = now;
+          soundService.playShoot('M1911'); // Default bot sound
+          
+          // Visual flash
+          const muzzlePos = bot.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(toZombie.clone().multiplyScalar(0.5));
+          effects.current.push({
+            id: Math.random().toString(),
+            type: 'flash',
+            pos: muzzlePos,
+            life: 0.08,
+            color: '#ffaa00',
+            scale: 0.2
+          });
+
+          // Damage zombie
+          closestZombie.hp -= 30; // Bot damage
+          closestZombie.hitFlash = 1.0;
+          
+          effects.current.push({
+            id: Math.random().toString(),
+            type: 'blood',
+            pos: closestZombie.position.clone().add(new THREE.Vector3(0, 1.5, 0)),
+            life: 0.3,
+            color: '#990000',
+            scale: 1.0
+          });
+
+          if (closestZombie.hp <= 0) {
+            onStatsUpdate({ points: 100, kills: 1 }, bot.id); // Give bot full points and kill
+          }
+        }
+      } else {
+        bot.targetId = null;
+        
+        // 4. Path to interactable or follow player
+        if (bot.targetInteractableId) {
+          const target = interactables.find(i => i.id === bot.targetInteractableId);
+          if (target) {
+            const toTarget = target.pos.clone().sub(bot.position);
+            toTarget.y = 0;
+            const dist = toTarget.length();
+            if (dist > 2.0) {
+              toTarget.normalize();
+              const moveVec = toTarget.multiplyScalar(5 * delta);
+              resolveCollision(bot.position, moveVec, 0.5);
+              bot.position.add(moveVec);
+            } else {
+              bot.targetInteractableId = null; // Reached it, opportunistic interaction will handle buying
+            }
+          } else {
+            bot.targetInteractableId = null;
+          }
+        } else {
+          // Follow player if no zombies and no interactable target
+          const toPlayer = playerPos.current.clone().sub(bot.position);
+          toPlayer.y = 0;
+          const distToPlayer = toPlayer.length();
+          if (distToPlayer > 5) {
+            toPlayer.normalize();
+            const moveVec = toPlayer.multiplyScalar(5 * delta);
+            resolveCollision(bot.position, moveVec, 0.5);
+            bot.position.add(moveVec);
+          } else if (bot.points > 1000 && Math.random() < 0.01) {
+             // Occasionally decide to buy something
+             const affordable = interactables.filter(i => {
+               let cost = i.cost;
+               if (fireSaleActive && i.id === 'box') cost = 10;
+               return cost > 0 && cost <= bot.points;
+             });
+             if (affordable.length > 0) {
+               const target = affordable[Math.floor(Math.random() * affordable.length)];
+               bot.targetInteractableId = target.id;
+             }
+          }
+        }
+      }
+    });
+
+    // Zombie AI and Movement
+    if (!isHost && syncedZombies) {
+      // Client-side: sync zombies from host
+      zombieRefs.current.forEach(z => {
+        const synced = syncedZombies.find(sz => sz.id === z.id);
+        if (synced) {
+          z.position.set(synced.position.x, synced.position.y, synced.position.z);
+          z.hp = synced.hp;
+          z.variant = synced.variant;
+          z.type = synced.type;
+        } else {
+          z.hp = 0; // Zombie no longer exists on host
+        }
+      });
+      // Add new zombies from host
+      syncedZombies.forEach(sz => {
+        if (!zombieRefs.current.find(z => z.id === sz.id)) {
+          zombieRefs.current.push({
+            id: sz.id,
+            position: new THREE.Vector3(sz.position.x, sz.position.y, sz.position.z),
+            hp: sz.hp,
+            maxHp: sz.maxHp,
+            variant: sz.variant,
+            hitFlash: 0,
+            stunTimer: 0,
+            type: sz.type,
+            speed: sz.speed || 4.0,
+            lastAttack: 0
+          });
+          setZombieIds(prev => [...prev, sz.id]);
+        }
+      });
+    } else {
+      zombieRefs.current.forEach(z => {
+        if (z.stunTimer > 0) { z.stunTimer -= delta; return; }
+      
+      const activeMonkey = projectiles.current.find(p => p.type === 'monkeyBomb');
+      
+      // Find closest target (Player or Bot)
+      let targetPos = activeMonkey ? activeMonkey.position : playerPos.current;
+      let targetId: string | null = activeMonkey ? null : 'player';
+      let minDist = activeMonkey ? activeMonkey.position.distanceTo(z.position) : playerPos.current.distanceTo(z.position);
+
+      if (!activeMonkey && !zombieBloodActive) {
+        botsRef.current.forEach(bot => {
+          if (!bot.isDowned) {
+            const dist = bot.position.distanceTo(z.position);
+            if (dist < minDist) {
+              minDist = dist;
+              targetPos = bot.position;
+              targetId = bot.id;
+            }
+          }
+        });
+      }
+      
+      if (zombieBloodActive && !activeMonkey && targetId === 'player') {
+        // Zombies ignore player during zombie blood, but might still target bots
+        let foundBot = false;
+        botsRef.current.forEach(bot => {
+          if (!bot.isDowned) {
+            const dist = bot.position.distanceTo(z.position);
+            if (!foundBot || dist < minDist) {
+              minDist = dist;
+              targetPos = bot.position;
+              targetId = bot.id;
+              foundBot = true;
+            }
+          }
+        });
+        if (!foundBot) return;
+      }
+
+      // Parasites fly towards target head
+      const targetY = z.type === 'parasite' ? targetPos.y + 1.5 : 0;
+      
+      const toTarget = targetPos.clone().sub(z.position);
+      if (z.type !== 'parasite') toTarget.setY(0); // Ground units stay on ground
+      
+      const d = toTarget.length();
+      const attackRange = z.type === 'brute' ? 2.0 : (z.type === 'parasite' ? 3.0 : 1.2);
+      
+      // Stuck / Respawn logic
+      if (d > 25) {
+        z.timeNotClose = (z.timeNotClose || 0) + delta;
+        if (z.timeNotClose > 15) {
+          // Respawn closer
+          z.position.copy(getValidZombieSpawnPos(targetPos, 15, 25));
+          z.timeNotClose = 0;
+          z.turnTimer = 0;
+          z.turnDirection = undefined;
+          return; // Skip movement this frame
+        }
+      } else {
+        z.timeNotClose = 0;
+      }
+
+      if (d > attackRange) {
+        let moveStep = toTarget.normalize().multiplyScalar(z.speed * delta);
+        
+        // Separation Force
+        const separation = new THREE.Vector3();
+        let count = 0;
+        zombieRefs.current.forEach(other => {
+          if (other.id !== z.id) {
+            const dist = z.position.distanceTo(other.position);
+            if (dist < 1.0) { // Separation radius
+              const push = z.position.clone().sub(other.position).normalize().divideScalar(dist);
+              separation.add(push);
+              count++;
+            }
+          }
+        });
+        if (count > 0) {
+          separation.divideScalar(count).multiplyScalar(delta * 2.0); // Strength
+          moveStep.add(separation);
+        }
+
+        // Obstacle Avoidance (Feelers)
+        const forwardPos = z.position.clone().add(moveStep);
+        const isForwardBlocked = checkCollision(forwardPos, 0.4);
+        
+        if (isForwardBlocked) {
+            if (!z.turnDirection) {
+                // Decide initial turn direction based on which side is more open
+                const leftDir = moveStep.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
+                const rightDir = moveStep.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 4);
+                const leftBlocked = checkCollision(z.position.clone().add(leftDir), 0.4);
+                const rightBlocked = checkCollision(z.position.clone().add(rightDir), 0.4);
+                
+                if (!leftBlocked && rightBlocked) z.turnDirection = -1;
+                else if (!rightBlocked && leftBlocked) z.turnDirection = 1;
+                else z.turnDirection = Math.random() > 0.5 ? 1 : -1;
+            }
+            z.turnTimer = 0.8; // Commit to turning for a bit longer
+        }
+
+        if (z.turnTimer && z.turnTimer > 0) {
+            z.turnTimer -= delta;
+            
+            // Try increasing angles until we find a clear path
+            let foundPath = false;
+            const anglesToTry = [Math.PI / 4, Math.PI / 2, Math.PI * 0.75, Math.PI];
+            
+            for (const angle of anglesToTry) {
+                const turnAngle = angle * (z.turnDirection || 1);
+                const turnDir = moveStep.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), turnAngle);
+                if (!checkCollision(z.position.clone().add(turnDir), 0.4)) {
+                    moveStep = turnDir;
+                    foundPath = true;
+                    break;
+                }
+            }
+            
+            if (!foundPath) {
+                // Completely stuck, reverse direction
+                z.turnDirection = (z.turnDirection || 1) * -1;
+                moveStep.negate(); // Move backwards slightly
+            }
+        } else {
+            z.turnDirection = undefined;
+            z.turnTimer = 0;
+        }
+
+        resolveCollision(z.position, moveStep, 0.4);
+        z.position.add(moveStep);
+        
+        // Parasite height adjustment (hover)
+        if (z.type === 'parasite') {
+             z.position.y = THREE.MathUtils.lerp(z.position.y, targetY, delta * 2);
+        }
+      } else if (!activeMonkey && now - z.lastAttack > (z.type === 'brute' ? 2000 : 1200)) { 
+        z.lastAttack = now; 
+        let damage = z.type === 'brute' ? 75 : (z.type === 'parasite' ? 20 : 35);
+        if (z.type === 'inferno') damage += 10; // Burn damage
+        
+        if (targetId === 'player') {
+          if (gameState.perks.includes('stronghold') && timeSinceLastMove.current > 2.0) {
+             damage *= 0.5;
+             // Visual effect for Stronghold defense
+             effects.current.push({ id: Math.random().toString(), type: 'flash', pos: playerPos.current.clone(), life: 0.2, color: '#a855f7', scale: 1.5 });
+          }
+          onStatsUpdate({ hp: -damage }); 
+          
+          // Winter's Wail Logic
+          if (gameState.perks.includes('winter') && winterCooldown.current <= 0) {
+            winterCooldown.current = 60; 
+            zombieRefs.current.forEach(otherZ => {
+              if (otherZ.position.distanceTo(playerPos.current) < 12) {
+                otherZ.stunTimer = 8.0;
+              }
+            });
+            soundService.playFlash();
+            effects.current.push({ id: Math.random().toString(), type: 'flash', pos: playerPos.current.clone(), life: 0.5, color: '#a5f3fc', scale: 2.5 });
+          }
+
+          // Widow's Wine: Stun zombie on hit
+          if (gameState.perks.includes('widow')) {
+            z.stunTimer = 4.0;
+            soundService.playFlash(); // Placeholder sound for web trap
+            effects.current.push({ id: Math.random().toString(), type: 'flash', pos: z.position.clone().add(new THREE.Vector3(0, 1, 0)), life: 0.3, color: '#db2677', scale: 0.5 });
+          }
+        } else if (targetId) {
+          // Attack bot
+          const targetBot = botsRef.current.find(b => b.id === targetId);
+          if (targetBot) {
+            targetBot.hp -= damage;
+            if (targetBot.hp <= 0 && !targetBot.isDowned) {
+              targetBot.isDowned = true;
+              targetBot.downedTimer = 10;
+              targetBot.hp = 0;
+              onStatsUpdate({ isDowned: true, downedTimer: 10, hp: 0, downs: 1 }, targetBot.id);
+            }
+          }
+        }
+      }
+      z.hitFlash = Math.max(0, z.hitFlash - delta * 5);
+    });
+
+    // Host: Send zombie updates to clients
+    if (isHost && onGameEvent) {
+      onGameEvent({
+        type: 'zombie_update',
+        zombies: zombieRefs.current.map(z => ({
+          id: z.id,
+          position: { x: z.position.x, y: z.position.y, z: z.position.z },
+          hp: z.hp,
+          maxHp: z.maxHp,
+          variant: z.variant,
+          type: z.type,
+          speed: z.speed
+        }))
+      });
+    }
+  }
+
+    if (roundStarted.current && zombiesToSpawnThisRound.current > 0 && zombieRefs.current.length < 15 && now - lastSpawnTime.current > 1200) {
+      lastSpawnTime.current = now;
+      zombiesToSpawnThisRound.current--;
+      
+      const spawnPos = getValidZombieSpawnPos(playerPos.current, 35, 45);
+      
+      const rand = Math.random();
+      let type: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute' = 'normal';
+      let hp = 120 + gameState.round * 50;
+      let speed = 2.2 + (gameState.round * 0.1);
+
+      if (gameState.round >= 20 && rand > 0.95) {
+        type = 'brute';
+        hp *= 5.0; // Massive HP
+        speed *= 0.5; // Very Slow
+      } else if (gameState.round >= 15 && rand > 0.9) {
+        type = 'inferno';
+        hp *= 1.5;
+        speed *= 0.8;
+      } else if (gameState.round >= 12 && rand < 0.15) {
+        type = 'parasite';
+        hp *= 0.5; // Fragile
+        speed *= 1.8; // Fast flyer
+      } else if (gameState.round >= 8 && rand < 0.3) {
+        type = 'crawler';
+        hp *= 0.8;
+        speed *= 1.4; // Fast crawler
+      } else if (gameState.round >= 5 && rand < 0.5) {
+        type = 'runner';
+        hp *= 0.7; // Less HP
+        speed *= 1.5; // Faster
+      } else if (gameState.round >= 10 && rand > 0.85) {
+        type = 'tank';
+        hp *= 2.5; // More HP
+        speed *= 0.6; // Slower
+      }
+
+      zombieRefs.current.push({
+        id: Math.random().toString(36).substring(7),
+        position: spawnPos,
+        hp,
+        maxHp: hp,
+        speed,
+        lastAttack: 0,
+        hitFlash: 0,
+        variant: Math.random(),
+        stunTimer: 0,
+        type,
+        timeNotClose: 0
+      });
+      setZombieIds(zombieRefs.current.map(z => z.id));
+    }
+
+    if (roundStarted.current && zombiesToSpawnThisRound.current === 0 && zombieRefs.current.length === 0 && !isRoundTransitioning.current && !dragonActive) {
+      isRoundTransitioning.current = true;
+      roundStarted.current = false;
+      setTimeout(() => { if (status === GameStatus.PLAYING) onStatsUpdate({ round: gameState.round + 1 }); }, 5000);
+    }
+
+    if (dragonActive) {
+      if (dragonPos.current.lengthSq() === 0) {
+        dragonPos.current.set(0, 20, 0); // Start high up
+        dragonLastAttack.current = now; // Delay first attack
+      }
+
+      // Dragon movement: circle above map center
+      const time = state.clock.elapsedTime;
+      const radius = 60; // Larger radius to cover more of the map
+      const speed = 0.3; // Slightly slower
+      const targetX = Math.cos(time * speed) * radius;
+      const targetZ = Math.sin(time * speed) * radius;
+      
+      dragonPos.current.x = THREE.MathUtils.lerp(dragonPos.current.x, targetX, delta);
+      dragonPos.current.z = THREE.MathUtils.lerp(dragonPos.current.z, targetZ, delta);
+      dragonPos.current.y = 25 + Math.sin(time * 1.5) * 5; // Hover higher
+
+      // Look in direction of movement
+      const nextX = Math.cos((time + 0.1) * speed) * radius;
+      const nextZ = Math.sin((time + 0.1) * speed) * radius;
+      dragonRotY.current = Math.atan2(nextX - dragonPos.current.x, nextZ - dragonPos.current.z);
+
+      if (dragonGroupRef.current) {
+        dragonGroupRef.current.position.copy(dragonPos.current);
+        dragonGroupRef.current.rotation.y = dragonRotY.current;
+      }
+
+      // Fire breath attack every 15 seconds
+      if (now - dragonLastAttack.current > 15000) {
+        dragonLastAttack.current = now;
+        dragonFireTimer.current = 2.0; // Breathe fire for 2 seconds
+        soundService.playExplosion(); // Placeholder for roar/fire
+      }
+
+      if (dragonFireTimer.current > 0) {
+        dragonFireTimer.current -= delta;
+        
+        // Spawn fire particles
+        const fireCount = 5; // Particles per frame
+        for (let i = 0; i < fireCount; i++) {
+          // Calculate exact mouth position in world space
+          const mouthLocal = new THREE.Vector3(0, 1.5, 10);
+          const firePos = mouthLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), dragonRotY.current).add(dragonPos.current);
+
+          const toPlayer = playerPos.current.clone().sub(firePos);
+          // Add some spread
+          toPlayer.x += (Math.random() - 0.5) * 8;
+          toPlayer.y += (Math.random() - 0.5) * 8;
+          toPlayer.z += (Math.random() - 0.5) * 8;
+          
+          const velocity = toPlayer.normalize().multiplyScalar(50); // Fast moving fire
+
+          effects.current.push({
+            id: Math.random().toString(),
+            type: 'explosion',
+            pos: firePos,
+            velocity: velocity,
+            life: 1.0 + Math.random() * 0.5,
+            color: Math.random() > 0.5 ? '#ff4400' : '#ffaa00',
+            scale: 2 + Math.random() * 3
+          });
+        }
+
+        // Deal damage if player is hit (check every frame while breathing)
+        // Check if player is hidden (simple check: are they under a roof?)
+        let isHidden = false;
+        for (const obj of mapConfig.objects) {
+          if (obj.type === 'building') {
+            const size = new THREE.Vector3(...obj.args);
+            const pos = new THREE.Vector3(...obj.pos);
+            size.y = 20; 
+            if (checkAABB(playerPos.current, pos, size, 0)) {
+              isHidden = true;
+              break;
+            }
+          }
+        }
+
+        if (!isHidden) {
+          // Deal damage over time (50 total over 2 seconds)
+          onStatsUpdate({ hp: -50 * (delta / 2.0) });
+        }
+      }
+    }
+
+    const near = interactables.find(i => playerPos.current.distanceTo(i.pos) < 3.5);
+    const nearBot = botsRef.current.find(b => b.isDowned && b.position.distanceTo(playerPos.current) < 3.5);
+
+    if (nearBot) {
+      onInteractAvailable({ type: `Revive ${nearBot.name}`, cost: 0, id: `revive_${nearBot.id}` });
+    } else if (near) {
+      let cost = near.cost;
+      if (fireSaleActive && near.id === 'box') {
+        cost = 10;
+      }
+      onInteractAvailable({ type: near.type, cost, id: near.id });
+    } else {
+      onInteractAvailable(null);
+    }
+
+    // Easter Egg Logic: Look up at the sky above mystery box
+    const box = interactables.find(i => i.id === 'box');
+    const boxPos = box ? box.pos : new THREE.Vector3(0, 0, 0);
+    const distToBox = playerPos.current.distanceTo(new THREE.Vector3(boxPos.x, 0.75, boxPos.z));
+    const isLookingUp = camera.rotation.x > 1.3; // Looking almost straight up
+    
+    if (distToBox < 4 && isLookingUp && !easterEggTriggered.current && status === GameStatus.PLAYING) {
+      easterEggTimer.current += delta;
+      
+      // Check for Ultimate Easter Egg (5s + 8 bullets)
+      if (easterEggTimer.current >= 5.0) {
+        if (easterEggBullets.current >= 8) {
+          easterEggTriggered.current = true;
+          onEasterEggTriggered();
+          soundService.playPowerUpPickup();
+          onStatsUpdate({ points: 5000, addAllPerks: true });
+          
+          effects.current.push({ 
+            id: Math.random().toString(), 
+            type: 'flash', 
+            pos: playerPos.current.clone().add(new THREE.Vector3(0, 5, 0)), 
+            life: 2.5, 
+            color: '#00ffff', 
+            scale: 6 
+          });
+        } else if (easterEggBullets.current >= 5) {
+          // Better Easter Egg (5s + 5 bullets)
+          easterEggTriggered.current = true;
+          onEasterEggTriggered();
+          soundService.playPowerUpPickup();
+          
+          const allPossiblePerks = ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip'];
+          let missingPerks = allPossiblePerks.filter(p => !gameState.perks.includes(p));
+          
+          // Give 5 random perks
+          for (let i = 0; i < 5 && missingPerks.length > 0; i++) {
+            const idx = Math.floor(Math.random() * missingPerks.length);
+            onStatsUpdate({ addPerk: missingPerks[idx] });
+            missingPerks.splice(idx, 1);
+          }
+          
+          onStatsUpdate({ points: 5000 });
+          
+          effects.current.push({ 
+            id: Math.random().toString(), 
+            type: 'flash', 
+            pos: playerPos.current.clone().add(new THREE.Vector3(0, 5, 0)), 
+            life: 2.0, 
+            color: '#ff00ff', 
+            scale: 4 
+          });
+        } else {
+          // Just reached 5s but not enough bullets, trigger basic
+          easterEggTriggered.current = true;
+          onEasterEggTriggered();
+          soundService.playPowerUpPickup();
+          
+          const allPossiblePerks = ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip'];
+          const missingPerks = allPossiblePerks.filter(p => !gameState.perks.includes(p));
+          
+          if (missingPerks.length > 0) {
+            const randomPerk = missingPerks[Math.floor(Math.random() * missingPerks.length)];
+            onStatsUpdate({ points: 2500, addPerk: randomPerk });
+          } else {
+            onStatsUpdate({ points: 2500 });
+          }
+          
+          effects.current.push({ 
+            id: Math.random().toString(), 
+            type: 'flash', 
+            pos: playerPos.current.clone().add(new THREE.Vector3(0, 5, 0)), 
+            life: 1.5, 
+            color: '#ffd700', 
+            scale: 3 
+          });
+        }
+      }
+    } else {
+      // If they were looking up for at least 3.5s but less than 5s and stopped, trigger basic
+      if (easterEggTimer.current >= 3.5 && !easterEggTriggered.current && status === GameStatus.PLAYING) {
+        easterEggTriggered.current = true;
+        onEasterEggTriggered();
+        soundService.playPowerUpPickup();
+        
+        const allPossiblePerks = ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip'];
+        const missingPerks = allPossiblePerks.filter(p => !gameState.perks.includes(p));
+        
+        if (missingPerks.length > 0) {
+          const randomPerk = missingPerks[Math.floor(Math.random() * missingPerks.length)];
+          onStatsUpdate({ points: 2500, addPerk: randomPerk });
+        } else {
+          onStatsUpdate({ points: 2500 });
+        }
+        
+        effects.current.push({ 
+          id: Math.random().toString(), 
+          type: 'flash', 
+          pos: playerPos.current.clone().add(new THREE.Vector3(0, 5, 0)), 
+          life: 1.5, 
+          color: '#ffd700', 
+          scale: 3 
+        });
+      }
+      
+      if (!isLookingUp || distToBox >= 4) {
+        easterEggTimer.current = 0;
+        // Also reset bullet count if they stop looking
+        if (typeof (easterEggBullets as any).current !== 'undefined') {
+          easterEggBullets.current = 0;
+        }
+      }
+    }
+
+    // Filter dead zombies at the end of the frame
+    const prevZombieCount = zombieRefs.current.length;
+    zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
+    if (zombieRefs.current.length < prevZombieCount) {
+      setZombieIds(zombieRefs.current.map(z => z.id));
+    }
+  });
+
+  return (
+    <>
+      <Sky sunPosition={weather === 'clear' ? [100, 100, 100] : [0, -10, 0]} />
+      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      
+      {weather === 'fog' ? (
+        <fog attach="fog" args={[mapConfig.fogColor, 1, 20]} />
+      ) : weather === 'rain' ? (
+        <fog attach="fog" args={['#222233', 5, 40]} />
+      ) : (
+        <fog attach="fog" args={[mapConfig.fogColor, (mapConfig.fogNear || 20) + 20, (mapConfig.fogFar || 100) + 50]} />
+      )}
+
+      <ambientLight intensity={weather === 'clear' ? 2.5 : weather === 'rain' ? 1.2 : 0.6} />
+      <hemisphereLight intensity={weather === 'clear' ? 1.0 : 0.4} groundColor="#444" />
+      <pointLight position={[10, 20, 10]} intensity={weather === 'clear' ? 100 : 40} distance={150} />
+      <pointLight position={[-20, 15, -20]} intensity={weather === 'clear' ? 60 : 30} distance={120} color="#ffaa88" />
+      
+      {weather === 'rain' && <Rain playerPosRef={playerPos} />}
+      
+      <Ground mapConfig={mapConfig} />
+      <Debris count={50} range={200} />
+      <Grid args={[400, 400]} cellColor="#006600" sectionColor="#00aa00" fadeDistance={150} position={[0, -0.04, 0]} />
+      
+      {mapConfig.id === 'tranzit' && <Bus position={busPos.current} />}
+
+      {mapConfig.objects.map((obj, i) => {
+        // Skip static bus if Tranzit
+        if (mapConfig.id === 'tranzit' && (obj.label === 'THE BUS' || obj.label === 'TEDD')) return null;
+
+        if (obj.type === 'building') {
+          return <EnterableBuilding 
+            key={i} 
+            pos={new THREE.Vector3(...obj.pos)} 
+            size={new THREE.Vector3(...obj.args)} 
+            color={obj.color || '#fff'} 
+            label={obj.label || ''} 
+            lightColor={obj.lightColor || '#fff'} 
+            isOpen={obj.doorId ? openDoors.includes(obj.doorId) : true}
+          />;
+        }
+        if (obj.type === 'box' || obj.type === 'wall' || obj.type === 'cylinder') {
+          if (obj.texture) {
+            return (
+              <TexturedObject 
+                key={i}
+                type={obj.type as 'box' | 'wall' | 'cylinder'}
+                args={obj.args}
+                pos={obj.pos}
+                rotation={obj.rotation}
+                color={obj.color}
+                texture={obj.texture}
+              />
+            );
+          }
+          return (
+            <PlainObject
+              key={i}
+              type={obj.type as 'box' | 'wall' | 'cylinder'}
+              args={obj.args}
+              pos={obj.pos}
+              rotation={obj.rotation}
+              color={obj.color}
+            />
+          );
+        }
+        if (obj.type === 'streetlight') {
+          return <StreetLight key={i} pos={obj.pos as [number, number, number]} color={obj.color} />;
+        }
+        return null;
+      })}
+
+      {interactables.map((item) => {
+        if (item.id === 'box') return <MysteryBox key={item.id} pos={item.pos} />;
+        if (item.id === 'pap') return <PackAPunchMachine key={item.id} pos={item.pos} />;
+        if (item.id === 'healthRefill') return <HealthRefillStation key={item.id} pos={item.pos} isLocked={gameState.healthRefillsBought >= 3} />;
+        if (item.id.startsWith('heart_')) return (
+          <Float key={item.id} speed={2} rotationIntensity={1} floatIntensity={1} position={item.pos}>
+            <Sphere args={[0.3, 16, 16]}>
+              <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} />
+            </Sphere>
+            <pointLight intensity={5} color="#ff0000" distance={5} />
+          </Float>
+        );
+        if (item.id === 'summon_dragon') return (
+          <group key={item.id} position={item.pos}>
+            <Box args={[3, 1, 3]} position={[0, 0.5, 0]}>
+              <meshStandardMaterial color="#333" />
+            </Box>
+            <Text position={[0, 2, 0]} fontSize={0.5} color="#ffaa00" outlineWidth={0.05} outlineColor="#000">
+              Summon Dragon
+            </Text>
+            <pointLight intensity={10} color="#ffaa00" distance={10} />
+          </group>
+        );
+        if (item.type.startsWith('WALLBUY:')) {
+           return <WallBuy key={item.id} pos={item.pos} rotation={item.rotation} weaponName={item.type.replace('WALLBUY: ', '')} cost={item.cost} />;
+        }
+        if (item.id === 'buyableEnding') return (
+          <group key={item.id} position={item.pos}>
+            <Box args={[10, 5, 0.5]} position={[0, 2.5, 0]}>
+              <meshStandardMaterial color="#222" metalness={0.8} roughness={0.2} />
+            </Box>
+            <Box args={[1, 6, 1]} position={[-5, 3, 0]}><meshStandardMaterial color="#111" /></Box>
+            <Box args={[1, 6, 1]} position={[5, 3, 0]}><meshStandardMaterial color="#111" /></Box>
+            <pointLight position={[0, 4.5, 1]} intensity={20} color="#ff0000" distance={10} />
+          </group>
+        );
+        return <PerkMachine key={item.id} pos={item.pos} color={item.color || '#fff'} label={item.id} />;
+      })}
+      {powerUpsRef.current.map(p => (
+        <group key={p.id} position={p.position}>
+          <PowerUpModel type={p.type} />
+        </group>
+      ))}
+      {botsRef.current.filter(b => b.hp > 0 || b.downedTimer > 0).map(b => (
+        <BotInstance 
+          key={b.id} 
+          position={b.position} 
+          id={b.id} 
+          name={b.name} 
+          targetId={b.targetId} 
+          zombieRefs={zombieRefs} 
+          isDowned={b.isDowned}
+          downedTimer={b.downedTimer}
+          playerPos={playerPos.current}
+          isPlayerDowned={gameState.isDowned}
+          isShooting={Date.now() - b.lastShot < 100}
+          variant={b.variant}
+          isReviving={b.isReviving}
+        />
+      ))}
+      {zombieRefs.current.map(z => (
+        <ZombieInstance key={z.id} position={z.position} variant={z.variant} hitFlash={z.hitFlash} playerPosRef={playerPos} paused={status === GameStatus.PAUSED} isStunned={z.stunTimer > 0} type={z.type} />
+      ))}
+      {dragonActive && (
+        <group ref={dragonGroupRef} position={dragonPos.current} rotation={[0, dragonRotY.current, 0]}>
+          {/* Dragon Body (Rotting) */}
+          <Box args={[4, 4, 10]} position={[0, 0, 0]}>
+            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+          </Box>
+          {/* Exposed Ribs */}
+          <Box args={[4.2, 3.5, 1]} position={[0, 0, 2]}>
+            <meshStandardMaterial color="#8a8370" roughness={1} />
+          </Box>
+          <Box args={[4.2, 3.5, 1]} position={[0, 0, 0]}>
+            <meshStandardMaterial color="#8a8370" roughness={1} />
+          </Box>
+          <Box args={[4.2, 3.5, 1]} position={[0, 0, -2]}>
+            <meshStandardMaterial color="#8a8370" roughness={1} />
+          </Box>
+          
+          {/* Dragon Neck */}
+          <Box args={[2, 2, 4]} position={[0, 1, 6]} rotation={[-0.2, 0, 0]}>
+            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+          </Box>
+
+          {/* Dragon Head */}
+          <group position={[0, 2, 9]}>
+            {/* Upper Skull */}
+            <Box args={[3, 2, 4]} position={[0, 0.5, 0]}>
+              <meshStandardMaterial color="#1a2b1a" roughness={0.9} />
+            </Box>
+            {/* Lower Jaw (Hanging) */}
+            <Box args={[2.5, 1, 3.5]} position={[0, -1, -0.2]} rotation={[0.2, 0, 0]}>
+              <meshStandardMaterial color="#1a2b1a" roughness={0.9} />
+            </Box>
+            {/* Glowing Eyes */}
+            <Sphere args={[0.4, 16, 16]} position={[1, 0.8, 1.5]}>
+              <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={8} />
+            </Sphere>
+            <Sphere args={[0.4, 16, 16]} position={[-1, 0.8, 1.5]}>
+              <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={8} />
+            </Sphere>
+          </group>
+
+          {/* Dragon Wings (Torn) */}
+          <group position={[0, 1, 0]}>
+            {/* Right Wing Base */}
+            <Box args={[10, 0.5, 4]} position={[7, 0, 0]} rotation={[0, 0, 0.2]}>
+              <meshStandardMaterial color="#111" roughness={0.8} />
+            </Box>
+            {/* Right Wing Tip */}
+            <Box args={[8, 0.3, 3]} position={[15, 1.8, 0]} rotation={[0, 0, 0.4]}>
+              <meshStandardMaterial color="#111" roughness={0.8} />
+            </Box>
+            {/* Left Wing Base */}
+            <Box args={[10, 0.5, 4]} position={[-7, 0, 0]} rotation={[0, 0, -0.2]}>
+              <meshStandardMaterial color="#111" roughness={0.8} />
+            </Box>
+            {/* Left Wing Tip */}
+            <Box args={[8, 0.3, 3]} position={[-15, 1.8, 0]} rotation={[0, 0, -0.4]}>
+              <meshStandardMaterial color="#111" roughness={0.8} />
+            </Box>
+          </group>
+
+          {/* Tail */}
+          <Box args={[2, 2, 6]} position={[0, 0, -8]}>
+            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+          </Box>
+          <Box args={[1, 1, 6]} position={[0, -0.5, -13]} rotation={[0.1, 0, 0]}>
+            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+          </Box>
+          
+          {/* Back Spikes */}
+          <Box args={[0.5, 2, 1]} position={[0, 2.5, 2]} rotation={[0.2, 0, 0]}>
+            <meshStandardMaterial color="#111" roughness={0.9} />
+          </Box>
+          <Box args={[0.5, 2, 1]} position={[0, 2.5, -1]} rotation={[0.2, 0, 0]}>
+            <meshStandardMaterial color="#111" roughness={0.9} />
+          </Box>
+          <Box args={[0.5, 2, 1]} position={[0, 2.5, -4]} rotation={[0.2, 0, 0]}>
+            <meshStandardMaterial color="#111" roughness={0.9} />
+          </Box>
+
+          <pointLight position={[0, 2, 8]} intensity={20} color="#ffaa00" distance={30} />
+          
+          <group position={[0, 5, 0]} rotation={[0, -dragonRotY.current, 0]}>
+          </group>
+        </group>
+      )}
+      {projectiles.current.map(p => (
+        <Sphere key={p.id} args={[0.15, 8, 8]} position={p.position}>
+           <meshStandardMaterial color={p.type === 'grenade' ? '#222' : (p.type === 'flashbang' ? '#888' : '#ff0000')} emissive={p.type === 'monkeyBomb' ? '#ff0000' : '#000'} emissiveIntensity={p.type === 'monkeyBomb' ? 2 : 0} />
+        </Sphere>
+      ))}
+      {effects.current.map(e => (
+        <group key={e.id}>
+           {e.type === 'tracer' ? <Tracer start={e.pos} end={e.dir!} color={e.color} /> : 
+            e.type === 'explosion' ? <Sphere args={[4, 16, 16]} position={e.pos}><meshStandardMaterial color={e.color} transparent opacity={e.life * 2} /></Sphere> :
+            e.type === 'flash' ? (
+              <group position={e.pos}>
+                <Sphere args={[e.scale ? e.scale * 2 : 6, 16, 16]}>
+                  <meshStandardMaterial color={e.color || "#fff"} transparent opacity={e.life * 3} emissive={e.color || "#fff"} emissiveIntensity={2} />
+                </Sphere>
+                <pointLight intensity={e.life * 50} color={e.color || "#fff"} distance={e.scale ? e.scale * 20 : 20} />
+              </group>
+            ) :
+            e.type === 'blood' ? <Sphere args={[0.2 * (e.scale || 1), 8, 8]} position={e.pos}><meshStandardMaterial color={e.color} transparent opacity={e.life * 3} /></Sphere> : null}
+        </group>
+      ))}
+      <group visible={!thirdPersonMode && gameMode !== 'dead_ops'}>
+        <group ref={viewmodelRef}>
+          <Suspense fallback={null}>
+            <WeaponModel weaponName={gameState.weaponName} camo={displayCamo} attachments={gameState.attachments} />
+            {/* First-person arms */}
+            <group position={[0.1, -0.15, 0.2]} rotation={[-0.2, 0.1, 0]}>
+              <Box args={[0.06, 0.06, 0.3]}>
+                <meshStandardMaterial color="#2563eb" roughness={0.9} />
+              </Box>
+              {/* Hand */}
+              <Box args={[0.07, 0.07, 0.07]} position={[0, 0, -0.15]}>
+                <meshStandardMaterial color="#fca5a5" roughness={0.8} />
+              </Box>
+            </group>
+            <group position={[-0.1, -0.05, 0.1]} rotation={[-0.1, -0.2, 0]}>
+              <Box args={[0.06, 0.06, 0.3]}>
+                <meshStandardMaterial color="#2563eb" roughness={0.9} />
+              </Box>
+              {/* Hand */}
+              <Box args={[0.07, 0.07, 0.07]} position={[0, 0, -0.15]}>
+                <meshStandardMaterial color="#fca5a5" roughness={0.8} />
+              </Box>
+            </group>
+          </Suspense>
+        </group>
+        <group ref={knifeRef} visible={false}>
+           <Box args={[0.05, 0.5, 0.05]} position={[0, 0, 0]}><meshStandardMaterial color="#888" metalness={0.9} roughness={0.1} /></Box>
+           <Box args={[0.08, 0.15, 0.08]} position={[0, -0.3, 0]}><meshStandardMaterial color="#333" /></Box>
+           {/* Hand holding knife */}
+           <Box args={[0.1, 0.1, 0.1]} position={[0, -0.3, 0.05]}><meshStandardMaterial color="#fca5a5" roughness={0.8} /></Box>
+           {/* Arm */}
+           <Box args={[0.08, 0.4, 0.08]} position={[0, -0.6, 0.1]} rotation={[-0.2, 0, 0]}><meshStandardMaterial color="#2563eb" roughness={0.9} /></Box>
+        </group>
+      </group>
+      
+      <Gravestone position={currentGravePos} rotation={currentGraveRot} />
+      {(thirdPersonMode || gameMode === 'dead_ops') && (
+        <LocalPlayerModel 
+          playerPos={playerPos.current}
+          playerRot={targetRot.current}
+          isDowned={gameState.isDowned}
+          weaponName={gameState.weaponName}
+          camo={displayCamo}
+          isShooting={isShooting.current}
+          variant={progression.xp % 100} // Use XP as a seed for player variant
+          scale={gameMode === 'dead_ops' ? 0.5 : 1}
+        />
+      )}
+    </>
+  );
+};
+
+
+
+const Tracer: React.FC<{ start: THREE.Vector3; end: THREE.Vector3; color: string }> = ({ start, end, color }) => {
+  const line = useMemo(() => new THREE.BufferGeometry().setFromPoints([start, end]), [start, end]);
+  return (
+    <primitive object={new THREE.Line(line, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 }))} />
+  );
+};
+
+const PackAPunchMachine: React.FC<{ pos: THREE.Vector3 }> = ({ pos }) => {
+  const texture = useTexture('https://picsum.photos/seed/metal/512/512');
+  return (
+    <group position={pos}>
+      {/* Machine Body */}
+      <Box args={[2, 3, 2]} position={[0, 1.5, 0]}>
+        <meshStandardMaterial color="#444" map={texture} metalness={0.8} roughness={0.2} />
+      </Box>
+      {/* Glowing Screen/Panel */}
+      <Box args={[1.8, 1, 0.1]} position={[0, 2, 1.01]}>
+        <meshStandardMaterial color="#00ffcc" emissive="#00ffcc" emissiveIntensity={5} />
+      </Box>
+      {/* Top Rotating Element */}
+      <Float speed={5} rotationIntensity={2} floatIntensity={1}>
+        <Box args={[0.5, 0.5, 0.5]} position={[0, 3.3, 0]}>
+           <meshStandardMaterial color="#00ffcc" emissive="#00ffcc" emissiveIntensity={10} />
+        </Box>
+      </Float>
+      {/* Base Light */}
+      <pointLight position={[0, 2, 1.5]} intensity={20} color="#00ffcc" distance={10} />
+    </group>
+  );
+};
+
+const LocalPlayerModel: React.FC<{
+  playerPos: THREE.Vector3;
+  playerRot: THREE.Euler;
+  isDowned: boolean;
+  weaponName: string;
+  camo: WeaponCamo;
+  isShooting: boolean;
+  variant: number;
+  scale?: number;
+}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1 }) => {
+  const mesh = useRef<THREE.Group>(null);
+  const leftLeg = useRef<THREE.Mesh>(null);
+  const rightLeg = useRef<THREE.Mesh>(null);
+  const leftArm = useRef<THREE.Mesh>(null);
+  const rightArm = useRef<THREE.Mesh>(null);
+  const weaponGroup = useRef<THREE.Group>(null);
+  const lastPos = useRef(new THREE.Vector3());
+  const walkTime = useRef(0);
+
+  const clothingColor = useMemo(() => {
+    const colors = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea"];
+    return colors[variant % colors.length];
+  }, [variant]);
+
+  const vestColor = useMemo(() => {
+    const colors = ["#1a2e1a", "#2e1a1a", "#1a1a2e", "#2e2e1a", "#1a2e2e"];
+    return colors[variant % colors.length];
+  }, [variant]);
+
+  const skinColor = useMemo(() => {
+    const colors = ["#fca5a5", "#f97316", "#fbbf24", "#d97706", "#78350f"];
+    return colors[variant % colors.length];
+  }, [variant]);
+
+  const helmetType = useMemo(() => variant % 3, [variant]); // 0: none, 1: standard, 2: heavy
+  const sleeveType = useMemo(() => (variant >> 2) % 2, [variant]); // 0: long, 1: short
+  const backpackType = useMemo(() => (variant >> 3) % 3, [variant]); // 0: none, 1: small, 2: large
+  const hairColor = useMemo(() => {
+    const colors = ["#452721", "#1a1a1a", "#7a5c3d", "#d4af37", "#ffffff"];
+    return colors[(variant >> 4) % colors.length];
+  }, [variant]);
+  const hairType = useMemo(() => (variant >> 5) % 3, [variant]); // 0: short, 1: mohawk, 2: bald/shaved
+  
+  useFrame((state, delta) => {
+    if (mesh.current) {
+      mesh.current.position.copy(playerPos);
+      if (isDowned) {
+        mesh.current.rotation.x = -Math.PI / 2.2;
+        mesh.current.position.y = 0.2;
+        if (leftLeg.current) leftLeg.current.rotation.x = 0;
+        if (rightLeg.current) rightLeg.current.rotation.x = 0;
+        if (leftArm.current) leftArm.current.rotation.x = 0;
+        if (rightArm.current) rightArm.current.rotation.x = 0;
+      } else {
+        mesh.current.rotation.copy(playerRot);
+        mesh.current.rotation.x = 0; // Keep upright
+        mesh.current.rotation.z = 0;
+
+        // Calculate movement speed for animation
+        const speed = playerPos.distanceTo(lastPos.current) / delta;
+        lastPos.current.copy(playerPos);
+
+        // Base arm rotation for holding weapon
+        const holdWeaponRotX = -Math.PI / 2.2; // Pointing mostly forward
+
+        if (speed > 0.1) {
+          walkTime.current += delta * speed * 2;
+          const swing = Math.sin(walkTime.current) * 0.5;
+          if (leftLeg.current) leftLeg.current.rotation.x = swing;
+          if (rightLeg.current) rightLeg.current.rotation.x = -swing;
+          if (leftArm.current) leftArm.current.rotation.x = -swing * 0.5; // Less swing for left arm
+          if (rightArm.current) rightArm.current.rotation.x = holdWeaponRotX + (swing * 0.1); // Right arm holds weapon steady
+        } else {
+          // Reset to idle
+          walkTime.current = 0;
+          if (leftLeg.current) leftLeg.current.rotation.x = THREE.MathUtils.lerp(leftLeg.current.rotation.x, 0, delta * 10);
+          if (rightLeg.current) rightLeg.current.rotation.x = THREE.MathUtils.lerp(rightLeg.current.rotation.x, 0, delta * 10);
+          if (leftArm.current) leftArm.current.rotation.x = THREE.MathUtils.lerp(leftArm.current.rotation.x, 0, delta * 10);
+          if (rightArm.current) rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, holdWeaponRotX, delta * 10);
+        }
+
+        // Shooting animation (recoil)
+        if (weaponGroup.current) {
+          if (isShooting) {
+            // Kick back and up
+            weaponGroup.current.position.z = THREE.MathUtils.lerp(weaponGroup.current.position.z, 0.4, delta * 30);
+            weaponGroup.current.rotation.x = THREE.MathUtils.lerp(weaponGroup.current.rotation.x, Math.PI / 2.2 - 0.2, delta * 30);
+            if (rightArm.current) {
+              rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, holdWeaponRotX - 0.1, delta * 30);
+            }
+          } else {
+            // Return to resting position
+            weaponGroup.current.position.z = THREE.MathUtils.lerp(weaponGroup.current.position.z, 0.2, delta * 15);
+            weaponGroup.current.rotation.x = THREE.MathUtils.lerp(weaponGroup.current.rotation.x, Math.PI / 2.2, delta * 15);
+          }
+        }
+      }
+    }
+  });
+
+  return (
+    <group ref={mesh}>
+      {/* Legs */}
+      <group position={[-0.15, 0.8, 0]} ref={leftLeg}>
+        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
+          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
+        </Box>
+        {/* Boot */}
+        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
+          <meshStandardMaterial color="#111" roughness={0.9} />
+        </Box>
+      </group>
+      <group position={[0.15, 0.8, 0]} ref={rightLeg}>
+        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
+          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
+        </Box>
+        {/* Boot */}
+        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
+          <meshStandardMaterial color="#111" roughness={0.9} />
+        </Box>
+      </group>
+      {/* Torso */}
+      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
+        <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+      </Box>
+      {/* Tactical Vest */}
+      <Box args={[0.65, 0.7, 0.45]} position={[0, 1.3, 0]}>
+        <meshStandardMaterial color={vestColor} roughness={0.8} />
+      </Box>
+      {/* Backpack */}
+      {backpackType > 0 && (
+        <Box args={[backpackType === 1 ? 0.4 : 0.5, backpackType === 1 ? 0.5 : 0.7, 0.2]} position={[0, 1.3, -0.3]}>
+          <meshStandardMaterial color={vestColor} roughness={0.8} />
+        </Box>
+      )}
+      {/* Arms */}
+      <group position={[-0.4, 1.6, 0]} ref={leftArm}>
+        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
+          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+        </Box>
+        {sleeveType === 1 && (
+          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
+            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Shoulder Pad */}
+        {helmetType === 2 && (
+          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+      </group>
+      <group position={[0.4, 1.6, 0]} ref={rightArm}>
+        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
+          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+        </Box>
+        {sleeveType === 1 && (
+          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
+            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Shoulder Pad */}
+        {helmetType === 2 && (
+          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Weapon attached to right arm */}
+        {!isDowned && (
+          <group ref={weaponGroup} position={[0, -0.7, 0.2]} rotation={[Math.PI / 2.2, 0, 0]} scale={[0.5, 0.5, 0.5]}>
+            <WeaponModel weaponName={weaponName} camo={camo} />
+          </group>
+        )}
+      </group>
+      {/* Head */}
+      <group position={[0, 1.9, 0]}>
+        <Box args={[0.4, 0.45, 0.45]}>
+          <meshStandardMaterial color={isDowned ? "#666" : skinColor} roughness={0.8} />
+        </Box>
+        {/* Hair */}
+        {helmetType === 0 && hairType !== 2 && (
+          <group position={[0, 0.2, 0]}>
+            {hairType === 0 ? (
+              <Box args={[0.42, 0.15, 0.47]}>
+                <meshStandardMaterial color={hairColor} />
+              </Box>
+            ) : (
+              <Box args={[0.1, 0.25, 0.47]}>
+                <meshStandardMaterial color={hairColor} />
+              </Box>
+            )}
+          </group>
+        )}
+        {/* Helmet */}
+        {helmetType > 0 && (
+          <Box args={[0.45, helmetType === 1 ? 0.2 : 0.35, 0.5]} position={[0, helmetType === 1 ? 0.15 : 0.1, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Face Shield for heavy helmet */}
+        {helmetType === 2 && (
+          <Box args={[0.4, 0.3, 0.05]} position={[0, -0.05, 0.23]}>
+            <meshStandardMaterial color="#111" transparent opacity={0.8} />
+          </Box>
+        )}
+        {/* Eyes */}
+        <Box args={[0.1, 0.05, 0.05]} position={[-0.1, 0.05, 0.21]}>
+          <meshStandardMaterial color="#000" />
+        </Box>
+        <Box args={[0.1, 0.05, 0.05]} position={[0.1, 0.05, 0.21]}>
+          <meshStandardMaterial color="#000" />
+        </Box>
+      </group>
+    </group>
+  );
+};
+
+const BotInstance: React.FC<{ 
+  position: THREE.Vector3; 
+  id: string; 
+  name: string; 
+  targetId: string | null; 
+  zombieRefs: React.RefObject<ZombieData[]>;
+  isDowned: boolean;
+  downedTimer: number;
+  playerPos: THREE.Vector3;
+  isPlayerDowned: boolean;
+  isShooting: boolean;
+  variant: number;
+  isReviving: boolean;
+}> = ({ position, id, name, targetId, zombieRefs, isDowned, downedTimer, playerPos, isPlayerDowned, isShooting, variant, isReviving }) => {
+  const mesh = useRef<THREE.Group>(null);
+  const leftLeg = useRef<THREE.Mesh>(null);
+  const rightLeg = useRef<THREE.Mesh>(null);
+  const leftArm = useRef<THREE.Mesh>(null);
+  const rightArm = useRef<THREE.Mesh>(null);
+  const weaponGroup = useRef<THREE.Group>(null);
+  const lastPos = useRef(new THREE.Vector3());
+  const walkTime = useRef(0);
+
+  const clothingColor = useMemo(() => {
+    const colors = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea"];
+    return colors[variant % colors.length];
+  }, [variant]);
+
+  const vestColor = useMemo(() => {
+    const colors = ["#1a2e1a", "#2e1a1a", "#1a1a2e", "#2e2e1a", "#1a2e2e"];
+    return colors[variant % colors.length];
+  }, [variant]);
+
+  const skinColor = useMemo(() => {
+    const colors = ["#fca5a5", "#f97316", "#fbbf24", "#d97706", "#78350f"];
+    return colors[variant % colors.length];
+  }, [variant]);
+
+  const helmetType = useMemo(() => variant % 3, [variant]); // 0: none, 1: standard, 2: heavy
+  const sleeveType = useMemo(() => (variant >> 2) % 2, [variant]); // 0: long, 1: short
+  const backpackType = useMemo(() => (variant >> 3) % 3, [variant]); // 0: none, 1: small, 2: large
+  const hairColor = useMemo(() => {
+    const colors = ["#452721", "#1a1a1a", "#7a5c3d", "#d4af37", "#ffffff"];
+    return colors[(variant >> 4) % colors.length];
+  }, [variant]);
+  const hairType = useMemo(() => (variant >> 5) % 3, [variant]); // 0: short, 1: mohawk, 2: bald/shaved
+  
+  useFrame((state, delta) => {
+    if (mesh.current) {
+      mesh.current.position.copy(position);
+      if (isDowned) {
+        mesh.current.rotation.x = -Math.PI / 2.2; // Laying down
+        mesh.current.position.y = 0.2;
+        if (leftLeg.current) leftLeg.current.rotation.x = 0;
+        if (rightLeg.current) rightLeg.current.rotation.x = 0;
+        if (leftArm.current) leftArm.current.rotation.x = 0;
+        if (rightArm.current) rightArm.current.rotation.x = 0;
+      } else {
+        mesh.current.rotation.x = 0;
+        if (targetId && zombieRefs.current && !isPlayerDowned) {
+          const target = zombieRefs.current.find(z => z.id === targetId);
+          if (target) {
+            const lookPos = target.position.clone();
+            lookPos.y = mesh.current.position.y;
+            mesh.current.lookAt(lookPos);
+          }
+        } else {
+          const lookPos = playerPos.clone();
+          lookPos.y = mesh.current.position.y;
+          mesh.current.lookAt(lookPos);
+        }
+
+        // Calculate movement speed for animation
+        const speed = position.distanceTo(lastPos.current) / delta;
+        lastPos.current.copy(position);
+
+        // Base arm rotation for holding weapon
+        const holdWeaponRotX = -Math.PI / 2.2; // Pointing mostly forward
+
+        if (speed > 0.1) {
+          walkTime.current += delta * speed * 2;
+          const swing = Math.sin(walkTime.current) * 0.5;
+          if (leftLeg.current) leftLeg.current.rotation.x = swing;
+          if (rightLeg.current) rightLeg.current.rotation.x = -swing;
+          if (leftArm.current) leftArm.current.rotation.x = -swing * 0.5; // Less swing for left arm
+          if (rightArm.current) rightArm.current.rotation.x = holdWeaponRotX + (swing * 0.1); // Right arm holds weapon steady
+        } else {
+          // Reset to idle
+          walkTime.current = 0;
+          if (leftLeg.current) leftLeg.current.rotation.x = THREE.MathUtils.lerp(leftLeg.current.rotation.x, 0, delta * 10);
+          if (rightLeg.current) rightLeg.current.rotation.x = THREE.MathUtils.lerp(rightLeg.current.rotation.x, 0, delta * 10);
+          if (leftArm.current) leftArm.current.rotation.x = THREE.MathUtils.lerp(leftArm.current.rotation.x, 0, delta * 10);
+          if (rightArm.current) rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, holdWeaponRotX, delta * 10);
+        }
+
+        // Shooting animation (recoil)
+        if (weaponGroup.current) {
+          if (isShooting) {
+            // Kick back and up
+            weaponGroup.current.position.z = THREE.MathUtils.lerp(weaponGroup.current.position.z, 0.4, delta * 30);
+            weaponGroup.current.rotation.x = THREE.MathUtils.lerp(weaponGroup.current.rotation.x, Math.PI / 2.2 - 0.2, delta * 30);
+            if (rightArm.current) {
+              rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, holdWeaponRotX - 0.1, delta * 30);
+            }
+          } else {
+            // Return to resting position
+            weaponGroup.current.position.z = THREE.MathUtils.lerp(weaponGroup.current.position.z, 0.2, delta * 15);
+            weaponGroup.current.rotation.x = THREE.MathUtils.lerp(weaponGroup.current.rotation.x, Math.PI / 2.2, delta * 15);
+          }
+        }
+      }
+    }
+  });
+
+  return (
+    <group ref={mesh}>
+      {/* Legs */}
+      <group position={[-0.15, 0.8, 0]} ref={leftLeg}>
+        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
+          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
+        </Box>
+        {/* Boot */}
+        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
+          <meshStandardMaterial color="#111" roughness={0.9} />
+        </Box>
+      </group>
+      <group position={[0.15, 0.8, 0]} ref={rightLeg}>
+        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
+          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
+        </Box>
+        {/* Boot */}
+        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
+          <meshStandardMaterial color="#111" roughness={0.9} />
+        </Box>
+      </group>
+      {/* Torso */}
+      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
+        <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+      </Box>
+      {/* Tactical Vest */}
+      <Box args={[0.65, 0.7, 0.45]} position={[0, 1.3, 0]}>
+        <meshStandardMaterial color={vestColor} roughness={0.8} />
+      </Box>
+      {/* Backpack */}
+      {backpackType > 0 && (
+        <Box args={[backpackType === 1 ? 0.4 : 0.5, backpackType === 1 ? 0.5 : 0.7, 0.2]} position={[0, 1.3, -0.3]}>
+          <meshStandardMaterial color={vestColor} roughness={0.8} />
+        </Box>
+      )}
+      {/* Arms */}
+      <group position={[-0.4, 1.6, 0]} ref={leftArm}>
+        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
+          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+        </Box>
+        {sleeveType === 1 && (
+          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
+            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Shoulder Pad */}
+        {helmetType === 2 && (
+          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+      </group>
+      <group position={[0.4, 1.6, 0]} ref={rightArm}>
+        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
+          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+        </Box>
+        {sleeveType === 1 && (
+          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
+            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Shoulder Pad */}
+        {helmetType === 2 && (
+          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Weapon placeholder attached to right arm */}
+        {!isDowned && (
+          <group ref={weaponGroup} position={[0, -0.7, 0.2]} rotation={[Math.PI / 2.2, 0, 0]}>
+            <Box args={[0.1, 0.1, 0.6]} position={[0, 0, 0]}>
+              <meshStandardMaterial color="#333" roughness={0.5} />
+            </Box>
+          </group>
+        )}
+      </group>
+      {/* Head */}
+      <group position={[0, 1.9, 0]}>
+        <Box args={[0.4, 0.45, 0.45]}>
+          <meshStandardMaterial color={isDowned ? "#666" : skinColor} roughness={0.8} />
+        </Box>
+        {/* Hair */}
+        {helmetType === 0 && hairType !== 2 && (
+          <group position={[0, 0.2, 0]}>
+            {hairType === 0 ? (
+              <Box args={[0.42, 0.15, 0.47]}>
+                <meshStandardMaterial color={hairColor} />
+              </Box>
+            ) : (
+              <Box args={[0.1, 0.25, 0.47]}>
+                <meshStandardMaterial color={hairColor} />
+              </Box>
+            )}
+          </group>
+        )}
+        {/* Helmet */}
+        {helmetType > 0 && (
+          <Box args={[0.45, helmetType === 1 ? 0.2 : 0.35, 0.5]} position={[0, helmetType === 1 ? 0.15 : 0.1, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Face Shield for heavy helmet */}
+        {helmetType === 2 && (
+          <Box args={[0.4, 0.3, 0.05]} position={[0, -0.05, 0.23]}>
+            <meshStandardMaterial color="#111" transparent opacity={0.8} />
+          </Box>
+        )}
+        {/* Eyes */}
+        <Box args={[0.1, 0.05, 0.05]} position={[-0.1, 0.05, 0.21]}>
+          <meshStandardMaterial color="#000" />
+        </Box>
+        <Box args={[0.1, 0.05, 0.05]} position={[0.1, 0.05, 0.21]}>
+          <meshStandardMaterial color="#000" />
+        </Box>
+      </group>
+      <group position={[0, 2.8, 0]}>
+         <Html center zIndexRange={[100, 0]}>
+            <div className="flex flex-col items-center pointer-events-none select-none">
+               <div className="bg-blue-600/80 text-white p-1 rounded-full border border-white/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] mb-1">
+                  <User size={12} />
+               </div>
+            </div>
+         </Html>
+      </group>
+      <Text position={[0, 2.5, 0]} fontSize={0.3} color={isDowned ? "#ef4444" : (isReviving ? "#10b981" : "#60a5fa")} outlineWidth={0.02} outlineColor="#000">
+        {isDowned ? `REVIVE ${name} (${downedTimer}s)` : (isReviving ? `${name} (REVIVING)` : name)}
+      </Text>
+      {isDowned && (
+        <Html position={[0, 3.5, 0]} center zIndexRange={[100, 0]}>
+          <div className="flex flex-col items-center animate-bounce pointer-events-none select-none">
+            <div className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-xs whitespace-nowrap border-2 border-white shadow-[0_0_15px_rgba(255,0,0,0.8)] flex items-center gap-2">
+              <span className="text-lg">✚</span> REVIVE {name}
+            </div>
+            <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-red-600 drop-shadow-lg" />
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+};
+
+const ZombieInstance: React.FC<{ position: THREE.Vector3; variant: number; hitFlash: number; playerPosRef: React.RefObject<THREE.Vector3>; paused: boolean; isStunned: boolean; type: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute' }> = ({ position, variant, hitFlash, playerPosRef, paused, isStunned, type }) => {
+  const mesh = useRef<THREE.Group>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  
+  const clothingColor = useMemo(() => {
+    if (type === 'inferno') return '#ff4500'; // Orange-Red
+    if (type === 'parasite') return '#800080'; // Purple
+    if (type === 'crawler') return '#556b2f'; // Dark Olive
+    if (type === 'brute') return '#000000'; // Black
+    if (type === 'runner') return '#8b0000'; // Dark Red for runners
+    if (type === 'tank') return '#2f4f4f'; // Dark Slate Gray for tanks
+    if (variant < 0.3) return '#2e3b23'; 
+    if (variant < 0.6) return '#3b2a23'; 
+    return '#1a1a2e'; 
+  }, [variant, type]);
+
+  const skinColor = useMemo(() => {
+    if (type === 'inferno') return '#330000'; // Charred
+    if (type === 'parasite') return '#9370db'; // Pale Purple
+    if (type === 'crawler') return '#6b8e23'; // Olive Drab
+    if (type === 'brute') return '#444444'; // Grey
+    if (type === 'tank') return '#556b2f'; // Olive Drab for tanks
+    if (variant < 0.5) return '#b8b09b'; 
+    return '#8a8370'; 
+  }, [variant, type]);
+
+  const scale = useMemo(() => {
+    if (type === 'brute') return 1.5;
+    if (type === 'tank') return 1.3;
+    if (type === 'runner') return 0.9;
+    if (type === 'parasite') return 0.6;
+    if (type === 'crawler') return 0.7;
+    return 1.0;
+  }, [type]);
+
+  useFrame((state, delta) => {
+    if (paused) return;
+    if (mesh.current && playerPosRef.current) {
+      // Base position
+      mesh.current.position.set(position.x, 0, position.z);
+      
+      if (!isStunned) {
+        dummy.position.copy(mesh.current.position);
+        dummy.lookAt(playerPosRef.current.x, 0, playerPosRef.current.z);
+        mesh.current.quaternion.slerp(dummy.quaternion, 6 * delta);
+        
+        // Basic movement bobbing
+        const bobSpeed = type === 'runner' ? 15 : (type === 'tank' ? 2 : 4);
+        let yOffset = Math.abs(Math.sin(state.clock.elapsedTime * bobSpeed + variant * 10)) * 0.12;
+        
+        if (type === 'parasite') {
+             yOffset = 2.0 + Math.sin(state.clock.elapsedTime * 2) * 0.5; // Flying height
+        } else if (type === 'crawler') {
+             yOffset = -0.5 + Math.abs(Math.sin(state.clock.elapsedTime * 10)) * 0.1; // Low profile
+        }
+
+        mesh.current.position.y = position.y + yOffset;
+
+        // HIT ANIMATION: Flinch backward and jitter
+        if (hitFlash > 0) {
+           // Local tilt backward
+           mesh.current.rotateX(-hitFlash * 0.5);
+           // Impact jitter
+           mesh.current.position.x += (Math.random() - 0.5) * hitFlash * 0.15;
+           mesh.current.position.z += (Math.random() - 0.5) * hitFlash * 0.15;
+        }
+      } else {
+        mesh.current.position.y = position.y;
+        mesh.current.rotation.z = Math.sin(state.clock.elapsedTime * 10) * 0.1;
+      }
+    }
+  });
+
+  return (
+    <group ref={mesh} scale={[scale, scale, scale]}>
+      {/* Torso */}
+      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} emissive={hitFlash > 0 ? '#ff0000' : '#000'} roughness={0.9} />
+      </Box>
+      
+      {/* Torn Shirt Details */}
+      <Box args={[0.62, 0.3, 0.42]} position={[0, 1.4, 0]} rotation={[0.1, 0, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : (type === 'tank' ? '#111' : '#222')} roughness={1} />
+      </Box>
+      <Box args={[0.65, 0.2, 0.45]} position={[0, 1.0, 0]} rotation={[-0.1, 0.1, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : (type === 'tank' ? '#222' : '#333')} roughness={1} />
+      </Box>
+
+      {/* Head */}
+      <Box args={[0.4, 0.45, 0.45]} position={[0, 1.9, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} roughness={0.8} />
+      </Box>
+      
+      {/* Jaw/Mouth */}
+      <Box args={[0.3, 0.15, 0.46]} position={[0, 1.75, 0.05]} rotation={[0.2, 0, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : '#3a1f1f'} roughness={0.9} />
+      </Box>
+
+      {/* Glowing Eyes */}
+      <Sphere args={[0.04, 8, 8]} position={[0.12, 1.95, 0.22]}>
+        <meshStandardMaterial color={type === 'runner' ? '#ffaa00' : '#ff0000'} emissive={type === 'runner' ? '#ffaa00' : '#ff0000'} emissiveIntensity={5} />
+      </Sphere>
+      <Sphere args={[0.04, 8, 8]} position={[-0.12, 1.95, 0.22]}>
+        <meshStandardMaterial color={type === 'runner' ? '#ffaa00' : '#ff0000'} emissive={type === 'runner' ? '#ffaa00' : '#ff0000'} emissiveIntensity={5} />
+      </Sphere>
+
+      {/* Arms (Classic reach pose) */}
+      <group position={[0.35, 1.5, 0]}>
+        <Box args={[0.18, 0.18, 0.4]} position={[0, 0, 0.2]}>
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} roughness={0.9} />
+        </Box>
+        <Box args={[0.15, 0.15, 0.4]} position={[0, 0, 0.55]}>
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} roughness={0.8} />
+        </Box>
+      </group>
+      
+      <group position={[-0.35, 1.5, 0]}>
+        <Box args={[0.18, 0.18, 0.4]} position={[0, 0, 0.2]}>
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} roughness={0.9} />
+        </Box>
+        <Box args={[0.15, 0.15, 0.4]} position={[0, 0, 0.55]}>
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} roughness={0.8} />
+        </Box>
+      </group>
+
+      {/* Legs */}
+      <Box args={[0.22, 0.8, 0.22]} position={[0.15, 0.4, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : '#1a1a1a'} roughness={0.9} />
+      </Box>
+      <Box args={[0.22, 0.8, 0.22]} position={[-0.15, 0.4, 0]}>
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : '#1a1a1a'} roughness={0.9} />
+      </Box>
+      
+      {/* Blood Splatters */}
+      <Box args={[0.2, 0.2, 0.41]} position={[0.1, 1.3, 0.01]}>
+        <meshStandardMaterial color="#500" roughness={0.5} />
+      </Box>
+      <Box args={[0.15, 0.3, 0.46]} position={[-0.1, 1.8, 0.01]}>
+        <meshStandardMaterial color="#500" roughness={0.5} />
+      </Box>
+    </group>
+  );
+};
+
+const MysteryBox: React.FC<{ pos: THREE.Vector3 }> = ({ pos }) => {
+  const texture = useTexture('https://picsum.photos/seed/wood/512/512');
+  const lightRef = useRef<THREE.PointLight>(null);
+  
+  useFrame((state) => {
+    if (lightRef.current) {
+      lightRef.current.intensity = 20 + Math.sin(state.clock.elapsedTime * 5) * 5;
+    }
+  });
+
+  return (
+    <group position={pos}>
+      {/* Main Box Body */}
+      <Box args={[4, 1.2, 1.5]} position={[0, 0.6, 0]}>
+        <meshStandardMaterial color="#4a3525" map={texture} metalness={0.1} roughness={0.9} />
+      </Box>
+      
+      {/* Box Trim/Edges */}
+      <Box args={[4.1, 0.1, 1.6]} position={[0, 0.1, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.8} roughness={0.2} />
+      </Box>
+      <Box args={[4.1, 0.1, 1.6]} position={[0, 1.15, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.8} roughness={0.2} />
+      </Box>
+
+      {/* Glowing Question Marks */}
+      <Text position={[0, 0.6, 0.76]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+        ?
+      </Text>
+      <Text position={[0, 0.6, -0.76]} rotation={[0, Math.PI, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+        ?
+      </Text>
+      <Text position={[2.01, 0.6, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+        ?
+      </Text>
+      <Text position={[-2.01, 0.6, 0]} rotation={[0, -Math.PI / 2, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+        ?
+      </Text>
+
+      {/* Lid (Slightly Open) */}
+      <group position={[0, 1.2, -0.75]} rotation={[-0.2, 0, 0]}>
+        <Box args={[4, 0.3, 1.5]} position={[0, 0.15, 0.75]}>
+          <meshStandardMaterial color="#4a3525" map={texture} metalness={0.1} roughness={0.9} />
+        </Box>
+        <Box args={[4.1, 0.1, 1.6]} position={[0, 0.15, 0.75]}>
+          <meshStandardMaterial color="#222" metalness={0.8} roughness={0.2} />
+        </Box>
+      </group>
+
+      {/* Glowing Interior / Light Beam */}
+      <Cylinder args={[0.5, 0.5, 20, 16]} position={[0, 10, 0]}>
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.3} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </Cylinder>
+      <Cylinder args={[1.5, 1.5, 20, 16]} position={[0, 10, 0]}>
+        <meshBasicMaterial color="#00aaff" transparent opacity={0.1} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </Cylinder>
+
+      {/* Magical Sparkles */}
+      <Sparkles count={50} scale={[4, 2, 2]} position={[0, 1.5, 0]} size={6} speed={0.4} opacity={1} color="#00ffff" />
+      <Sparkles count={30} scale={[2, 10, 2]} position={[0, 5, 0]} size={4} speed={0.8} opacity={0.5} color="#ffffff" />
+
+      {/* Pulsing Light */}
+      <pointLight ref={lightRef} position={[0, 1.5, 0]} intensity={20} color="#00ffff" distance={20} />
+      
+      {/* Inner Glow Base */}
+      <Box args={[3.8, 0.1, 1.3]} position={[0, 1.2, 0]}>
+        <meshBasicMaterial color="#00ffff" transparent opacity={0.8} />
+      </Box>
+    </group>
+  );
+};
+
+const Ground: React.FC<{ mapConfig: MapConfig }> = ({ mapConfig }) => {
+  const texture = useTexture(mapConfig.floorTexture || 'https://picsum.photos/seed/asphalt/512/512');
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(100, 100);
+
+  return (
+    <Plane args={[1000, 1000]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <meshStandardMaterial color={mapConfig.floorColor} map={texture} roughness={0.8} />
+    </Plane>
+  );
+};
+
+const PerkMachine: React.FC<{ pos: THREE.Vector3; color: string; label: string }> = ({ pos, color, label }) => {
+  const texture = useTexture('https://picsum.photos/seed/machine/512/512');
+  const logoTexture = useTexture(`https://picsum.photos/seed/${encodeURIComponent(label)}/256/256`);
+  
+  return (
+    <group position={pos}>
+      {/* Base */}
+      <Box args={[1.4, 0.2, 1.2]} position={[0, 0.1, 0]}>
+        <meshStandardMaterial color="#111" metalness={0.8} roughness={0.2} />
+      </Box>
+      
+      {/* Main Body */}
+      <Box args={[1.2, 2.2, 1]} position={[0, 1.3, 0]}>
+        <meshStandardMaterial color={color} map={texture} metalness={0.6} roughness={0.4} />
+      </Box>
+      
+      {/* Rounded Top */}
+      <Cylinder args={[0.6, 0.6, 1, 32, 1, false, 0, Math.PI]} rotation={[0, Math.PI/2, Math.PI/2]} position={[0, 2.4, 0]}>
+        <meshStandardMaterial color={color} map={texture} metalness={0.6} roughness={0.4} />
+      </Cylinder>
+      
+      {/* Top Sign */}
+      <Box args={[1.2, 0.4, 0.1]} position={[0, 2.8, 0]}>
+        <meshStandardMaterial color="#fff" emissive={color} emissiveIntensity={1} />
+      </Box>
+      <Text position={[0, 2.8, 0.06]} fontSize={0.2} color="#000" outlineWidth={0.01} outlineColor="#fff">
+        {label.replace('PERK: ', '')}
+      </Text>
+      
+      {/* Control Panel Area */}
+      <Box args={[1, 0.6, 0.2]} position={[0, 1.5, 0.55]} rotation={[-0.2, 0, 0]}>
+        <meshStandardMaterial color="#333" metalness={0.5} roughness={0.5} />
+      </Box>
+      
+      {/* Dispenser Slot */}
+      <Box args={[0.8, 0.4, 0.1]} position={[0, 0.6, 0.51]}>
+        <meshStandardMaterial color="#000" />
+      </Box>
+      
+      {/* Glowing Logo Panel */}
+      <Box args={[0.8, 0.8, 0.05]} position={[0, 2.4, 0.5]}>
+        <meshStandardMaterial map={logoTexture} emissive={color} emissiveIntensity={1.5} transparent opacity={0.9} />
+      </Box>
+      
+      {/* Side Panels */}
+      <Box args={[0.1, 2, 0.8]} position={[0.65, 1.3, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.8} />
+      </Box>
+      <Box args={[0.1, 2, 0.8]} position={[-0.65, 1.3, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.8} />
+      </Box>
+      
+      {/* Side Pipe */}
+      <Cylinder args={[0.1, 0.1, 2]} position={[0.7, 1.3, 0.2]}>
+        <meshStandardMaterial color="#888" metalness={0.9} roughness={0.1} />
+      </Cylinder>
+      
+      {/* Light and Glow */}
+      <pointLight intensity={15} color={color} distance={8} position={[0, 2, 1]} />
+    </group>
+  );
+};
+
+const HealthRefillStation: React.FC<{ pos: THREE.Vector3, isLocked: boolean }> = ({ pos, isLocked }) => (
+  <group position={pos}>
+    <Box args={[1, 1.5, 0.1]} position={[0, 0.75, 0]}><meshStandardMaterial color={isLocked ? "#300" : "#fff"} /></Box>
+    <Box args={[0.2, 0.8, 0.2]} position={[0, 0.75, 0.1]}><meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={isLocked ? 0 : 2}/></Box>
+    <pointLight position={[0, 0.75, 0.5]} intensity={5} color="#ff0000" distance={5} />
+  </group>
+);

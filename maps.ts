@@ -1,0 +1,410 @@
+import { MapConfig } from './types';
+
+export const MAPS: MapConfig[] = [
+  {
+    id: 'town',
+    name: 'Red9',
+    description: 'A classic urban battlefield with tight corners and open streets.',
+    thumbnail: 'https://dummyimage.com/400x225/000/000.png',
+    floorColor: '#333',
+    floorTexture: 'https://picsum.photos/seed/asphalt/512/512',
+    skyColor: '#1a1a1a',
+    fogColor: '#111',
+    fogNear: 20,
+    fogFar: 200,
+    spawnPoints: [
+      [0, 1.2, 15], [25, 1.2, -10], [-25, 1.2, 10], [0, 1.2, -35], [15, 1.2, 40], [-15, 1.2, -40]
+    ],
+    craftingTablePos: [0, 1.5, -110],
+    interactables: [
+      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [-25, 0, -15], color: '#ff0000' },
+      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [25, 0, 5], color: '#00ff00' },
+      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [-35, 0, 35], color: '#ffff00' },
+      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [35, 0, -35], color: '#ff8800' },
+      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [0, 0, -45], color: '#4f46e2' },
+      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [82, 0, 85], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [-75, 0, -70], color: '#4b5563' },
+      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [75, 0, -75], color: '#06b2d2' },
+      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [-85, 0, 75], color: '#3b82f6' },
+      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [85, 0, 25], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-50, 0, 0], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [50, 0, 0], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [-70, 0, -70], color: '#a5f3fc' },
+      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [-80, 0, 75], color: '#ef4444' },
+      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [70, 0, -75], color: '#a855f7' },
+      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [-30, 0, 35], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [20, 0, 5], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [-20, 0, -15], color: '#10b981' },
+      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [5, 0, -45], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [0, 0, 60], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [60, 0, 30], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [-60, 0, -30], color: '#ec4899' },
+      { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, -40] },
+      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, 0] },
+      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [88, 0, 85] },
+      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, -95] },
+      { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [20, 1.5, 18] },
+      { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [-30, 1.5, 50] },
+      { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [30, 1.5, -27] },
+      { id: 'wall_ak47', type: 'WALLBUY: AK-47', cost: 1800, pos: [-70, 1.5, -52] },
+      { id: 'wall_galil', type: 'WALLBUY: GALIL', cost: 2000, pos: [70, 1.5, -60] },
+      { id: 'bowie', type: 'WALLBUY: Bowie Knife', cost: 3000, pos: [-54, 1.5, 6.1], rotation: [0, 0, 0], color: '#ffffff' }
+    ],
+    objects: [
+      { type: 'building', pos: [-25, 5, -15], args: [14, 10, 20], color: "#800000", label: "BANK", lightColor: "#ff4444", doorCost: 2500, doorId: "bank_door" },
+      { type: 'building', pos: [25, 6, 5], args: [18, 12, 25], color: "#a52a2a", label: "BAR", lightColor: "#ff6666", doorCost: 1500, doorId: "bar_door" },
+      { type: 'building', pos: [-35, 9, 35], args: [22, 18, 30], color: "#660000", label: "CHURCH", lightColor: "#ff8888", doorCost: 2000, doorId: "church_door" },
+      { type: 'building', pos: [35, 4, -35], args: [25, 8, 15], color: "#440000", label: "DINER", lightColor: "#ff0000", doorCost: 750, doorId: "diner_door" },
+      { type: 'building', pos: [0, 7.5, -45], args: [18, 15, 18], color: "#550000", label: "APARTMENTS", lightColor: "#ff9999", doorCost: 1000, doorId: "apt_door" },
+      { type: 'building', pos: [85, 5, 85], args: [15, 10, 15], color: "#333333", label: "GARAGE", lightColor: "#ffffff", doorCost: 750, doorId: "garage_door" },
+      { type: 'building', pos: [-75, 6, -70], args: [35, 12, 35], color: "#222222", label: "FACTORY", lightColor: "#00ff00", doorCost: 2000, doorId: "factory_door" },
+      { type: 'building', pos: [75, 8, -75], args: [28, 16, 28], color: "#444444", label: "HOSPITAL", lightColor: "#00ffff", doorCost: 2000, doorId: "hospital_door" },
+      { type: 'building', pos: [-85, 5, 75], args: [25, 10, 45], color: "#332211", label: "WAREHOUSE", lightColor: "#ffff00", doorCost: 1500, doorId: "warehouse_door" },
+      { type: 'building', pos: [85, 6, 25], args: [22, 12, 22], color: "#112233", label: "POLICE", lightColor: "#0000ff", doorCost: 1500, doorId: "police_door" },
+      { type: 'building', pos: [-50, 4, 0], args: [12, 8, 12], color: "#223311", label: "STORE", lightColor: "#aaff00", doorCost: 500, doorId: "store_door" },
+      { type: 'building', pos: [50, 4, 0], args: [12, 8, 12], color: "#331122", label: "OFFICE", lightColor: "#ff00aa", doorCost: 500, doorId: "office_door" },
+      { type: 'building', pos: [0, 5, 60], args: [20, 10, 20], color: "#444455", label: "GYM", lightColor: "#78350f", doorCost: 1000, doorId: "gym_door" },
+      { type: 'building', pos: [60, 4, 30], args: [15, 8, 15], color: "#664444", label: "KENNEL", lightColor: "#991b1b", doorCost: 1000, doorId: "kennel_door" },
+      { type: 'building', pos: [-60, 6, -30], args: [15, 12, 15], color: "#556655", label: "LAB", lightColor: "#ec4899", doorCost: 1000, doorId: "lab_door" },
+      { type: 'streetlight', pos: [10, 0, 10], color: '#ffddaa' },
+      { type: 'streetlight', pos: [-10, 0, -10], color: '#ffddaa' },
+      { type: 'streetlight', pos: [10, 0, -30], color: '#ffddaa' },
+      { type: 'streetlight', pos: [-30, 0, 20], color: '#ffddaa' },
+      { type: 'streetlight', pos: [40, 0, 40], color: '#ffddaa' },
+      { type: 'streetlight', pos: [-40, 0, -40], color: '#ffddaa' },
+      { type: 'streetlight', pos: [60, 0, -20], color: '#ffddaa' },
+      { type: 'streetlight', pos: [-60, 0, 20], color: '#ffddaa' },
+      { type: 'box', pos: [120, 5, 0], args: [1, 10, 240], color: '#4a4a4a', texture: 'https://picsum.photos/seed/concrete/512/512' },
+      { type: 'box', pos: [-120, 5, 0], args: [1, 10, 240], color: '#4a4a4a', texture: 'https://picsum.photos/seed/concrete/512/512' },
+      { type: 'box', pos: [0, 5, 120], args: [240, 10, 1], color: '#4a4a4a', texture: 'https://picsum.photos/seed/concrete/512/512' },
+      { type: 'box', pos: [0, 5, -120], args: [240, 10, 1], color: '#4a4a4a', texture: 'https://picsum.photos/seed/concrete/512/512' },
+    ]
+  },
+  {
+    id: 'bunker',
+    name: 'Spendawg',
+    description: 'Tight underground corridors with metallic walls and dim lights.',
+    thumbnail: 'https://dummyimage.com/400x225/000/000.png',
+    floorColor: '#222',
+    floorTexture: 'https://picsum.photos/seed/metalfloor/512/512',
+    skyColor: '#000',
+    fogColor: '#000',
+    fogNear: 5,
+    fogFar: 40,
+    spawnPoints: [
+      [15, 1.2, 15], [-15, 1.2, 15], [15, 1.2, -15], [-15, 1.2, -15],
+      [30, 1.2, 0], [-30, 1.2, 0], [0, 1.2, 30], [0, 1.2, -30]
+    ],
+    craftingTablePos: [0, 1.5, -50],
+    interactables: [
+      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [-10, 0, -10], color: '#ff0000' },
+      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [10, 0, 10], color: '#00ff00' },
+      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [-20, 0, 20], color: '#ffff00' },
+      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [20, 0, -20], color: '#ff8800' },
+      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [-30, 0, -30], color: '#4f46e2' },
+      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [30, 0, -30], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [-30, 0, 30], color: '#4b5563' },
+      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [0, 0, 35], color: '#06b2d2' },
+      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [0, 0, 15], color: '#3b82f6' },
+      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [-40, 0, -40], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [40, 0, 40], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [0, 0, -40], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [40, 0, -40], color: '#a5f3fc' },
+      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [-40, 0, 40], color: '#ef4444' },
+      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [30, 0, 30], color: '#a855f7' },
+      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [-30, 0, -10], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [15, 0, -10], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [-15, 0, 10], color: '#10b981' },
+      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [10, 0, -15], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [45, 0, -15], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [-45, 0, 15], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [0, 0, -55], color: '#ec4899' },
+      { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, -25] },
+      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, 0] },
+      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [50, 0, 50] },
+      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 60] },
+      { id: 'bowie', type: 'WALLBUY: Bowie Knife', cost: 3000, pos: [20.6, 1.5, 5], rotation: [0, Math.PI / 2, 0], color: '#ffffff' }
+    ],
+    objects: [
+      { type: 'streetlight', pos: [10, 0, 10], color: '#aaddff' },
+      { type: 'streetlight', pos: [-10, 0, -10], color: '#aaddff' },
+      { type: 'streetlight', pos: [30, 0, 30], color: '#aaddff' },
+      { type: 'streetlight', pos: [-30, 0, -30], color: '#aaddff' },
+      { type: 'box', pos: [60, 2.5, 0], args: [1, 5, 121], color: '#222', texture: 'https://picsum.photos/seed/rusted/512/512' },
+      { type: 'box', pos: [-60, 2.5, 0], args: [1, 5, 121], color: '#222', texture: 'https://picsum.photos/seed/rusted/512/512' },
+      { type: 'box', pos: [0, 2.5, 60], args: [121, 5, 1], color: '#222', texture: 'https://picsum.photos/seed/rusted/512/512' },
+      { type: 'box', pos: [0, 2.5, -60], args: [121, 5, 1], color: '#222', texture: 'https://picsum.photos/seed/rusted/512/512' },
+      { type: 'box', pos: [20, 2.5, 0], args: [1, 5, 40], color: '#333', texture: 'https://picsum.photos/seed/metal/512/512' },
+      { type: 'box', pos: [-20, 2.5, 0], args: [1, 5, 40], color: '#333', texture: 'https://picsum.photos/seed/metal/512/512' },
+    ]
+  },
+  {
+    id: 'nuketown',
+    name: 'Nuketown',
+    description: 'A destroyed nuclear testing neighborhood. 1:1 Scale Remaster.',
+    thumbnail: 'https://dummyimage.com/400x225/aa7755/000.png&text=Nuketown',
+    floorColor: '#5c4033',
+    floorTexture: 'https://picsum.photos/seed/dirt/512/512',
+    skyColor: '#ffcc88',
+    fogColor: '#aa7755',
+    fogNear: 20,
+    fogFar: 300,
+    spawnPoints: [
+      [0, 1.2, 0], [10, 1.2, 10], [-10, 1.2, -10], [10, 1.2, -10], [-10, 1.2, 10]
+    ],
+    craftingTablePos: [0, 1.5, -60],
+    interactables: [
+      // Yellow House Perks (West)
+      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [-65, 0, 5], color: '#ff0000' }, // Inside Yellow House (Living Room)
+      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [-65, 0, -5], color: '#00ff00' }, // Inside Yellow House (Kitchen)
+      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [-85, 0, 0], color: '#4f46e2' }, // Yellow Backyard
+      
+      // Green House Perks (East)
+      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [65, 0, 5], color: '#ffff00' }, // Inside Green House (Living Room)
+      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [65, 0, -5], color: '#ff8800' }, // Inside Green House (Kitchen)
+      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [85, 0, 0], color: '#9333ea' }, // Green Backyard
+
+      // Street/Garage Perks
+      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [0, 0, 25], color: '#3b82f6' }, // Near Bus/Spawn
+      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [-65, 0, 35], color: '#4b5563' }, // Yellow Garage
+      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [65, 0, 35], color: '#06b2d2' }, // Green Garage
+      
+      // Other Perks scattered
+      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [-85, 0, 30], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [85, 0, 30], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [-85, 0, -30], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [85, 0, -30], color: '#a5f3fc' },
+      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [-30, 0, -50], color: '#ef4444' }, // Near Garden
+      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [30, 0, -50], color: '#a855f7' },
+      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [0, 0, -55], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [0, 0, 55], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [-30, 0, 50], color: '#10b981' },
+      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [30, 0, 50], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [-50, 0, 0], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [50, 0, 0], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [0, 0, -75], color: '#ec4899' },
+      
+      { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, -15] },
+      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, 10] },
+      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [85, 0, -15] }, // Green Backyard
+      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 90] },
+      
+      // Wall Buys - Adjusted for new building positions
+      { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [-52, 1.5, 0], rotation: [0, Math.PI / 2, 0] }, // Yellow House Front Wall
+      { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [52, 1.5, 0], rotation: [0, -Math.PI / 2, 0] }, // Green House Front Wall
+      { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [0, 1.5, -35], rotation: [0, 0, 0] }, // Bus
+      { id: 'wall_ak47', type: 'WALLBUY: AK-47', cost: 1800, pos: [-65, 1.5, -15], rotation: [0, 0, 0] }, // Yellow House Inside
+      { id: 'wall_galil', type: 'WALLBUY: GALIL', cost: 2000, pos: [65, 1.5, -15], rotation: [0, 0, 0] }, // Green House Inside
+      { id: 'bowie', type: 'WALLBUY: Bowie Knife', cost: 3000, pos: [0, 1.5, 40], rotation: [0, Math.PI, 0], color: '#ffffff' }
+    ],
+    objects: [
+      // Yellow House (West) - Scaled Up 1.5x
+      { type: 'building', pos: [-65, 7.5, 0], args: [30, 15, 38], color: "#eab308", label: "YELLOW HOUSE", lightColor: "#ffffaa", doorCost: 750, doorId: "yellow_house_door" },
+      { type: 'building', pos: [-65, 6, 30], args: [18, 12, 22], color: "#ca8a04", label: "GARAGE", lightColor: "#ffffaa", doorCost: 500, doorId: "yellow_garage_door" },
+      
+      // Green House (East) - Scaled Up 1.5x
+      { type: 'building', pos: [65, 7.5, 0], args: [30, 15, 38], color: "#22c55e", label: "GREEN HOUSE", lightColor: "#aaffaa", doorCost: 750, doorId: "green_house_door" },
+      { type: 'building', pos: [65, 6, 30], args: [18, 12, 22], color: "#16a34a", label: "GARAGE", lightColor: "#aaffaa", doorCost: 500, doorId: "green_garage_door" },
+      
+      // Vehicles & Obstacles - Scaled Up
+      { type: 'box', pos: [0, 3.5, -30], args: [9, 7, 27], color: '#475569', texture: 'https://picsum.photos/seed/bus/512/512' }, // Bus
+      { type: 'box', pos: [0, 4, 30], args: [9, 9, 27], color: '#f97316', texture: 'https://picsum.photos/seed/movingtruck/512/512' }, // Moving Truck
+      { type: 'box', pos: [0, 3, 0], args: [6, 6, 0.8], color: '#ffffff', texture: 'https://dummyimage.com/512x512/fff/000.png&text=NUKETOWN' }, // Sign
+      
+      // Fences (Boundaries) - Expanded to +/- 100 X, +/- 120 Z
+      { type: 'box', pos: [100, 7.5, 0], args: [1, 15, 240], color: '#4a4a4a', texture: 'https://picsum.photos/seed/fence/512/512' },
+      { type: 'box', pos: [-100, 7.5, 0], args: [1, 15, 240], color: '#4a4a4a', texture: 'https://picsum.photos/seed/fence/512/512' },
+      { type: 'box', pos: [0, 7.5, 120], args: [200, 15, 1], color: '#4a4a4a', texture: 'https://picsum.photos/seed/fence/512/512' },
+      { type: 'box', pos: [0, 7.5, -120], args: [200, 15, 1], color: '#4a4a4a', texture: 'https://picsum.photos/seed/fence/512/512' },
+      
+      // Streetlights
+      { type: 'streetlight', pos: [-25, 0, -60], color: '#ffddaa' },
+      { type: 'streetlight', pos: [25, 0, -60], color: '#ffddaa' },
+      { type: 'streetlight', pos: [-25, 0, 60], color: '#ffddaa' },
+      { type: 'streetlight', pos: [25, 0, 60], color: '#ffddaa' }
+    ]
+  },
+  {
+    id: 'farm',
+    name: 'Farm',
+    description: 'A desolate farm overrun by the undead. 1:1 Scale Remaster.',
+    thumbnail: 'https://dummyimage.com/400x225/556644/000.png&text=Farm',
+    floorColor: '#3f4c3b',
+    floorTexture: 'https://picsum.photos/seed/grass/512/512',
+    skyColor: '#1a1a2e',
+    fogColor: '#0f172a',
+    fogNear: 15,
+    fogFar: 250,
+    spawnPoints: [
+      [0, 1.2, 20], [10, 1.2, 20], [-10, 1.2, 20], [0, 1.2, 30], [0, 1.2, 10]
+    ],
+    craftingTablePos: [0, 1.5, 0],
+    interactables: [
+      // Barn Perks (North)
+      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [0, 0, -50], color: '#ff0000' }, // Inside Barn
+      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [15, 0, -50], color: '#00ff00' }, // Inside Barn
+      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [-15, 0, -50], color: '#ff8800' }, // Inside Barn
+      
+      // House Perks (West)
+      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [-60, 0, 0], color: '#3b82f6' }, // Inside House
+      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [-60, 0, 10], color: '#ffff00' }, // Inside House
+      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [-60, 0, -10], color: '#4f46e2' }, // Inside House
+      
+      // Shed/Outside Perks
+      { id: 'tombstone', type: 'PERK: Tombstone Soda', cost: 2000, pos: [50, 0, 0], color: '#4b5563' }, // Near Shed
+      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [50, 0, 20], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [50, 0, -20], color: '#4b5563' },
+      
+      // Other Perks
+      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [0, 0, 50], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-30, 0, 50], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [30, 0, 50], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [-30, 0, -80], color: '#a5f3fc' }, // Behind Barn
+      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [30, 0, -80], color: '#ef4444' },
+      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [-80, 0, 0], color: '#a855f7' }, // Behind House
+      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [-80, 0, 30], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [-80, 0, -30], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [80, 0, 0], color: '#10b981' }, // Behind Shed
+      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [80, 0, 30], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [80, 0, -30], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [0, 0, -90], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [0, 0, 70], color: '#ec4899' },
+
+      { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, 10] },
+      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, -20] }, // Near Barn entrance
+      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [0, 0, -60] }, // Inside Barn Back
+      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 80] },
+      
+      // Wall Buys - Adjusted
+      { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [-46, 1.5, 0], rotation: [0, Math.PI / 2, 0] }, // House Wall
+      { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [0, 1.5, -36], rotation: [0, 0, 0] }, // Barn Front
+      { id: 'wall_rpd', type: 'WALLBUY: RPD', cost: 2500, pos: [0, 1.5, -64], rotation: [0, Math.PI, 0] }, // Barn Back
+      { id: 'wall_remington', type: 'WALLBUY: REMINGTON', cost: 1200, pos: [40, 1.5, 0], rotation: [0, -Math.PI / 2, 0] }, // Shed Wall
+      { id: 'bowie', type: 'WALLBUY: Bowie Knife', cost: 3000, pos: [-60, 1.5, -14], rotation: [0, 0, 0] } // House Inside
+    ],
+    objects: [
+      // Barn (North) - Scaled Up
+      { type: 'building', pos: [0, 9, -50], args: [40, 18, 30], color: "#7f1d1d", label: "BARN", lightColor: "#ffaa00", doorCost: 750, doorId: "barn_door" },
+      
+      // House (West) - Scaled Up
+      { type: 'building', pos: [-60, 7.5, 0], args: [30, 15, 30], color: "#fef3c7", label: "FARMHOUSE", lightColor: "#ffffaa", doorCost: 750, doorId: "house_door" },
+      
+      // Shed (East) - Scaled Up
+      { type: 'building', pos: [50, 5, 0], args: [18, 10, 18], color: "#78350f", label: "SHED", lightColor: "#ffffaa", doorCost: 500, doorId: "shed_door" },
+      
+      // Vehicles & Obstacles
+      { type: 'box', pos: [20, 3, 30], args: [8, 6, 14], color: '#1e293b', texture: 'https://picsum.photos/seed/tractor/512/512' }, // Tractor
+      { type: 'box', pos: [-20, 2.5, 40], args: [8, 5, 16], color: '#475569', texture: 'https://picsum.photos/seed/truck/512/512' }, // Truck
+      { type: 'box', pos: [0, 1.5, 0], args: [6, 3, 6], color: '#a16207', texture: 'https://picsum.photos/seed/hay/512/512' }, // Hay bales
+      
+      // Fences (Boundaries) - Expanded to +/- 100 X, +/- 100 Z
+      { type: 'box', pos: [100, 5, 0], args: [1, 10, 200], color: '#27272a', texture: 'https://picsum.photos/seed/wood/512/512' },
+      { type: 'box', pos: [-100, 5, 0], args: [1, 10, 200], color: '#27272a', texture: 'https://picsum.photos/seed/wood/512/512' },
+      { type: 'box', pos: [0, 5, 100], args: [200, 10, 1], color: '#27272a', texture: 'https://picsum.photos/seed/wood/512/512' },
+      { type: 'box', pos: [0, 5, -100], args: [200, 10, 1], color: '#27272a', texture: 'https://picsum.photos/seed/wood/512/512' },
+      
+      // Streetlights
+      { type: 'streetlight', pos: [-30, 0, 30], color: '#ffddaa' },
+      { type: 'streetlight', pos: [30, 0, 30], color: '#ffddaa' },
+      { type: 'streetlight', pos: [0, 0, -20], color: '#ffddaa' }
+    ]
+  },
+  {
+    id: 'tranzit',
+    name: 'Z-Town Transit',
+    description: 'A massive open world connecting all areas. Beware the lava and catch the bus!',
+    thumbnail: 'https://dummyimage.com/400x225/331100/ffaa00.png&text=Tranzit',
+    floorColor: '#2a1a10',
+    floorTexture: 'https://picsum.photos/seed/dirt/512/512',
+    skyColor: '#331100',
+    fogColor: '#220a00',
+    fogNear: 10,
+    fogFar: 150,
+    spawnPoints: [
+      [0, 1.2, 0], // Bus Depot (Center)
+      [100, 1.2, 100], // Town (North East)
+      [-100, 1.2, 100], // Farm (North West)
+      [0, 1.2, -150] // Power Station (South)
+    ],
+    craftingTablePos: [0, 1.5, -10],
+    interactables: [
+      // Bus Depot Area (Center)
+      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [5, 0, 5], color: '#3b82f6' },
+      { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [-5, 1.5, 0], rotation: [0, Math.PI / 2, 0] },
+      { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [5, 1.5, 0], rotation: [0, -Math.PI / 2, 0] },
+      
+      // Town Area (North East - Offset +100, +100)
+      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [125, 0, 105], color: '#ff0000' },
+      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [135, 0, 95], color: '#ffff00' },
+      { id: 'box_town', type: 'Mystery Box', cost: 950, pos: [100, 0, 100] },
+      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [100, 0, 120] }, // Bank Vault
+      { id: 'wall_galil', type: 'WALLBUY: GALIL', cost: 2000, pos: [110, 1.5, 110], rotation: [0, 0, 0] },
+
+      // Farm Area (North West - Offset -100, +100)
+      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [-115, 0, 100], color: '#ff8800' },
+      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [-85, 0, 100], color: '#00ff00' },
+      { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [-100, 1.5, 110], rotation: [0, Math.PI, 0] },
+      { id: 'box_farm', type: 'Mystery Box', cost: 950, pos: [-100, 0, 90] },
+
+      // Power Station (South - Offset 0, -150)
+      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [0, 0, -160], color: '#06b2d2' },
+      { id: 'tombstone', type: 'PERK: Tombstone Soda', cost: 2000, pos: [10, 0, -150], color: '#4b5563' },
+      { id: 'wall_ak47', type: 'WALLBUY: AK-47', cost: 1800, pos: [-10, 1.5, -150], rotation: [0, 0, 0] },
+      
+      // Diner (West - Offset -150, 0)
+      { id: 'speed_diner', type: 'PERK: Speed Cola', cost: 3000, pos: [-150, 0, 0], color: '#00ff00' },
+      { id: 'box_diner', type: 'Mystery Box', cost: 950, pos: [-160, 0, 0] },
+      
+      // Scattered Perks
+      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [50, 0, 50], color: '#4f46e2' },
+      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [-50, 0, 50], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [50, 0, -50], color: '#4b5563' },
+      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-50, 0, -50], color: '#db2677' },
+      
+      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 200] },
+    ],
+    objects: [
+      // The Bus (Center Spawn)
+      { type: 'box', pos: [0, 3.5, -10], args: [10, 7, 30], color: '#475569', texture: 'https://picsum.photos/seed/bus/512/512', label: "THE BUS" },
+      { type: 'box', pos: [0, 1.5, -5], args: [2, 3, 2], color: '#1e293b', label: "TEDD" }, // Tedd Driver
+
+      // Bus Depot Building
+      { type: 'building', pos: [20, 6, 0], args: [20, 12, 40], color: "#334155", label: "DEPOT", lightColor: "#ffffff", doorCost: 750, doorId: "depot_door" },
+
+      // Town Buildings (North East)
+      { type: 'building', pos: [125, 6, 105], args: [18, 12, 25], color: "#a52a2a", label: "BAR", lightColor: "#ff6666", doorCost: 1500, doorId: "bar_door" },
+      { type: 'building', pos: [100, 5, 120], args: [14, 10, 20], color: "#800000", label: "BANK", lightColor: "#ff4444", doorCost: 2500, doorId: "bank_door" },
+
+      // Farm Buildings (North West)
+      { type: 'building', pos: [-100, 9, 120], args: [40, 18, 30], color: "#7f1d1d", label: "BARN", lightColor: "#ffaa00", doorCost: 750, doorId: "barn_door" },
+      { type: 'building', pos: [-130, 7.5, 100], args: [30, 15, 30], color: "#fef3c7", label: "FARMHOUSE", lightColor: "#ffffaa", doorCost: 750, doorId: "house_door" },
+
+      // Power Station (South)
+      { type: 'building', pos: [0, 8, -170], args: [30, 16, 30], color: "#222", label: "POWER", lightColor: "#00ffff", doorCost: 1500, doorId: "power_door" },
+      
+      // Diner (West)
+      { type: 'building', pos: [-150, 5, 0], args: [25, 10, 15], color: "#ef4444", label: "DINER", lightColor: "#ff0000", doorCost: 750, doorId: "diner_door" },
+      { type: 'building', pos: [-170, 5, 0], args: [15, 10, 15], color: "#333", label: "GARAGE", lightColor: "#ffffff", doorCost: 750, doorId: "garage_door" },
+
+      // Lava Pools (Red Planes on ground)
+      { type: 'plane', pos: [0, 0.1, 50], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
+      { type: 'plane', pos: [50, 0.1, 0], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
+      { type: 'plane', pos: [-50, 0.1, 0], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
+      { type: 'plane', pos: [0, 0.1, -50], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
+      
+      // Roads/Fog (Visual Guides)
+      { type: 'streetlight', pos: [0, 0, 25], color: '#ffaa00' },
+      { type: 'streetlight', pos: [0, 0, 50], color: '#ffaa00' },
+      { type: 'streetlight', pos: [0, 0, 75], color: '#ffaa00' },
+      { type: 'streetlight', pos: [25, 0, 0], color: '#ffaa00' },
+      { type: 'streetlight', pos: [50, 0, 0], color: '#ffaa00' },
+      { type: 'streetlight', pos: [75, 0, 0], color: '#ffaa00' },
+      
+      // Boundaries (Massive Box Walls)
+      { type: 'box', pos: [200, 10, 0], args: [1, 20, 400], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
+      { type: 'box', pos: [-200, 10, 0], args: [1, 20, 400], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
+      { type: 'box', pos: [0, 10, 200], args: [400, 20, 1], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
+      { type: 'box', pos: [0, 10, -200], args: [400, 20, 1], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
+    ]
+  }
+];

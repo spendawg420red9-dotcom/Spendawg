@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { GameStatus, PlayerStats, PowerUpType, ScoreEntry, HUDSettings, KeybindSettings, GamepadSettings, GameSettings, WeaponCamo, Achievement, Progression, PlayerScore, WeaponAttachment, ZombieType, GameMode } from './types';
+import { GameStatus, PlayerStats, PowerUpType, ScoreEntry, HUDSettings, KeybindSettings, GamepadSettings, GameSettings, WeaponCamo, Achievement, Progression, PlayerScore, WeaponAttachment, ZombieType, GameMode, ZombieData } from './types';
 import { Joystick } from './components/Joystick';
 import { Scene } from './components/Scene';
+import { Minimap } from './components/Minimap';
 import { useTexture } from '@react-three/drei';
 import { getRoundLore } from './services/geminiService';
 import { soundService } from './services/soundService';
@@ -204,6 +205,7 @@ const getInitialStats = (level: number, prestige: number, activeMapId: string = 
   grenades: 2,
   flashbangs: 1,
   monkeyBombs: 0,
+  gems: 0,
   time: 0,
   activeMapId,
   selectedCamo,
@@ -233,6 +235,11 @@ const INITIAL_HUD_SETTINGS: HUDSettings = {
   reloadPos: { x: 40, y: 24 },
   ammoPos: { x: 40, y: 248 },
   monkeyBombPos: { x: 200, y: 176 },
+  minimapPos: { x: 20, y: 20 },
+  minimapVisible: true,
+  minimapScale: 1,
+  gemPos: { x: 50, y: 15 },
+  slidePos: { x: 360, y: 176 },
 };
 
 const INITIAL_GAME_SETTINGS: GameSettings = {
@@ -240,9 +247,9 @@ const INITIAL_GAME_SETTINGS: GameSettings = {
   musicVolume: 1.0,
   weatherType: 'dynamic',
   musicEnabled: true,
-  customMusicUrl: 'https://domestic-cyan-sy1ltsnxrw.edgeone.app/01%20-%20Damned.mp3',
+  customMusicUrl: 'https://image2url.com/r2/default/audio/1772516475665-1a554687-3f96-41c7-b11f-bc5150e7dbc3.ogg',
   customPlaylist: [
-    { name: 'Damned', url: 'https://domestic-cyan-sy1ltsnxrw.edgeone.app/01%20-%20Damned.mp3' }
+    { name: 'Custom Audio', url: 'https://image2url.com/r2/default/audio/1772516475665-1a554687-3f96-41c7-b11f-bc5150e7dbc3.ogg' }
   ],
 };
 
@@ -617,6 +624,7 @@ const getWeaponStatsWithAttachments = (baseStats: any, attachments: WeaponAttach
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
+  const [thirdPersonMode, setThirdPersonMode] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [myRoomId] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
   const [room, setRoom] = useState<any>(null);
@@ -788,6 +796,8 @@ const App: React.FC = () => {
   const [achievementNotif, setAchievementNotif] = useState<{name: string, icon: string, show: boolean}>({ name: '', icon: '', show: false });
   const prevLevelRef = useRef(getLevelData(progression.xp).level);
   const playerPosRef = useRef(new THREE.Vector3(0, 1.2, 15));
+  const playerRotRef = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const zombieRefs = useRef<ZombieData[]>([]);
 
   useEffect(() => {
     const currentLevel = getLevelData(progression.xp).level;
@@ -1015,6 +1025,24 @@ const App: React.FC = () => {
     }
     return INITIAL_HUD_SETTINGS;
   });
+
+  const [savedHudProfiles, setSavedHudProfiles] = useState<{name: string, settings: HUDSettings}[]>(() => {
+    const saved = localStorage.getItem('ztown_saved_hud_profiles');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [newHudProfileName, setNewHudProfileName] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('ztown_saved_hud_profiles', JSON.stringify(savedHudProfiles));
+  }, [savedHudProfiles]);
 
   const [gameSettings, setGameSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem('ztown_game_settings');
@@ -1370,7 +1398,7 @@ const App: React.FC = () => {
         const filtered = leaderboard.filter(e => e.mapId === leaderboardMapId);
         maxIndex = 1 + MAPS.length + (filtered.length > 0 ? filtered.length : 0);
       }
-      else if (isSettings) maxIndex = 43; // 0:Back, 1:HUD, 2-11:Camos, 12:BtnScale, 13:HudScale, 14-41:Pos, 42:Reset, 43:Save
+      else if (isSettings) maxIndex = 51; // 0:Back, 1:HUD, 2-11:Camos, 12:BtnScale, 13:HudScale, 14:MinimapScale, 15-48:Pos, 49:Toggle, 50:Reset, 51:Save
       else if (isControls) {
         const gamepadKeysCount = Object.keys(gamepadSettings).filter(k => !k.startsWith('sensitivity')).length;
         const keybindKeysCount = Object.keys(keybindSettings).length;
@@ -1397,7 +1425,7 @@ const App: React.FC = () => {
          const powerUpsCount = 8;
          const footerCount = 1;
          
-         maxIndex = 8 + 2 + 10 + 1 + teleportCount + equipmentCount + perksCount + perkButtonsCount + 1 + weaponsCount + camosCount + powerUpsCount + footerCount - 1;
+         maxIndex = 8 + 2 + 10 + 1 + 1 + teleportCount + equipmentCount + perksCount + perkButtonsCount + 1 + weaponsCount + camosCount + powerUpsCount + footerCount - 1;
       } else if (isLoadout) {
          maxIndex = 1 + 9 + filteredWeapons.length; // 0:Back, 1-9:Tabs, 10..N:Weapons
       } else if (isCustomGame) {
@@ -1528,10 +1556,10 @@ const App: React.FC = () => {
           setHudSettings(prev => ({ ...prev, buttonScale: Math.max(0.5, Math.min(2, prev.buttonScale + step * 0.1)) }));
         } else if (selectedMenuIndex === 13) {
           setHudSettings(prev => ({ ...prev, hudScale: Math.max(0.5, Math.min(2, prev.hudScale + step * 0.1)) }));
-        } else if (selectedMenuIndex >= 14 && selectedMenuIndex <= 41) {
+        } else if (selectedMenuIndex >= 14 && selectedMenuIndex <= 47) {
           const posIndex = Math.floor((selectedMenuIndex - 14) / 2);
           const isY = (selectedMenuIndex - 14) % 2 === 1;
-          const keys = ['statsPos', 'healthBarPos', 'pausePos', 'weaponPos', 'ammoPos', 'joystickPos', 'grenadePos', 'flashbangPos', 'monkeyBombPos', 'jumpPos', 'switchPos', 'knifePos', 'shootPos', 'reloadPos'];
+          const keys = ['statsPos', 'healthBarPos', 'pausePos', 'weaponPos', 'ammoPos', 'joystickPos', 'grenadePos', 'flashbangPos', 'monkeyBombPos', 'jumpPos', 'switchPos', 'knifePos', 'shootPos', 'reloadPos', 'minimapPos', 'gemPos', 'slidePos'];
           const key = keys[posIndex];
           setHudSettings(prev => ({ 
             ...prev, 
@@ -1673,7 +1701,8 @@ const App: React.FC = () => {
       mainEasterEggCompleted: easterEggTriggered,
       prestigeMasterStars: progression.stars || 0,
       level: getLevelData(progression.xp).level,
-      prestige: progression.prestige
+      prestige: progression.prestige,
+      gems: finalStats.gems || 0
     };
     const newBoard = [...leaderboard, entry]
       .sort((a, b) => b.round - a.round || b.kills - a.kills);
@@ -2207,7 +2236,52 @@ const App: React.FC = () => {
            setTimeout(() => setLastPerkGained(null), 3000);
         } else {
           setStats(prev => {
-            if (prev.secondaryWeaponName === null && prev.weaponName !== finalWeapon) {
+            if (customGameConfig.gameMode === 'dead_ops') {
+               // Dead Ops Logic: 1 gun limit unless Mule Kick (then 2)
+               const hasMuleKick = prev.perks.includes('mule');
+               
+               if (hasMuleKick && prev.secondaryWeaponName === null && prev.weaponName !== finalWeapon) {
+                  // Has Mule Kick and slot 2 is empty -> Add as secondary
+                  return {
+                    ...prev,
+                    secondaryWeaponName: finalWeapon,
+                    secondaryAmmo: WEAPONS[finalWeapon].clip,
+                    secondaryMaxAmmo: WEAPONS[finalWeapon].max,
+                    secondaryWeaponTier: 1,
+                    secondaryAttachments: getActiveAttachments(finalWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {})
+                  };
+               } else {
+                  // No Mule Kick OR slots full -> Replace current weapon (Slot 1)
+                  // Note: In Dead Ops we simplify to just replacing the primary slot if no secondary exists, 
+                  // or replacing the currently active one if we implemented slot switching. 
+                  // But since Dead Ops usually doesn't have weapon switching without Mule Kick, 
+                  // we just replace the main weapon if single-wielding.
+                  // If dual-wielding (Mule Kick), we replace the current one.
+                  // For simplicity in this codebase's structure where activeSlot isn't fully utilized for swapping logic here:
+                  
+                  if (hasMuleKick && prev.activeSlot === 1) {
+                      // Replace secondary
+                      return {
+                        ...prev,
+                        secondaryWeaponName: finalWeapon,
+                        secondaryAmmo: WEAPONS[finalWeapon].clip,
+                        secondaryMaxAmmo: WEAPONS[finalWeapon].max,
+                        secondaryWeaponTier: 1,
+                        secondaryAttachments: getActiveAttachments(finalWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {})
+                      };
+                  }
+
+                  // Default: Replace primary
+                  return {
+                    ...prev,
+                    weaponName: finalWeapon,
+                    ammo: WEAPONS[finalWeapon].clip,
+                    maxAmmo: WEAPONS[finalWeapon].max,
+                    weaponTier: 1,
+                    attachments: getActiveAttachments(finalWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {})
+                  };
+               }
+            } else if (prev.secondaryWeaponName === null && prev.weaponName !== finalWeapon) {
               return {
                 ...prev,
                 secondaryWeaponName: finalWeapon,
@@ -2333,6 +2407,34 @@ const App: React.FC = () => {
         setStats(prev => {
           const next = { ...prev, points: prev.points - interactPrompt.cost };
           
+          if (customGameConfig.gameMode === 'dead_ops') {
+             const hasMuleKick = prev.perks.includes('mule');
+             
+             if (hasMuleKick && prev.secondaryWeaponName === null && prev.weaponName !== weaponName) {
+                // Add as secondary
+                next.secondaryWeaponName = weaponName;
+                next.secondaryAmmo = weaponStats.clip;
+                next.secondaryMaxAmmo = prev.perks.includes('bandolier') ? Math.floor(weaponStats.max * 1.5) : weaponStats.max;
+                next.secondaryWeaponTier = 1;
+                next.secondaryAttachments = getActiveAttachments(weaponName, getLevelData(progression.xp).level, progression.weaponAttachments || {});
+             } else if (hasMuleKick && prev.activeSlot === 1) {
+                // Replace secondary
+                next.secondaryWeaponName = weaponName;
+                next.secondaryAmmo = weaponStats.clip;
+                next.secondaryMaxAmmo = prev.perks.includes('bandolier') ? Math.floor(weaponStats.max * 1.5) : weaponStats.max;
+                next.secondaryWeaponTier = 1;
+                next.secondaryAttachments = getActiveAttachments(weaponName, getLevelData(progression.xp).level, progression.weaponAttachments || {});
+             } else {
+                // Replace primary
+                next.weaponName = weaponName;
+                next.ammo = weaponStats.clip;
+                next.maxAmmo = prev.perks.includes('bandolier') ? Math.floor(weaponStats.max * 1.5) : weaponStats.max;
+                next.weaponTier = 1;
+                next.attachments = getActiveAttachments(weaponName, getLevelData(progression.xp).level, progression.weaponAttachments || {});
+             }
+             return next;
+          }
+
           if (prev.secondaryWeaponName === null) {
              // We have only 1 weapon. Add as secondary and switch to it.
              next.secondaryWeaponName = prev.weaponName;
@@ -2871,8 +2973,15 @@ const App: React.FC = () => {
         checkButton(gamepadSettings.monkeyBomb, () => callbacksRef.current.throwMonkeyBomb());
 
         // Continuous actions
-        const isShooting = activeGamepad.buttons[gamepadSettings.shoot]?.pressed || false;
-        shootRequest.current = isShooting;
+        const isShootingButton = activeGamepad.buttons[gamepadSettings.shoot]?.pressed || false;
+        let isShootingStick = false;
+        
+        // Dead Ops Arcade: Shoot when aiming with right stick
+        if (customGameConfig.gameMode === 'dead_ops' && (lookX !== 0 || lookY !== 0)) {
+            isShootingStick = true;
+        }
+
+        shootRequest.current = isShootingButton || isShootingStick;
 
         const isKnifing = activeGamepad.buttons[gamepadSettings.knife]?.pressed || false;
         knifeRequest.current = isKnifing;
@@ -2902,7 +3011,7 @@ const App: React.FC = () => {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [status, gamepadSettings, stats.weaponName]);
+  }, [status, gamepadSettings, stats.weaponName, customGameConfig]);
 
   // Pointer Lock for Mouse Look
   useEffect(() => {
@@ -3094,15 +3203,16 @@ const App: React.FC = () => {
 
     setStats(prev => {
       const initial = getInitialStats(getLevelData(progression.xp).level, progression.prestige, customGameConfig.mapId, prev.selectedCamo, progression.weaponAttachments);
+      const startingWeapon = customGameConfig.gameMode === 'dead_ops' ? 'M1911' : customGameConfig.startingWeapon;
       return {
         ...initial,
         points: customGameConfig.startingPoints,
         totalPoints: customGameConfig.startingPoints,
         round: customGameConfig.startingRound,
-        weaponName: customGameConfig.startingWeapon,
-        attachments: getActiveAttachments(customGameConfig.startingWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {}),
-        ammo: WEAPONS[customGameConfig.startingWeapon]?.clip || 8,
-        maxAmmo: WEAPONS[customGameConfig.startingWeapon]?.max || 80,
+        weaponName: startingWeapon,
+        attachments: getActiveAttachments(startingWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {}),
+        ammo: WEAPONS[startingWeapon]?.clip || 8,
+        maxAmmo: WEAPONS[startingWeapon]?.max || 80,
       };
     });
     setGodMode(customGameConfig.godMode);
@@ -3340,6 +3450,8 @@ const App: React.FC = () => {
               isHost={room?.host === socket?.id}
               syncedZombies={syncedZombies}
               playerPosRef={playerPosRef}
+              playerRotRef={playerRotRef}
+              zombieRefsRef={zombieRefs}
               gameState={gameState}
               openDoors={openDoors}
               teleportTarget={teleportTarget}
@@ -3373,6 +3485,8 @@ const App: React.FC = () => {
               playerName={customGameConfig.playerName}
               botNames={customGameConfig.botNames}
               gameSettings={gameSettings}
+              hudSettings={hudSettings}
+              thirdPersonMode={thirdPersonMode}
             />
           </Suspense>
         </Canvas>
@@ -3686,6 +3800,21 @@ const App: React.FC = () => {
             </div>
           )}
 
+          <div id="minimap-root" className={`absolute z-50 pointer-events-none ${status === GameStatus.PLAYING && hudMode === 'all' ? '' : 'hidden'}`} />
+          
+          {(status === GameStatus.PLAYING || status === GameStatus.PAUSED) && (
+            <Minimap 
+              playerPos={playerPosRef}
+              playerRot={playerRotRef}
+              zombieRefs={zombieRefs}
+              otherPlayers={otherPlayers}
+              mapConfig={MAPS.find(m => m.id === stats.activeMapId) || MAPS[0]}
+              visible={hudSettings?.minimapVisible ?? true}
+              position={hudSettings?.minimapPos || { x: 20, y: 20 }}
+              scale={(hudSettings?.minimapScale || 1) * (hudSettings?.hudScale || 1)}
+            />
+          )}
+
           {status === GameStatus.PLAYING && hudMode === 'all' && (
             <>
               {/* Scoreboard removed from HUD */}
@@ -3759,7 +3888,7 @@ const App: React.FC = () => {
               {customGameConfig.gameMode === 'dead_ops' && (
                 <div 
                   className="absolute z-30 pointer-events-none flex items-center gap-2 bg-purple-900/80 px-4 py-2 rounded-full border border-purple-500/50 backdrop-blur-md shadow-lg"
-                  style={{ top: '15%', left: '50%', transform: 'translateX(-50%)' }}
+                  style={{ top: hudSettings.gemPos?.y || 15, left: hudSettings.gemPos?.x || 50, transform: `scale(${hudSettings.hudScale})` }}
                 >
                    <div className="w-6 h-6 bg-purple-500 rounded-full shadow-[0_0_10px_#a855f7] animate-pulse" />
                    <span className="text-white font-black italic text-2xl tracking-widest drop-shadow-md">{stats.gems || 0}</span>
@@ -3810,16 +3939,18 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              <div 
-                className="absolute z-30 pointer-events-auto text-white text-5xl font-black italic tracking-tighter drop-shadow-2xl text-right w-48"
-                style={{ bottom: hudSettings.ammoPos.y, right: hudSettings.ammoPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
-              >
-                  {isReloading ? <span className="text-blue-500 text-xl animate-pulse block">RELOADING</span> : (
-                    stats.weaponName === 'MUSTANG & SALLY' ? 
-                      `${Math.floor(stats.ammo / 100)}/${stats.ammo % 100}` : 
-                      `${stats.ammo}/${WEAPONS[stats.weaponName].clip}`
-                  )}
-              </div>
+              {customGameConfig.gameMode !== 'dead_ops' && (
+                <div 
+                  className="absolute z-30 pointer-events-auto text-white text-5xl font-black italic tracking-tighter drop-shadow-2xl text-right w-48"
+                  style={{ bottom: hudSettings.ammoPos.y, right: hudSettings.ammoPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
+                >
+                    {isReloading ? <span className="text-blue-500 text-xl animate-pulse block">RELOADING</span> : (
+                      stats.weaponName === 'MUSTANG & SALLY' ? 
+                        `${Math.floor(stats.ammo / 100)}/${stats.ammo % 100}` : 
+                        `${stats.ammo}/${WEAPONS[stats.weaponName].clip}`
+                    )}
+                </div>
+              )}
               
               {customGameConfig.gameMode !== 'dead_ops' && (
                 <button 
@@ -3867,7 +3998,7 @@ const App: React.FC = () => {
                   onTouchStart={(e) => { e.stopPropagation(); slideRequest.current = true; setIsSprinting(true); }}
                   onTouchEnd={(e) => { e.stopPropagation(); slideRequest.current = false; setIsSprinting(false); }}
                   className="absolute z-40 pointer-events-auto w-20 h-20 bg-blue-700/80 active:bg-blue-500 rounded-full flex flex-col items-center justify-center border-4 border-white/40 shadow-xl active:scale-95 transition-all backdrop-blur-md"
-                  style={{ bottom: hudSettings.shootPos.y, right: hudSettings.shootPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
+                  style={{ bottom: hudSettings.slidePos?.y || hudSettings.shootPos.y, right: hudSettings.slidePos?.x || hudSettings.shootPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
                 >
                   <SlideIcon className="text-white w-8 h-8" />
                   <span className="text-[8px] font-black text-white mt-1 uppercase tracking-widest">Slide</span>
@@ -4087,19 +4218,27 @@ const App: React.FC = () => {
                        <span className="text-emerald-400 font-black italic text-xl">{stats.kills + otherPlayers.reduce((sum, p) => sum + p.kills, 0)}</span>
                     </div>
                     <div className="w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[600px]">
+                      <table className={`w-full text-left border-collapse ${customGameConfig.gameMode === 'dead_ops' ? 'min-w-full' : 'min-w-[600px]'}`}>
                         <thead>
                           <tr className="text-white/50 text-[10px] uppercase font-bold tracking-widest border-b border-white/10">
                             <th className="p-3">Player</th>
                             <th className="p-3 text-center">Lvl</th>
                             {customGameConfig.gameMode === 'dead_ops' && <th className="p-3 text-center text-purple-400">Gems</th>}
-                            <th className="p-3 text-right">Score</th>
+                            {customGameConfig.gameMode !== 'dead_ops' && <th className="p-3 text-right">Score</th>}
                             <th className="p-3 text-center" title="Kills">Kills</th>
-                            <th className="p-3 text-center text-red-400" title="Downs">Downs</th>
-                            <th className="p-3 text-center text-emerald-400" title="Revives">Revives</th>
-                            <th className="p-3 text-center text-orange-400" title="Headshots">Headshots</th>
-                            <th className="p-3 text-center text-blue-400" title="Knife Kills">Knife</th>
-                            <th className="p-3 text-center text-purple-400" title="Equipment Kills">Equip</th>
+                            {customGameConfig.gameMode !== 'dead_ops' && (
+                              <>
+                                <th className="p-3 text-center text-red-400" title="Downs">Downs</th>
+                                <th className="p-3 text-center text-emerald-400" title="Revives">Revives</th>
+                              </>
+                            )}
+                            {customGameConfig.gameMode !== 'dead_ops' && (
+                              <>
+                                <th className="p-3 text-center text-orange-400" title="Headshots">Headshots</th>
+                                <th className="p-3 text-center text-blue-400" title="Knife Kills">Knife</th>
+                                <th className="p-3 text-center text-purple-400" title="Equipment Kills">Equip</th>
+                              </>
+                            )}
                             <th className="p-3 text-right">Ping</th>
                           </tr>
                         </thead>
@@ -4117,13 +4256,17 @@ const App: React.FC = () => {
                               </div>
                             </td>
                             {customGameConfig.gameMode === 'dead_ops' && <td className="p-3 text-center font-mono text-purple-400">{stats.gems || 0}</td>}
-                            <td className="p-3 text-right text-yellow-400 font-mono text-sm">{stats.points}</td>
+                            {customGameConfig.gameMode !== 'dead_ops' && <td className="p-3 text-right text-yellow-400 font-mono text-sm">{stats.points}</td>}
                             <td className="p-3 text-center font-mono">{stats.kills}</td>
-                            <td className="p-3 text-center font-mono text-red-400">{stats.downs || 0}</td>
-                            <td className="p-3 text-center font-mono text-emerald-400">{stats.revives || 0}</td>
-                            <td className="p-3 text-center font-mono text-orange-400">{stats.headshots}</td>
-                            <td className="p-3 text-center font-mono text-blue-400">{stats.knifeKills}</td>
-                            <td className="p-3 text-center font-mono text-purple-400">{stats.equipmentKills}</td>
+                            {customGameConfig.gameMode !== 'dead_ops' && <td className="p-3 text-center font-mono text-red-400">{stats.downs || 0}</td>}
+                            {customGameConfig.gameMode !== 'dead_ops' && <td className="p-3 text-center font-mono text-emerald-400">{stats.revives || 0}</td>}
+                            {customGameConfig.gameMode !== 'dead_ops' && (
+                              <>
+                                <td className="p-3 text-center font-mono text-orange-400">{stats.headshots}</td>
+                                <td className="p-3 text-center font-mono text-blue-400">{stats.knifeKills}</td>
+                                <td className="p-3 text-center font-mono text-purple-400">{stats.equipmentKills}</td>
+                              </>
+                            )}
                             <td className="p-3 text-right font-mono text-green-400">0</td>
                           </tr>
                           
@@ -4145,9 +4288,13 @@ const App: React.FC = () => {
                               <td className="p-3 text-center text-white/60 font-mono">{player.kills}</td>
                               <td className="p-3 text-center text-red-400/60 font-mono">{player.downs || 0}</td>
                               <td className="p-3 text-center text-emerald-400/60 font-mono">{player.revives || 0}</td>
-                              <td className="p-3 text-center text-orange-400/60 font-mono">{player.headshots || 0}</td>
-                              <td className="p-3 text-center text-blue-400/60 font-mono">{player.knifeKills || 0}</td>
-                              <td className="p-3 text-center text-purple-400/60 font-mono">{player.equipmentKills || 0}</td>
+                              {customGameConfig.gameMode !== 'dead_ops' && (
+                                <>
+                                  <td className="p-3 text-center text-orange-400/60 font-mono">{player.headshots || 0}</td>
+                                  <td className="p-3 text-center text-blue-400/60 font-mono">{player.knifeKills || 0}</td>
+                                  <td className="p-3 text-center text-purple-400/60 font-mono">{player.equipmentKills || 0}</td>
+                                </>
+                              )}
                               <td className={`p-3 text-right font-mono ${player.ping < 50 ? 'text-green-400' : player.ping < 100 ? 'text-yellow-400' : 'text-red-400'}`}>{player.ping || 0}</td>
                             </tr>
                           ))}
@@ -4157,32 +4304,34 @@ const App: React.FC = () => {
 
                     <div className="h-[1px] bg-white/10 w-full" />
                     
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
-                        <span className="text-white/60 text-xs uppercase font-black tracking-widest">Dragon Hearts</span>
-                        <span className={`text-sm font-black italic ${collectedHearts.filter(Boolean).length === 3 ? 'text-emerald-500' : 'text-yellow-500'}`}>
-                          {collectedHearts.filter(Boolean).length} / 3
-                        </span>
+                    {customGameConfig.gameMode !== 'dead_ops' && (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
+                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Dragon Hearts</span>
+                          <span className={`text-sm font-black italic ${collectedHearts.filter(Boolean).length === 3 ? 'text-emerald-500' : 'text-yellow-500'}`}>
+                            {collectedHearts.filter(Boolean).length} / 3
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
+                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Red9 Easter Egg</span>
+                          <span className={`text-sm font-black italic ${red9BlessingClaimed ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {red9BlessingClaimed ? 'DONE' : 'NOT DONE'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
+                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Mystery Box Easter Egg</span>
+                          <span className={`text-sm font-black italic ${easterEggTriggered ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {easterEggTriggered ? 'DONE' : 'NOT DONE'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
+                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Dragon Boss</span>
+                          <span className={`text-sm font-black italic ${bossDefeated ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {bossDefeated ? 'DEFEATED' : 'NOT DEFEATED'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
-                        <span className="text-white/60 text-xs uppercase font-black tracking-widest">Red9 Easter Egg</span>
-                        <span className={`text-sm font-black italic ${red9BlessingClaimed ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {red9BlessingClaimed ? 'DONE' : 'NOT DONE'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
-                        <span className="text-white/60 text-xs uppercase font-black tracking-widest">Mystery Box Easter Egg</span>
-                        <span className={`text-sm font-black italic ${easterEggTriggered ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {easterEggTriggered ? 'DONE' : 'NOT DONE'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
-                        <span className="text-white/60 text-xs uppercase font-black tracking-widest">Dragon Boss</span>
-                        <span className={`text-sm font-black italic ${bossDefeated ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {bossDefeated ? 'DEFEATED' : 'NOT DEFEATED'}
-                        </span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                   
                   <button id="menu-item-1" onClick={() => setShowProgressMenu(false)} className={`w-full py-4 bg-white/10 text-white font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-white/20 flex items-center justify-center gap-3 ${selectedMenuIndex === 1 ? 'ring-2 ring-white bg-white/20' : ''}`}>
@@ -4643,6 +4792,14 @@ const App: React.FC = () => {
                       </div>
                     </div>
 
+                    <button 
+                      id="menu-item-21"
+                      onClick={(e) => { e.stopPropagation(); setThirdPersonMode(!thirdPersonMode); }} 
+                      className={`w-full py-4 ${thirdPersonMode ? 'bg-emerald-600' : 'bg-white/10'} text-white font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-white/20 flex items-center justify-center gap-3 mb-4 ${selectedMenuIndex === 21 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                    >
+                      <Eye size={24} /> Camera: {thirdPersonMode ? '3RD PERSON' : '1ST PERSON'}
+                    </button>
+
                     <div className="pt-4 border-t border-white/10">
                       <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Teleport Locations</h3>
                       <div className={status === GameStatus.CUSTOM_GAME ? "grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1" : "grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1"}>
@@ -4698,14 +4855,14 @@ const App: React.FC = () => {
                         ].map((loc, i) => (
                           <button
                             key={i}
-                            id={`menu-item-${21 + i}`}
+                            id={`menu-item-${22 + i}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               setTeleportTarget(new THREE.Vector3(...loc.pos));
                               setShowModMenu(false);
                               if (status === GameStatus.PAUSED) setStatus(GameStatus.PLAYING);
                             }}
-                            className={`py-3 px-2 ${loc.color || 'bg-white/10 text-white/60 border-white/20'} border rounded-sm text-xs font-black uppercase italic tracking-tighter active:scale-95 hover:brightness-125 transition-all flex items-center justify-center gap-2 shadow-lg ${selectedMenuIndex === 21 + i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                            className={`py-3 px-2 ${loc.color || 'bg-white/10 text-white/60 border-white/20'} border rounded-sm text-xs font-black uppercase italic tracking-tighter active:scale-95 hover:brightness-125 transition-all flex items-center justify-center gap-2 shadow-lg ${selectedMenuIndex === 22 + i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                           >
                             <MapIcon size={14} /> {loc.name}
                           </button>
@@ -4717,23 +4874,23 @@ const App: React.FC = () => {
                       <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Equipment</h3>
                       <div className="grid grid-cols-3 gap-2">
                         <button 
-                          id={`menu-item-${21 + teleportCount}`}
+                          id={`menu-item-${22 + teleportCount}`}
                           onClick={() => setStats(prev => ({ ...prev, grenades: prev.grenades + 2 }))} 
-                          className={`py-4 bg-green-900/40 text-green-500 font-black text-sm rounded-sm border border-green-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-green-900/60 ${selectedMenuIndex === 21 + teleportCount ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                          className={`py-4 bg-green-900/40 text-green-500 font-black text-sm rounded-sm border border-green-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-green-900/60 ${selectedMenuIndex === 22 + teleportCount ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
                           <Bomb size={20} /> +2 Grenades
                         </button>
                         <button 
-                          id={`menu-item-${21 + teleportCount + 1}`}
+                          id={`menu-item-${22 + teleportCount + 1}`}
                           onClick={() => setStats(prev => ({ ...prev, flashbangs: prev.flashbangs + 2 }))} 
-                          className={`py-4 bg-yellow-900/40 text-yellow-500 font-black text-sm rounded-sm border border-yellow-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-yellow-900/60 ${selectedMenuIndex === 21 + teleportCount + 1 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                          className={`py-4 bg-yellow-900/40 text-yellow-500 font-black text-sm rounded-sm border border-yellow-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-yellow-900/60 ${selectedMenuIndex === 22 + teleportCount + 1 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
                           <Sun size={20} /> +2 Flash
                         </button>
                         <button 
-                          id={`menu-item-${21 + teleportCount + 2}`}
+                          id={`menu-item-${22 + teleportCount + 2}`}
                           onClick={() => setStats(prev => ({ ...prev, monkeyBombs: prev.monkeyBombs + 3 }))} 
-                          className={`py-4 bg-cyan-900/40 text-cyan-500 font-black text-sm rounded-sm border border-cyan-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-cyan-900/60 ${selectedMenuIndex === 21 + teleportCount + 2 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                          className={`py-4 bg-cyan-900/40 text-cyan-500 font-black text-sm rounded-sm border border-cyan-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-cyan-900/60 ${selectedMenuIndex === 22 + teleportCount + 2 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
                           <BoxIcon size={20} /> +3 Monkey
                         </button>
@@ -4769,7 +4926,7 @@ const App: React.FC = () => {
                         ].map((perk, i) => (
                           <button
                             key={perk.id}
-                            id={`menu-item-${21 + teleportCount + 3 + i}`}
+                            id={`menu-item-${22 + teleportCount + 3 + i}`}
                             onClick={() => setStats(prev => {
                               const hasPerk = prev.perks.includes(perk.id);
                               const newPerks = hasPerk ? prev.perks.filter(p => p !== perk.id) : [...prev.perks, perk.id];
@@ -4841,14 +4998,14 @@ const App: React.FC = () => {
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button 
-                          id={`menu-item-${21 + teleportCount + 3 + 22}`}
+                          id={`menu-item-${22 + teleportCount + 3 + 22}`}
                           onClick={() => setStats(prev => ({ ...prev, perks: ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip', 'bandolier', 'tortoise', 'blaze', 'stronghold', 'blood', 'elemental'], maxHp: 350, hp: 350 }))} 
-                          className={`flex-1 py-2 bg-emerald-600/20 text-emerald-500 font-black text-xs rounded-sm border border-emerald-600/30 uppercase italic tracking-tighter ${selectedMenuIndex === 21 + teleportCount + 3 + 22 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                          className={`flex-1 py-2 bg-emerald-600/20 text-emerald-500 font-black text-xs rounded-sm border border-emerald-600/30 uppercase italic tracking-tighter ${selectedMenuIndex === 22 + teleportCount + 3 + 22 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                         >
                           All Perks
                         </button>
                         <button 
-                          id={`menu-item-${21 + teleportCount + 3 + 23}`}
+                          id={`menu-item-${22 + teleportCount + 3 + 23}`}
                           onClick={() => setStats(prev => {
                             let nextState = { ...prev, perks: [], maxHp: 100, hp: Math.min(prev.hp, 100) };
                             if (prev.perks.includes('mule') && prev.tertiaryWeaponName !== null) {
@@ -4884,7 +5041,7 @@ const App: React.FC = () => {
                             }
                             return nextState;
                           })} 
-                          className={`flex-1 py-2 bg-red-900/20 text-red-500 font-black text-xs rounded-sm border border-red-900/30 uppercase italic tracking-tighter ${selectedMenuIndex === 21 + teleportCount + 3 + 23 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                          className={`flex-1 py-2 bg-red-900/20 text-red-500 font-black text-xs rounded-sm border border-red-900/30 uppercase italic tracking-tighter ${selectedMenuIndex === 22 + teleportCount + 3 + 23 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                         >
                           Clear Perks
                         </button>
@@ -4895,7 +5052,7 @@ const App: React.FC = () => {
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-black text-white/40 uppercase tracking-widest text-left">Weapons</h3>
                         <button
-                          id={`menu-item-${21 + teleportCount + 3 + 24}`}
+                          id={`menu-item-${22 + teleportCount + 3 + 24}`}
                           onClick={() => {
                             const papName = PAP_MAPPING[stats.weaponName];
                             if (papName) {
@@ -4909,7 +5066,7 @@ const App: React.FC = () => {
                               }));
                             }
                           }}
-                          className={`px-3 py-1 bg-cyan-600/20 text-cyan-400 border border-cyan-600/30 rounded-sm text-[10px] font-black uppercase italic tracking-tighter active:scale-95 transition-all flex items-center gap-1 ${selectedMenuIndex === 21 + teleportCount + 3 + 24 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                          className={`px-3 py-1 bg-cyan-600/20 text-cyan-400 border border-cyan-600/30 rounded-sm text-[10px] font-black uppercase italic tracking-tighter active:scale-95 transition-all flex items-center gap-1 ${selectedMenuIndex === 22 + teleportCount + 3 + 24 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                         >
                           <PapIcon size={12} /> Pack-A-Punch Current
                         </button>
@@ -4923,7 +5080,7 @@ const App: React.FC = () => {
                           return (
                           <button
                             key={wName}
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + i}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + i}`}
                             onClick={() => {
                               soundService.playPerk();
                               setStats(prev => ({
@@ -4938,11 +5095,11 @@ const App: React.FC = () => {
                               stats.weaponName === wName 
                                 ? 'bg-emerald-900/40 border-emerald-500 ring-2 ring-emerald-500/50 scale-105 z-10' 
                                 : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/30'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + i ? 'ring-4 ring-white scale-105 z-10' : ''}` : `py-3 px-2 rounded-sm border transition-all flex items-center justify-center text-xs font-black uppercase italic tracking-tighter text-center h-12 shadow-lg ${
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + i ? 'ring-4 ring-white scale-105 z-10' : ''}` : `py-3 px-2 rounded-sm border transition-all flex items-center justify-center text-xs font-black uppercase italic tracking-tighter text-center h-12 shadow-lg ${
                               stats.weaponName === wName 
                                 ? 'bg-emerald-600 text-white ring-2 ring-white/50 scale-105 z-10' 
                                 : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                           >
                             {isCustomGame ? (
                               <>
@@ -4980,7 +5137,7 @@ const App: React.FC = () => {
                         {(['none', 'gold', 'diamond', 'dark_matter', 'cherry_blossom', 'dragon', 'ice', 'magma', 'nebula', 'red_hex', 'into_the_void', 'cosmic', 'spectrum'] as any[]).map((camo, i) => (
                           <button 
                             key={camo}
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + i}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + i}`}
                             onClick={() => {
                               soundService.playPerk();
                               setStats(prev => ({ ...prev, selectedCamo: camo }));
@@ -4989,7 +5146,7 @@ const App: React.FC = () => {
                               stats.selectedCamo === camo 
                                 ? 'border-white ring-2 ring-white/50 z-10 scale-105' 
                                 : 'border-white/10 opacity-70 hover:opacity-100 hover:scale-105'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + i ? 'ring-4 ring-white scale-110 z-20' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + i ? 'ring-4 ring-white scale-110 z-20' : ''}`}
                           >
                             <div className={`absolute inset-0 ${
                               camo === 'none' ? 'bg-stone-800' :
@@ -5024,68 +5181,68 @@ const App: React.FC = () => {
                         <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Power-Ups</h3>
                         <div className="grid grid-cols-2 gap-2">
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 13}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 13}`}
                             onClick={() => handlePowerUp('INSTA_KILL')} 
                             className={`py-3 px-3 rounded-sm border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter ${
                               Date.now() < instaKillExpiry ? 'bg-red-600/20 border-red-600/40 text-red-500' : 'bg-white/5 border-white/10 text-white/40'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 13 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 13 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <Skull size={14} /> Insta-Kill
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 14}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 14}`}
                             onClick={() => handlePowerUp('DOUBLE_POINTS')} 
                             className={`py-3 px-3 rounded-sm border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter ${
                               Date.now() < doublePointsExpiry ? 'bg-yellow-600/20 border-yellow-600/40 text-yellow-500' : 'bg-white/5 border-white/10 text-white/40'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 14 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 14 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <Database size={14} /> Double Pts
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 15}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 15}`}
                             onClick={() => handlePowerUp('MAX_AMMO')} 
-                            className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 15 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 15 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <RefreshCw size={14} /> Max Ammo
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 16}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 16}`}
                             onClick={() => handlePowerUp('NUKE')} 
-                            className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 16 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 16 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <Bomb size={14} /> Nuke
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 17}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 17}`}
                             onClick={() => handlePowerUp('DEATH_MACHINE')} 
                             className={`py-3 px-3 rounded-sm border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter ${
                               Date.now() < deathMachineExpiry ? 'bg-cyan-600/20 border-cyan-600/40 text-cyan-500' : 'bg-white/5 border-white/10 text-white/40'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 17 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 17 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <Skull size={14} /> Death Machine
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 18}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 18}`}
                             onClick={() => handlePowerUp('FIRE_SALE')} 
                             className={`py-3 px-3 rounded-sm border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter ${
                               Date.now() < fireSaleExpiry ? 'bg-orange-600/20 border-orange-600/40 text-orange-500' : 'bg-white/5 border-white/10 text-white/40'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 18 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 18 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <Flame size={14} /> Fire Sale
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 19}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 19}`}
                             onClick={() => handlePowerUp('ZOMBIE_BLOOD')} 
                             className={`py-3 px-3 rounded-sm border transition-all flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter ${
                               Date.now() < zombieBloodExpiry ? 'bg-red-900/20 border-red-900/40 text-red-500' : 'bg-white/5 border-white/10 text-white/40'
-                            } ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 19 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 19 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <Droplet size={14} /> Zombie Blood
                           </button>
                           <button 
-                            id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 20}`}
+                            id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 20}`}
                             onClick={() => setStats(prev => ({ ...prev, round: prev.round + 1 }))} 
-                            className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 20 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
+                            className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 20 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
                             <TrendingUp size={14} /> Skip Round
                           </button>
@@ -5095,9 +5252,9 @@ const App: React.FC = () => {
                   </div>
 
                   <button 
-                    id={`menu-item-${21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 21}`}
+                    id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 21}`}
                     onClick={() => setShowModMenu(false)} 
-                    className={`w-full py-4 bg-emerald-600 text-white font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter flex items-center justify-center gap-3 mt-4 ${selectedMenuIndex === 21 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 21 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                    className={`w-full py-4 bg-emerald-600 text-white font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter flex items-center justify-center gap-3 mt-4 ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 21 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                   >
                     <Play size={24} /> Close Mod Menu
                   </button>
@@ -5121,18 +5278,28 @@ const App: React.FC = () => {
                          <span className="text-emerald-400 font-black italic text-xl">{stats.kills + otherPlayers.reduce((sum, p) => sum + p.kills, 0)}</span>
                       </div>
                       <div className="w-full overflow-x-auto no-scrollbar">
-                        <table className="w-full text-left border-collapse min-w-[500px]">
+                        <table className={`w-full text-left border-collapse ${customGameConfig.gameMode === 'dead_ops' ? 'min-w-full' : 'min-w-[500px]'}`}>
                           <thead>
                             <tr className="text-white/50 text-[10px] uppercase font-bold tracking-widest border-b border-white/10">
                               <th className="p-3">Player</th>
                               <th className="p-3 text-center">Lvl</th>
-                              <th className="p-3 text-right">Score</th>
-                              <th className="p-3 text-center">Kills</th>
-                              <th className="p-3 text-center text-red-400">Downs</th>
-                              <th className="p-3 text-center text-emerald-400">Revives</th>
-                              <th className="p-3 text-center text-orange-400">HS</th>
-                              <th className="p-3 text-center text-blue-400">Knife</th>
-                              <th className="p-3 text-center text-purple-400">Equip</th>
+                              {customGameConfig.gameMode === 'dead_ops' && <th className="p-3 text-center text-purple-400">Gems</th>}
+                              {customGameConfig.gameMode !== 'dead_ops' && (
+                                <>
+                                  <th className="p-3 text-right">Score</th>
+                                  <th className="p-3 text-center">Kills</th>
+                                  <th className="p-3 text-center text-red-400">Downs</th>
+                                  <th className="p-3 text-center text-emerald-400">Revives</th>
+                                </>
+                              )}
+                              {customGameConfig.gameMode === 'dead_ops' && <th className="p-3 text-center">Kills</th>}
+                              {customGameConfig.gameMode !== 'dead_ops' && (
+                                <>
+                                  <th className="p-3 text-center text-orange-400">HS</th>
+                                  <th className="p-3 text-center text-blue-400">Knife</th>
+                                  <th className="p-3 text-center text-purple-400">Equip</th>
+                                </>
+                              )}
                             </tr>
                           </thead>
                           <tbody className="text-xs font-bold text-white">
@@ -5147,13 +5314,22 @@ const App: React.FC = () => {
                                   <span className="text-yellow-400 font-black italic">{getLevelData(progression.xp).level}</span>
                                 </div>
                               </td>
-                              <td className="p-3 text-right text-yellow-400 font-mono">{stats.points}</td>
-                              <td className="p-3 text-center font-mono">{stats.kills}</td>
-                              <td className="p-3 text-center font-mono text-red-400">{stats.downs || 0}</td>
-                              <td className="p-3 text-center font-mono text-emerald-400">{stats.revives || 0}</td>
-                              <td className="p-3 text-center font-mono text-orange-400">{stats.headshots}</td>
-                              <td className="p-3 text-center font-mono text-blue-400">{stats.knifeKills}</td>
-                              <td className="p-3 text-center font-mono text-purple-400">{stats.equipmentKills}</td>
+                              {customGameConfig.gameMode !== 'dead_ops' && (
+                                <>
+                                  <td className="p-3 text-right text-yellow-400 font-mono">{stats.points}</td>
+                                  <td className="p-3 text-center font-mono">{stats.kills}</td>
+                                  <td className="p-3 text-center font-mono text-red-400">{stats.downs || 0}</td>
+                                  <td className="p-3 text-center font-mono text-emerald-400">{stats.revives || 0}</td>
+                                </>
+                              )}
+                              {customGameConfig.gameMode === 'dead_ops' && <td className="p-3 text-center font-mono">{stats.kills}</td>}
+                              {customGameConfig.gameMode !== 'dead_ops' && (
+                                <>
+                                  <td className="p-3 text-center font-mono text-orange-400">{stats.headshots}</td>
+                                  <td className="p-3 text-center font-mono text-blue-400">{stats.knifeKills}</td>
+                                  <td className="p-3 text-center font-mono text-purple-400">{stats.equipmentKills}</td>
+                                </>
+                              )}
                             </tr>
                             {otherPlayers.map(player => (
                               <tr key={player.id} className="border-b border-white/5">
@@ -5166,9 +5342,15 @@ const App: React.FC = () => {
                                 <td className="p-3 text-center text-white/60 font-mono">{player.kills}</td>
                                 <td className="p-3 text-center text-red-400/60 font-mono">{player.downs || 0}</td>
                                 <td className="p-3 text-center text-emerald-400/60 font-mono">{player.revives || 0}</td>
-                                <td className="p-3 text-center text-orange-400/60 font-mono">{player.headshots || 0}</td>
-                                <td className="p-3 text-center text-blue-400/60 font-mono">{player.knifeKills || 0}</td>
-                                <td className="p-3 text-center text-purple-400/60 font-mono">{player.equipmentKills || 0}</td>
+                                {customGameConfig.gameMode === 'dead_ops' ? (
+                                  <td className="p-3 text-center text-purple-400/60 font-mono">{player.gems || 0}</td>
+                                ) : (
+                                  <>
+                                    <td className="p-3 text-center text-orange-400/60 font-mono">{player.headshots || 0}</td>
+                                    <td className="p-3 text-center text-blue-400/60 font-mono">{player.knifeKills || 0}</td>
+                                    <td className="p-3 text-center text-purple-400/60 font-mono">{player.equipmentKills || 0}</td>
+                                  </>
+                                )}
                               </tr>
                             ))}
                           </tbody>
@@ -5176,7 +5358,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className={`grid ${customGameConfig.gameMode === 'dead_ops' ? 'grid-cols-4' : 'grid-cols-3'} gap-4`}>
                       <div className="space-y-1">
                         <div className="text-white/30 text-[10px] uppercase font-bold tracking-widest">Rounds</div>
                         <div className="text-4xl text-white font-black italic">{stats.round}</div>
@@ -5185,6 +5367,12 @@ const App: React.FC = () => {
                         <div className="text-white/30 text-[10px] uppercase font-bold tracking-widest">Kills</div>
                         <div className="text-4xl text-white font-black italic">{stats.kills}</div>
                       </div>
+                      {customGameConfig.gameMode === 'dead_ops' && (
+                        <div className="space-y-1">
+                          <div className="text-white/30 text-[10px] uppercase font-bold tracking-widest">Gems</div>
+                          <div className="text-4xl text-purple-400 font-black italic">{stats.gems || 0}</div>
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <div className="text-white/30 text-[10px] uppercase font-bold tracking-widest flex items-center justify-center gap-1"><Timer size={10} /> Time</div>
                         <div className="text-4xl text-white font-black italic">{formatTime(stats.time)}</div>
@@ -5463,6 +5651,56 @@ const App: React.FC = () => {
                <div className="h-[1px] bg-white/10 w-full" />
 
                <div className="space-y-6">
+                  <span className="text-white/40 uppercase font-black text-xs tracking-[0.3em]">HUD Profiles</span>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={newHudProfileName}
+                        onChange={(e) => setNewHudProfileName(e.target.value)}
+                        placeholder="Profile Name (e.g. Dead Ops)"
+                        className="flex-1 bg-black/50 border border-white/10 text-white p-3 rounded-sm font-black italic outline-none focus:border-blue-500 transition-colors"
+                        maxLength={20}
+                      />
+                      <button 
+                        onClick={() => {
+                          if (newHudProfileName.trim()) {
+                            setSavedHudProfiles(prev => [...prev.filter(p => p.name !== newHudProfileName.trim()), { name: newHudProfileName.trim(), settings: hudSettings }]);
+                            setNewHudProfileName('');
+                          }
+                        }}
+                        className="px-6 bg-blue-600 hover:bg-blue-500 text-white font-black italic uppercase rounded-sm transition-colors"
+                      >
+                        Save
+                      </button>
+                    </div>
+                    
+                    {savedHudProfiles.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {savedHudProfiles.map((profile, idx) => (
+                          <div key={idx} className="flex group">
+                            <button 
+                              onClick={() => setHudSettings(profile.settings)}
+                              className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 p-3 rounded-l-sm text-left truncate font-bold text-sm text-white/80 transition-colors"
+                            >
+                              {profile.name}
+                            </button>
+                            <button 
+                              onClick={() => setSavedHudProfiles(prev => prev.filter((_, i) => i !== idx))}
+                              className="bg-red-900/50 hover:bg-red-600 border border-l-0 border-white/10 p-3 rounded-r-sm text-white/60 hover:text-white transition-colors"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+               </div>
+
+               <div className="h-[1px] bg-white/10 w-full" />
+
+               <div className="space-y-6">
                   <span className="text-white/40 uppercase font-black text-xs tracking-[0.3em]">HUD Customization</span>
                   
                   <div className="space-y-4">
@@ -5494,6 +5732,20 @@ const App: React.FC = () => {
                       />
                     </div>
 
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-white/60">
+                        <span>Minimap Scale</span>
+                        <span>{(hudSettings.minimapScale || 1).toFixed(2)}x</span>
+                      </div>
+                      <input 
+                        id="menu-item-14"
+                        type="range" min="0.5" max="3" step="0.1" 
+                        value={hudSettings.minimapScale || 1} 
+                        onChange={(e) => setHudSettings(prev => ({ ...prev, minimapScale: parseFloat(e.target.value) }))}
+                        className={`w-full accent-red-600 ${selectedMenuIndex === 14 ? 'ring-2 ring-white rounded-sm' : ''}`}
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-6">
                       {[
                         { key: 'statsPos', label: 'Stats (Top/Left)' },
@@ -5510,21 +5762,37 @@ const App: React.FC = () => {
                         { key: 'knifePos', label: 'Knife (Bottom/Right)' },
                         { key: 'shootPos', label: 'Shoot (Bottom/Right)' },
                         { key: 'reloadPos', label: 'Reload (Bottom/Right)' },
+                        { key: 'minimapPos', label: 'Minimap (Top/Left)' },
+                        { key: 'gemPos', label: 'Gem Counter (Top/Center)' },
+                        { key: 'slidePos', label: 'Slide (Bottom/Right)' },
                       ].map(({ key, label }, idx) => (
                         <div key={key} className="space-y-2">
                           <span className="text-[10px] font-bold uppercase text-white/40 tracking-widest">{label}</span>
                           <div className="flex gap-2">
-                            <input id={`menu-item-${14 + idx * 2}`} type="number" value={(hudSettings as any)[key].x} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], x: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 14 + idx * 2 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="X" />
-                            <input id={`menu-item-${14 + idx * 2 + 1}`} type="number" value={(hudSettings as any)[key].y} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], y: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 14 + idx * 2 + 1 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="Y" />
+                            <input id={`menu-item-${15 + idx * 2}`} type="number" value={(hudSettings as any)[key]?.x || 0} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], x: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 15 + idx * 2 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="X" />
+                            <input id={`menu-item-${15 + idx * 2 + 1}`} type="number" value={(hudSettings as any)[key]?.y || 0} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], y: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 15 + idx * 2 + 1 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="Y" />
                           </div>
                         </div>
                       ))}
                     </div>
 
+                    <div className="flex items-center justify-between bg-white/5 p-3 rounded-sm border border-white/10">
+                      <span className="text-white font-bold uppercase text-xs tracking-widest">Show Minimap</span>
+                      <button 
+                        id="menu-item-49"
+                        onClick={() => setHudSettings(prev => ({ ...prev, minimapVisible: !(prev.minimapVisible ?? true) }))}
+                        className={`px-4 py-1 rounded-sm border-2 font-black italic uppercase transition-all text-xs ${
+                          (hudSettings.minimapVisible ?? true) ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-red-600 border-red-400 text-white/50'
+                        } ${selectedMenuIndex === 49 ? 'ring-2 ring-white' : ''}`}
+                      >
+                        {(hudSettings.minimapVisible ?? true) ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+
                     <button 
-                      id="menu-item-42"
+                      id="menu-item-50"
                       onClick={() => setHudSettings(INITIAL_HUD_SETTINGS)}
-                      className={`w-full py-2 bg-white/5 border border-white/10 text-white/60 text-xs font-bold uppercase tracking-widest rounded hover:bg-white/10 transition-all ${selectedMenuIndex === 42 ? 'ring-2 ring-white bg-white/20' : ''}`}
+                      className={`w-full py-2 bg-white/5 border border-white/10 text-white/60 text-xs font-bold uppercase tracking-widest rounded hover:bg-white/10 transition-all ${selectedMenuIndex === 50 ? 'ring-2 ring-white bg-white/20' : ''}`}
                     >
                       Reset to Default
                     </button>
@@ -5699,7 +5967,7 @@ const App: React.FC = () => {
 
                <div className="h-[1px] bg-white/10 w-full" />
 
-            <button id="menu-item-43" onClick={() => status === GameStatus.PAUSED ? setShowPauseSettings(false) : setStatus(GameStatus.START)} className={`w-full py-5 bg-red-800 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-red-950 ${selectedMenuIndex === 43 ? 'ring-4 ring-white scale-105' : ''}`}>
+            <button id="menu-item-51" onClick={() => status === GameStatus.PAUSED ? setShowPauseSettings(false) : setStatus(GameStatus.START)} className={`w-full py-5 bg-red-800 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-red-950 ${selectedMenuIndex === 51 ? 'ring-4 ring-white scale-105' : ''}`}>
                Save and Return
             </button>
           </div>
@@ -6442,6 +6710,11 @@ const App: React.FC = () => {
 
                 <div>
                   <label className="block text-white/60 font-bold uppercase text-xs mb-2">Starting Weapon</label>
+                  {customGameConfig.gameMode === 'dead_ops' ? (
+                    <div className="bg-black/20 p-4 rounded-sm border border-white/10 text-center text-white/40 font-bold italic uppercase">
+                      Starting Weapon Locked in Dead Ops Arcade
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-96 overflow-y-auto pr-2 bg-black/20 p-4 rounded-sm border border-white/10 custom-scrollbar">
                     {SORTED_WEAPONS.map(([name]) => {
                       const isPap = isPapWeapon(name);
@@ -6482,6 +6755,7 @@ const App: React.FC = () => {
                       );
                     })}
                   </div>
+                  )}
                 </div>
               </div>
 

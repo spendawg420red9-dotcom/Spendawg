@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Sky, Stars, Plane, Box, Sphere, Cylinder, Grid, Float, useTexture, Sparkles, Text, Torus, Html } from '@react-three/drei';
 import { User } from 'lucide-react';
 import * as THREE from 'three';
-import { GameStatus, PowerUpType, MapConfig, WeaponCamo, PlayerScore, WeaponAttachment, Progression, ZombieType, GameSettings } from '../types';
+import { GameStatus, PowerUpType, MapConfig, WeaponCamo, PlayerScore, WeaponAttachment, Progression, ZombieType, GameSettings, HUDSettings, ZombieData } from '../types';
 import { soundService } from '../services/soundService';
 
 interface SceneProps {
@@ -34,7 +34,9 @@ interface SceneProps {
   onGameEvent?: (event: any) => void;
   isHost?: boolean;
   syncedZombies?: any[] | null;
-  playerPosRef?: React.RefObject<THREE.Vector3>;
+  playerPosRef?: React.MutableRefObject<THREE.Vector3>;
+  playerRotRef?: React.MutableRefObject<THREE.Euler>;
+  zombieRefsRef?: React.MutableRefObject<ZombieData[]>;
   openDoors: string[];
   teleportTarget: THREE.Vector3 | null;
   onTeleportComplete: () => void;
@@ -90,6 +92,7 @@ interface SceneProps {
   thirdPersonMode?: boolean;
   progression: Progression;
   gameSettings: GameSettings;
+  hudSettings?: HUDSettings;
   gameMode: 'standard' | 'dead_ops';
 }
 
@@ -107,22 +110,6 @@ interface BotData {
   points: number;
   variant: number;
   isReviving: boolean;
-}
-
-interface ZombieData {
-  id: string;
-  position: THREE.Vector3;
-  hp: number;
-  maxHp: number;
-  speed: number;
-  lastAttack: number;
-  hitFlash: number;
-  variant: number;
-  stunTimer: number;
-  type: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute';
-  turnDirection?: number;
-  turnTimer?: number;
-  timeNotClose?: number;
 }
 
 interface Projectile {
@@ -1374,9 +1361,9 @@ const Bus = ({ position }: { position: THREE.Vector3 }) => {
 };
 
 export const Scene: React.FC<SceneProps> = ({ 
-  status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, monkeyBombRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
+  status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, monkeyBombRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, playerRotRef: externalPlayerRotRef, zombieRefsRef: externalZombieRefsRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
   spawnZombieType, onSpawnZombieComplete, changeAllZombiesType, onChangeAllZombiesComplete,
-  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, gameMode = 'standard'
+  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard'
 }) => {
   const { camera, scene } = useThree();
   const [weather, setWeather] = useState<'clear' | 'rain' | 'fog'>('clear');
@@ -1486,7 +1473,6 @@ export const Scene: React.FC<SceneProps> = ({
   // Fog Adjustment removed from useEffect and moved to JSX for better reactivity
   const botsRef = useRef<BotData[]>([]);
   const [botIds, setBotIds] = useState<string[]>([]);
-  const zombieRefs = useRef<ZombieData[]>([]);
   const [zombieIds, setZombieIds] = useState<string[]>([]);
   const powerUpsRef = useRef<PowerUp[]>([]);
   const [powerUpIds, setPowerUpIds] = useState<string[]>([]);
@@ -1582,6 +1568,13 @@ export const Scene: React.FC<SceneProps> = ({
   const isShooting = useRef(false);
   const internalPlayerPos = useRef(new THREE.Vector3(0, 1.2, 15));
   const playerPos = externalPlayerPosRef || internalPlayerPos;
+  
+  const internalPlayerRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const playerRot = externalPlayerRotRef || internalPlayerRot;
+
+  const internalZombieRefs = useRef<ZombieData[]>([]);
+  const zombieRefs = externalZombieRefsRef || internalZombieRefs;
+  
   const easterEggTimer = useRef(0);
   const easterEggBullets = useRef(0);
   const easterEggTriggered = useRef(false);
@@ -1596,7 +1589,6 @@ export const Scene: React.FC<SceneProps> = ({
   const timeSinceLastMove = useRef(0);
   const bloodWolfTimer = useRef(0);
 
-  const playerRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   const targetRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   
   const viewmodelRef = useRef<THREE.Group>(null);
@@ -1685,26 +1677,29 @@ export const Scene: React.FC<SceneProps> = ({
       }
     });
 
-    heartPositions.forEach((pos, i) => {
-      if (!collectedHearts[i]) {
+    // Dragon Hearts and Summoning (Disabled in Dead Ops)
+    if (gameMode !== 'dead_ops') {
+      heartPositions.forEach((pos, i) => {
+        if (!collectedHearts[i]) {
+          items.push({
+            id: `heart_${i}`,
+            type: `Dragon Heart ${i + 1}`,
+            cost: 0,
+            pos: pos,
+            color: '#ff0000'
+          });
+        }
+      });
+
+      if (collectedHearts.every(h => h) && !dragonActive && mapConfig.craftingTablePos) {
         items.push({
-          id: `heart_${i}`,
-          type: `Dragon Heart ${i + 1}`,
+          id: 'summon_dragon',
+          type: 'Summon Dragon',
           cost: 0,
-          pos: pos,
-          color: '#ff0000'
+          pos: new THREE.Vector3(...mapConfig.craftingTablePos),
+          color: '#ffaa00'
         });
       }
-    });
-
-    if (collectedHearts.every(h => h) && !dragonActive && mapConfig.craftingTablePos) {
-      items.push({
-        id: 'summon_dragon',
-        type: 'Summon Dragon',
-        cost: 0,
-        pos: new THREE.Vector3(...mapConfig.craftingTablePos),
-        color: '#ffaa00'
-      });
     }
 
     return items;
@@ -2011,15 +2006,44 @@ export const Scene: React.FC<SceneProps> = ({
     
     if (gameMode === 'dead_ops') {
        // Dead Ops Arcade Rotation Logic
-       // Check for gamepad input OR on-screen joystick input (now mapped to keyboardLookInput)
-       const hasGamepadInput = Math.abs(keyboardLookInput.current.x) > 0.1 || Math.abs(keyboardLookInput.current.y) > 0.1;
        
-       if (hasGamepadInput) {
-          const angle = Math.atan2(-keyboardLookInput.current.x, keyboardLookInput.current.y);
-          targetRot.current.y = angle;
-       } else {
-          // Mouse input (relative) - fallback if no stick input
-          targetRot.current.y -= lookInput.current.x * sensitivity;
+       // Aim Assist Logic
+       let aimAssistActive = false;
+       const isShooting = shootRequest.current || phoneShootRequest?.current;
+       
+       if (isShooting) {
+          let closestDist = 5; // Range threshold
+          let closestZombie: ZombieData | null = null;
+          
+          zombieRefs.current.forEach(z => {
+             if (z.hp <= 0) return;
+             const dist = playerPos.current.distanceTo(z.position);
+             if (dist < closestDist) {
+                closestDist = dist;
+                closestZombie = z;
+             }
+          });
+          
+          if (closestZombie) {
+             const dx = closestZombie.position.x - playerPos.current.x;
+             const dz = closestZombie.position.z - playerPos.current.z;
+             // Calculate angle to face the zombie
+             targetRot.current.y = Math.atan2(-dx, -dz);
+             aimAssistActive = true;
+          }
+       }
+
+       if (!aimAssistActive) {
+           // Check for gamepad input OR on-screen joystick input (now mapped to keyboardLookInput)
+           const hasGamepadInput = Math.abs(keyboardLookInput.current.x) > 0.1 || Math.abs(keyboardLookInput.current.y) > 0.1;
+           
+           if (hasGamepadInput) {
+              const angle = Math.atan2(-keyboardLookInput.current.x, -keyboardLookInput.current.y);
+              targetRot.current.y = angle;
+           } else {
+              // Mouse input (relative) - fallback if no stick input
+              targetRot.current.y -= lookInput.current.x * sensitivity;
+           }
        }
        
        // Lock pitch for top-down view
@@ -2326,6 +2350,11 @@ export const Scene: React.FC<SceneProps> = ({
     if (gameMode === 'dead_ops') {
       camera.position.copy(playerPos.current).add(new THREE.Vector3(0, 20, 10)); // High angle top-down
       camera.lookAt(playerPos.current);
+    } else if (thirdPersonMode) {
+      camera.quaternion.setFromEuler(playerRot.current);
+      const offset = new THREE.Vector3(0.5, 0, 2.5);
+      offset.applyQuaternion(camera.quaternion);
+      camera.position.copy(playerPos.current).add(new THREE.Vector3(0, 1.5, 0)).add(offset);
     } else {
       camera.position.copy(playerPos.current);
       camera.quaternion.setFromEuler(playerRot.current);
@@ -2578,10 +2607,24 @@ export const Scene: React.FC<SceneProps> = ({
         weaponRecoil.current = 1.0;
         flashTimer.current = 0.08;
         soundService.playShoot(gameState.weaponName);
-        const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        
+        let direction: THREE.Vector3;
+        let rayOrigin: THREE.Vector3;
+        
+        if (gameMode === 'dead_ops') {
+            // Use targetRot for instant aim response in Dead Ops
+            direction = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, targetRot.current.y, 0));
+            // Lower ray origin to chest/gun height (approx 0.7m) for scaled down player (0.5 scale)
+            rayOrigin = new THREE.Vector3(playerPos.current.x, 0.7, playerPos.current.z);
+        } else {
+            direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            rayOrigin = camera.position.clone();
+        }
 
         const muzzleOffset = isLeft ? new THREE.Vector3(-0.25, -0.3, -0.5) : new THREE.Vector3(0.25, -0.3, -0.5);
-        const muzzlePos = camera.position.clone().add(muzzleOffset.applyQuaternion(camera.quaternion)).add(direction.clone().multiplyScalar(0.6));
+        const muzzlePos = gameMode === 'dead_ops' 
+            ? new THREE.Vector3(playerPos.current.x, 0.7, playerPos.current.z).add(direction.clone().multiplyScalar(0.6))
+            : camera.position.clone().add(muzzleOffset.applyQuaternion(camera.quaternion)).add(direction.clone().multiplyScalar(0.6));
         
         if (!gameState.attachments.includes('suppressor')) {
           effects.current.push({ 
@@ -2600,7 +2643,11 @@ export const Scene: React.FC<SceneProps> = ({
 
         const spread = baseSpread * (aimRequest.current && !isLeft ? 0.2 : 1.0);
         const spreadVec = new THREE.Vector3((Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread, (Math.random() - 0.5) * spread);
-        const ray = new THREE.Raycaster(camera.position, direction.add(spreadVec).normalize());
+        
+        // In Dead Ops, flatten the spread vector to keep shots horizontal
+        if (gameMode === 'dead_ops') spreadVec.y = 0;
+        
+        const ray = new THREE.Raycaster(rayOrigin, direction.add(spreadVec).normalize());
         
         if (!red9CurseActive) {
           const graveBox = new THREE.Box3().setFromCenterAndSize(currentGravePos.clone().add(new THREE.Vector3(0, 2.75, 0)), new THREE.Vector3(3, 5, 1));
@@ -2629,10 +2676,10 @@ export const Scene: React.FC<SceneProps> = ({
           const bodyIntersection = ray.ray.intersectBox(bodyBox, new THREE.Vector3());
           
           if (headIntersection) {
-            const d = headIntersection.distanceTo(camera.position);
+            const d = headIntersection.distanceTo(rayOrigin);
             if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: true, hitPos: headIntersection.clone(), isDragon: false };
           } else if (bodyIntersection) {
-            const d = bodyIntersection.distanceTo(camera.position);
+            const d = bodyIntersection.distanceTo(rayOrigin);
             if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: false, hitPos: bodyIntersection.clone(), isDragon: false };
           }
         });
@@ -2641,7 +2688,7 @@ export const Scene: React.FC<SceneProps> = ({
           const dragonBox = new THREE.Box3().setFromCenterAndSize(dragonPos.current, new THREE.Vector3(10, 10, 10));
           const dragonIntersection = ray.ray.intersectBox(dragonBox, new THREE.Vector3());
           if (dragonIntersection) {
-            const d = dragonIntersection.distanceTo(camera.position);
+            const d = dragonIntersection.distanceTo(rayOrigin);
             if (d < closestHit.dist) {
               closestHit = { dist: d, zombie: null, isHeadshot: false, hitPos: dragonIntersection.clone(), isDragon: true };
             }
@@ -3327,7 +3374,8 @@ export const Scene: React.FC<SceneProps> = ({
       setTimeout(() => { if (status === GameStatus.PLAYING) onStatsUpdate({ round: gameState.round + 1 }); }, 5000);
     }
 
-    if (dragonActive) {
+    // Boss logic (Disabled in Dead Ops)
+    if (gameMode !== 'dead_ops' && dragonActive) {
       if (dragonPos.current.lengthSq() === 0) {
         dragonPos.current.set(0, 20, 0); // Start high up
         dragonLastAttack.current = now; // Delay first attack
@@ -3433,7 +3481,8 @@ export const Scene: React.FC<SceneProps> = ({
     const distToBox = playerPos.current.distanceTo(new THREE.Vector3(boxPos.x, 0.75, boxPos.z));
     const isLookingUp = camera.rotation.x > 1.3; // Looking almost straight up
     
-    if (distToBox < 4 && isLookingUp && !easterEggTriggered.current && status === GameStatus.PLAYING) {
+    // Easter Egg logic (Disabled in Dead Ops)
+    if (gameMode !== 'dead_ops' && distToBox < 4 && isLookingUp && !easterEggTriggered.current && status === GameStatus.PLAYING) {
       easterEggTimer.current += delta;
       
       // Check for Ultimate Easter Egg (5s + 8 bullets)
@@ -3506,7 +3555,7 @@ export const Scene: React.FC<SceneProps> = ({
       }
     } else {
       // If they were looking up for at least 3.5s but less than 5s and stopped, trigger basic
-      if (easterEggTimer.current >= 3.5 && !easterEggTriggered.current && status === GameStatus.PLAYING) {
+      if (gameMode !== 'dead_ops' && easterEggTimer.current >= 3.5 && !easterEggTriggered.current && status === GameStatus.PLAYING) {
         easterEggTriggered.current = true;
         onEasterEggTriggered();
         soundService.playPowerUpPickup();

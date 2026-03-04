@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 export enum GameStatus {
   START = 'START',
   PLAYING = 'PLAYING',
@@ -113,6 +115,9 @@ export interface HUDSettings {
   monkeyBombPos: { x: number; y: number };
   minimapPos?: { x: number; y: number };
   minimapVisible?: boolean;
+  minimapScale?: number;
+  gemPos?: { x: number; y: number };
+  slidePos?: { x: number; y: number };
 }
 
 export interface GamepadSettings {
@@ -209,6 +214,22 @@ export interface MapConfig {
   interactables: InteractableConfig[];
   spawnPoints: [number, number, number][];
   craftingTablePos: [number, number, number];
+}
+
+export interface ZombieData {
+  id: string;
+  position: THREE.Vector3;
+  hp: number;
+  maxHp: number;
+  speed: number;
+  lastAttack: number;
+  hitFlash: number;
+  variant: number;
+  stunTimer: number;
+  type: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute';
+  turnDirection?: number;
+  turnTimer?: number;
+  timeNotClose?: number;
 }
 
 export interface Achievement {

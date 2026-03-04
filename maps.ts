@@ -321,78 +321,57 @@ export const MAPS: MapConfig[] = [
     fogNear: 10,
     fogFar: 150,
     spawnPoints: [
-      [0, 1.2, 0], // Bus Depot (Center)
-      [100, 1.2, 100], // Town (North East)
-      [-100, 1.2, 100], // Farm (North West)
-      [0, 1.2, -150] // Power Station (South)
+      [0, 1.2, -25], // Bus Depot (Inside)
+      [0, 1.2, -180], // Town Bank
+      [-100, 1.2, 120], // Farm House
+      [100, 1.2, 120] // Power Station
     ],
     craftingTablePos: [0, 1.5, -10],
     interactables: [
-      // Bus Depot Area (Center)
-      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [5, 0, 5], color: '#3b82f6' },
-      { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [-5, 1.5, 0], rotation: [0, Math.PI / 2, 0] },
-      { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [5, 1.5, 0], rotation: [0, -Math.PI / 2, 0] },
+      // Bus Depot Area (Start) - Building at (0, 0, -25)
+      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [-10, 0, -25], color: '#3b82f6' },
+      { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [10, 1.5, -20], rotation: [0, -Math.PI / 2, 0] },
+      { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [10, 1.5, -30], rotation: [0, -Math.PI / 2, 0] },
       
-      // Town Area (North East - Offset +100, +100)
-      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [125, 0, 105], color: '#ff0000' },
-      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [135, 0, 95], color: '#ffff00' },
-      { id: 'box_town', type: 'Mystery Box', cost: 950, pos: [100, 0, 100] },
-      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [100, 0, 120] }, // Bank Vault
-      { id: 'wall_galil', type: 'WALLBUY: GALIL', cost: 2000, pos: [110, 1.5, 110], rotation: [0, 0, 0] },
+      // Town Area (North - Group at 0, 0, -150)
+      // Bank at (0, 0, -180), Bar at (40, 0, -180)
+      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [40, 0, -180], color: '#ff0000' }, // In Bar
+      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [20, 0, -180], color: '#ffff00' }, // Near Bar
+      { id: 'box_town', type: 'Mystery Box', cost: 950, pos: [40, 0, -170] }, // Outside Bar
+      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [0, 0, -180] }, // In Bank Vault
+      { id: 'wall_galil', type: 'WALLBUY: GALIL', cost: 2000, pos: [0, 1.5, -190], rotation: [0, 0, 0] }, // Bank Back Wall
 
-      // Farm Area (North West - Offset -100, +100)
-      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [-115, 0, 100], color: '#ff8800' },
-      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [-85, 0, 100], color: '#00ff00' },
-      { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [-100, 1.5, 110], rotation: [0, Math.PI, 0] },
-      { id: 'box_farm', type: 'Mystery Box', cost: 950, pos: [-100, 0, 90] },
+      // Farm Area (West - Group at -100, 0, 100)
+      // House at (-100, 0, 120), Barn at (-130, 0, 100)
+      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [-130, 0, 100], color: '#ff8800' }, // In Barn
+      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [-100, 0, 120], color: '#00ff00' }, // In House
+      { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [-100, 1.5, 110], rotation: [0, Math.PI, 0] }, // House Front
+      { id: 'box_farm', type: 'Mystery Box', cost: 950, pos: [-130, 0, 110] }, // Barn Side
 
-      // Power Station (South - Offset 0, -150)
-      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [0, 0, -160], color: '#06b2d2' },
-      { id: 'tombstone', type: 'PERK: Tombstone Soda', cost: 2000, pos: [10, 0, -150], color: '#4b5563' },
-      { id: 'wall_ak47', type: 'WALLBUY: AK-47', cost: 1800, pos: [-10, 1.5, -150], rotation: [0, 0, 0] },
+      // Power Station (East - Group at 100, 0, 100)
+      // Building at (100, 0, 120)
+      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [100, 0, 120], color: '#06b2d2' },
+      { id: 'tombstone', type: 'PERK: Tombstone Soda', cost: 2000, pos: [110, 0, 120], color: '#4b5563' },
+      { id: 'wall_ak47', type: 'WALLBUY: AK-47', cost: 1800, pos: [90, 1.5, 120], rotation: [0, Math.PI / 2, 0] },
       
-      // Diner (West - Offset -150, 0)
-      { id: 'speed_diner', type: 'PERK: Speed Cola', cost: 3000, pos: [-150, 0, 0], color: '#00ff00' },
-      { id: 'box_diner', type: 'Mystery Box', cost: 950, pos: [-160, 0, 0] },
+      // Diner (Far West - Group at -150, 0, 0)
+      // Diner at (-150, 0, -20)
+      { id: 'speed_diner', type: 'PERK: Speed Cola', cost: 3000, pos: [-150, 0, -20], color: '#00ff00' }, // In Diner
+      { id: 'box_diner', type: 'Mystery Box', cost: 950, pos: [-125, 0, -10] }, // In Garage
       
       // Scattered Perks
-      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [50, 0, 50], color: '#4f46e2' },
+      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [0, 0, 50], color: '#4f46e2' }, // Middle of nowhere
       { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [-50, 0, 50], color: '#9333ea' },
       { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [50, 0, -50], color: '#4b5563' },
       { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-50, 0, -50], color: '#db2677' },
       
-      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 200] },
+      { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, -200] }, // Behind Town
     ],
     objects: [
-      // The Bus (Center Spawn)
-      { type: 'box', pos: [0, 3.5, -10], args: [10, 7, 30], color: '#475569', texture: 'https://picsum.photos/seed/bus/512/512', label: "THE BUS" },
-      { type: 'box', pos: [0, 1.5, -5], args: [2, 3, 2], color: '#1e293b', label: "TEDD" }, // Tedd Driver
-
-      // Bus Depot Building
-      { type: 'building', pos: [20, 6, 0], args: [20, 12, 40], color: "#334155", label: "DEPOT", lightColor: "#ffffff", doorCost: 750, doorId: "depot_door" },
-
-      // Town Buildings (North East)
-      { type: 'building', pos: [125, 6, 105], args: [18, 12, 25], color: "#a52a2a", label: "BAR", lightColor: "#ff6666", doorCost: 1500, doorId: "bar_door" },
-      { type: 'building', pos: [100, 5, 120], args: [14, 10, 20], color: "#800000", label: "BANK", lightColor: "#ff4444", doorCost: 2500, doorId: "bank_door" },
-
-      // Farm Buildings (North West)
-      { type: 'building', pos: [-100, 9, 120], args: [40, 18, 30], color: "#7f1d1d", label: "BARN", lightColor: "#ffaa00", doorCost: 750, doorId: "barn_door" },
-      { type: 'building', pos: [-130, 7.5, 100], args: [30, 15, 30], color: "#fef3c7", label: "FARMHOUSE", lightColor: "#ffffaa", doorCost: 750, doorId: "house_door" },
-
-      // Power Station (South)
-      { type: 'building', pos: [0, 8, -170], args: [30, 16, 30], color: "#222", label: "POWER", lightColor: "#00ffff", doorCost: 1500, doorId: "power_door" },
+      // Only keeping boundaries and streetlights here. 
+      // Buildings and Bus are handled in Scene.tsx TranzitBuildings component.
       
-      // Diner (West)
-      { type: 'building', pos: [-150, 5, 0], args: [25, 10, 15], color: "#ef4444", label: "DINER", lightColor: "#ff0000", doorCost: 750, doorId: "diner_door" },
-      { type: 'building', pos: [-170, 5, 0], args: [15, 10, 15], color: "#333", label: "GARAGE", lightColor: "#ffffff", doorCost: 750, doorId: "garage_door" },
-
-      // Lava Pools (Red Planes on ground)
-      { type: 'plane', pos: [0, 0.1, 50], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
-      { type: 'plane', pos: [50, 0.1, 0], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
-      { type: 'plane', pos: [-50, 0.1, 0], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
-      { type: 'plane', pos: [0, 0.1, -50], args: [20, 1, 20], color: '#ff3300', texture: 'https://picsum.photos/seed/lava/512/512' },
-      
-      // Roads/Fog (Visual Guides)
+      // Roads/Fog (Visual Guides - Streetlights)
       { type: 'streetlight', pos: [0, 0, 25], color: '#ffaa00' },
       { type: 'streetlight', pos: [0, 0, 50], color: '#ffaa00' },
       { type: 'streetlight', pos: [0, 0, 75], color: '#ffaa00' },

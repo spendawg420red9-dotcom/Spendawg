@@ -245,7 +245,7 @@ const INITIAL_HUD_SETTINGS: HUDSettings = {
 const INITIAL_GAME_SETTINGS: GameSettings = {
   sfxVolume: 1.0,
   musicVolume: 1.0,
-  weatherType: 'dynamic',
+  weatherType: 'clear',
   musicEnabled: true,
   customMusicUrl: 'https://image2url.com/r2/default/audio/1772516475665-1a554687-3f96-41c7-b11f-bc5150e7dbc3.ogg',
   customPlaylist: [
@@ -2208,6 +2208,8 @@ const App: React.FC = () => {
       const botId = interactPrompt.id.replace('revive_', '');
       handleStatsUpdate({ isDowned: false, hp: 150 }, botId);
       handleStatsUpdate({ revives: 1 }); // Player gets credit
+    } else if (interactPrompt.id === 'bus_interact') {
+      window.dispatchEvent(new CustomEvent('bus_interact'));
     } else if (interactPrompt.id === 'box') {
       setIsBoxCycling(true);
       setStats(prev => ({ ...prev, points: prev.points - interactPrompt.cost }));
@@ -3414,6 +3416,7 @@ const App: React.FC = () => {
         <Canvas key={gameKey} shadows gl={{ antialias: true, alpha: false }} camera={{ fov: 75, near: 0.01, far: 150 }}>
           <Suspense fallback={null}>
             <Scene 
+              cyclingWeapon={isBoxCycling ? cyclingWeapon : null}
               gameMode={customGameConfig.gameMode}
               status={status}
               mapConfig={MAPS.find(m => m.id === stats.activeMapId) || MAPS[0]}
@@ -5837,7 +5840,7 @@ const App: React.FC = () => {
                         <span className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Atmospheric conditions</span>
                       </div>
                       <div className="flex gap-2">
-                        {(['dynamic', 'clear', 'rain', 'fog'] as const).map((type) => (
+                        {(['clear', 'rain', 'fog'] as const).map((type) => (
                           <button 
                             key={type}
                             onClick={() => setGameSettings(prev => ({ ...prev, weatherType: type }))}

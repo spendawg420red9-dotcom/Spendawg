@@ -31,6 +31,7 @@ interface SceneProps {
   onPowerUp: (type: PowerUpType) => void;
   onInteractAvailable: (info: { type: string; cost: number; id: string } | null) => void;
   onBotInteract?: (botId: string, interactableId: string, cost: number) => void;
+  onBusInteract?: () => void;
   onGameEvent?: (event: any) => void;
   isHost?: boolean;
   syncedZombies?: any[] | null;
@@ -94,6 +95,7 @@ interface SceneProps {
   gameSettings: GameSettings;
   hudSettings?: HUDSettings;
   gameMode: 'standard' | 'dead_ops';
+  cyclingWeapon?: string | null;
 }
 
 interface BotData {
@@ -1298,27 +1300,32 @@ const PowerUpModel: React.FC<{ type: PowerUpType }> = ({ type }) => {
   );
 };
 
-const Rain = ({ playerPosRef }: { playerPosRef: React.RefObject<THREE.Vector3> }) => {
-  const count = 8000;
-  const positions = useMemo(() => {
+const Rain = ({ playerPosRef, opacity }: { playerPosRef: React.RefObject<THREE.Vector3>, opacity: number }) => {
+  const count = 10000;
+  
+  const rainData = useMemo(() => {
     const pos = new Float32Array(count * 3);
+    const vel = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 100;
-      pos[i * 3 + 1] = Math.random() * 50;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 100;
+      pos[i * 3] = (Math.random() - 0.5) * 150;
+      pos[i * 3 + 1] = Math.random() * 60;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 150;
+      vel[i] = 40 + Math.random() * 40;
     }
-    return pos;
+    return { pos, vel };
   }, []);
 
   const points = useRef<THREE.Points>(null);
+  const velocities = useRef(rainData.vel);
 
   useFrame((state, delta) => {
     if (points.current && playerPosRef.current) {
       const positions = points.current.geometry.attributes.position.array as Float32Array;
       for (let i = 0; i < count; i++) {
-        positions[i * 3 + 1] -= delta * 45;
+        positions[i * 3] += Math.sin(state.clock.elapsedTime * 0.5) * delta * 2;
+        positions[i * 3 + 1] -= delta * velocities.current[i];
         if (positions[i * 3 + 1] < 0) {
-          positions[i * 3 + 1] = 50;
+          positions[i * 3 + 1] = 50 + Math.random() * 20;
         }
       }
       points.current.geometry.attributes.position.needsUpdate = true;
@@ -1332,29 +1339,55 @@ const Rain = ({ playerPosRef }: { playerPosRef: React.RefObject<THREE.Vector3> }
         <bufferAttribute
           attach="attributes-position"
           count={count}
-          array={positions}
+          array={rainData.pos}
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial color="#ccddff" size={0.25} transparent opacity={0.8} sizeAttenuation />
+      <pointsMaterial color="#ddeeff" size={0.08} transparent opacity={opacity * 0.6} sizeAttenuation />
     </points>
   );
 };
 
 const Bus = ({ position }: { position: THREE.Vector3 }) => {
-  const texture = useTexture('https://picsum.photos/seed/bus/512/512');
   return (
     <group position={position}>
       {/* Bus Body */}
       <Box args={[10, 7, 30]} position={[0, 3.5, 0]}>
-        <meshStandardMaterial color="#475569" map={texture} />
+        <meshStandardMaterial color="#2d3748" metalness={0.5} roughness={0.5} />
       </Box>
-      {/* Tedd */}
-      <Box args={[2, 3, 2]} position={[0, 1.5, 12]}>
-         <meshStandardMaterial color="#1e293b" />
+      {/* Windows */}
+      <Box args={[10.1, 3, 20]} position={[0, 5, 0]}>
+        <meshStandardMaterial color="#6366f1" transparent opacity={0.5} />
       </Box>
-      <Html position={[0, 4, 12]} center>
-         <div className="text-white font-bold bg-black/50 px-2 rounded">TEDD</div>
+      {/* Wheels */}
+      <mesh position={[-5, 1.5, -10]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
+        <meshStandardMaterial color="#1a202c" />
+      </mesh>
+      <mesh position={[5, 1.5, -10]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
+        <meshStandardMaterial color="#1a202c" />
+      </mesh>
+      <mesh position={[-5, 1.5, 10]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
+        <meshStandardMaterial color="#1a202c" />
+      </mesh>
+      <mesh position={[5, 1.5, 10]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
+        <meshStandardMaterial color="#1a202c" />
+      </mesh>
+      
+      {/* Tedd (Driver) */}
+      <group position={[0, 4, 12]}>
+        <Box args={[1.5, 2, 1.5]}>
+           <meshStandardMaterial color="#d97706" />
+        </Box>
+        <Box args={[0.5, 1, 0.5]} position={[0, 1.5, 0]}>
+           <meshStandardMaterial color="#fef3c7" />
+        </Box>
+      </group>
+      <Html position={[0, 6, 12]} center>
+         <div className="text-white font-bold bg-black/70 px-2 rounded text-xs">TEDD</div>
       </Html>
     </group>
   );
@@ -1363,15 +1396,37 @@ const Bus = ({ position }: { position: THREE.Vector3 }) => {
 export const Scene: React.FC<SceneProps> = ({ 
   status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, monkeyBombRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, playerRotRef: externalPlayerRotRef, zombieRefsRef: externalZombieRefsRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
   spawnZombieType, onSpawnZombieComplete, changeAllZombiesType, onChangeAllZombiesComplete,
-  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard'
+  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard', cyclingWeapon
 }) => {
   const { camera, scene } = useThree();
-  const [weather, setWeather] = useState<'clear' | 'rain' | 'fog'>('clear');
-  const weatherTimer = useRef<number>(0);
+
+  const isShooting = useRef(false);
+  const internalPlayerPos = useRef(new THREE.Vector3(0, 1.2, 15));
+  const playerPos = externalPlayerPosRef || internalPlayerPos;
+  
+  const internalPlayerRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const playerRot = externalPlayerRotRef || internalPlayerRot;
+
+  const internalZombieRefs = useRef<ZombieData[]>([]);
+  const zombieRefs = externalZombieRefsRef || internalZombieRefs;
+
+  const [weather, setWeather] = useState<'clear' | 'rain' | 'fog'>(gameSettings.weatherType as 'clear' | 'rain' | 'fog');
+  const ambientLightRef = useRef<THREE.AmbientLight>(null);
+  const hemiLightRef = useRef<THREE.HemisphereLight>(null);
+  const pointLight1Ref = useRef<THREE.PointLight>(null);
+  const pointLight2Ref = useRef<THREE.PointLight>(null);
+
+  const fogDensity = useRef(0.01);
+  const ambientIntensity = useRef(2.5);
+  const pointLightIntensity = useRef(100);
+  const rainOpacity = useRef(0);
   
   // Tranzit Logic
   const busPos = useRef(new THREE.Vector3(0, 0, 0));
   const busTargetIndex = useRef(0);
+  const busState = useRef<'driving' | 'stopped'>('driving');
+  const busStopTimer = useRef(0);
+  const isPlayerOnBus = useRef(false);
   const lavaCooldown = useRef(0);
   const BUS_PATH = useMemo(() => [
     new THREE.Vector3(0, 0, 0),
@@ -1381,22 +1436,70 @@ export const Scene: React.FC<SceneProps> = ({
     new THREE.Vector3(0, 0, -150)
   ], []);
 
-  // Dynamic Weather Logic
   useEffect(() => {
-    if (gameSettings.weatherType !== 'dynamic') {
-      setWeather(gameSettings.weatherType);
-      return;
+    setWeather(gameSettings.weatherType as 'clear' | 'rain' | 'fog');
+  }, [gameSettings.weatherType]);
+
+  useEffect(() => {
+    const handleBusInteract = () => {
+      isPlayerOnBus.current = !isPlayerOnBus.current;
+    };
+    window.addEventListener('bus_interact', handleBusInteract);
+    return () => window.removeEventListener('bus_interact', handleBusInteract);
+  }, []);
+
+  useFrame((state, delta) => {
+    const targetFog = weather === 'fog' ? 0.02 : weather === 'rain' ? 0.01 : 0.005;
+    const targetAmbient = weather === 'clear' ? 2.5 : weather === 'rain' ? 0.8 : 0.5;
+    const targetPoint = weather === 'clear' ? 100 : weather === 'rain' ? 20 : 10;
+    const targetRain = weather === 'rain' ? 0.4 : 0;
+
+    fogDensity.current += (targetFog - fogDensity.current) * delta * 0.5;
+    ambientIntensity.current += (targetAmbient - ambientIntensity.current) * delta * 0.5;
+    pointLightIntensity.current += (targetPoint - pointLightIntensity.current) * delta * 0.5;
+    rainOpacity.current += (targetRain - rainOpacity.current) * delta * 0.5;
+
+    // Tranzit Bus AI
+    const currentPos = playerPos.current;
+    if (currentPos) {
+      const distToBus = currentPos.distanceTo(busPos.current);
+      
+      if (busState.current === 'driving') {
+        const target = BUS_PATH[busTargetIndex.current];
+        const direction = target.clone().sub(busPos.current).normalize();
+        busPos.current.add(direction.multiplyScalar(delta * 15)); // Bus speed
+
+        if (isPlayerOnBus.current) {
+          currentPos.copy(busPos.current.clone().add(new THREE.Vector3(0, 1, 0)));
+        }
+
+        if (busPos.current.distanceTo(target) < 2) {
+          busState.current = 'stopped';
+          busStopTimer.current = 5; // Stop for 5 seconds
+        }
+      } else if (busState.current === 'stopped') {
+        // Add interactable for boarding/disembarking
+        onInteractAvailable({ type: isPlayerOnBus.current ? 'Disembark Bus' : 'Board Bus', cost: 0, id: 'bus_interact' });
+
+        busStopTimer.current -= delta;
+        if (busStopTimer.current <= 0) {
+          busTargetIndex.current = (busTargetIndex.current + 1) % BUS_PATH.length;
+          busState.current = 'driving';
+        }
+      }
     }
 
-    const interval = setInterval(() => {
-      const rand = Math.random();
-      if (rand < 0.4) setWeather('rain');
-      else if (rand < 0.7) setWeather('fog');
-      else setWeather('clear');
-    }, 15000); // Change weather every 15 seconds
-
-    return () => clearInterval(interval);
-  }, [gameSettings.weatherType]);
+    // Update Fog
+    if (scene.fog instanceof THREE.FogExp2) {
+      scene.fog.density = fogDensity.current;
+    }
+    
+    // Update Lights
+    if (ambientLightRef.current) ambientLightRef.current.intensity = ambientIntensity.current;
+    if (hemiLightRef.current) hemiLightRef.current.intensity = ambientIntensity.current * 0.4;
+    if (pointLight1Ref.current) pointLight1Ref.current.intensity = pointLightIntensity.current;
+    if (pointLight2Ref.current) pointLight2Ref.current.intensity = pointLightIntensity.current * 0.6;
+  });
 
   useEffect(() => {
     if (weather === 'rain') {
@@ -1564,16 +1667,6 @@ export const Scene: React.FC<SceneProps> = ({
       }
     }
   }, [otherPlayers, botCount, mapConfig.spawnPoints, botNames, botIds.length]);
-
-  const isShooting = useRef(false);
-  const internalPlayerPos = useRef(new THREE.Vector3(0, 1.2, 15));
-  const playerPos = externalPlayerPosRef || internalPlayerPos;
-  
-  const internalPlayerRot = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
-  const playerRot = externalPlayerRotRef || internalPlayerRot;
-
-  const internalZombieRefs = useRef<ZombieData[]>([]);
-  const zombieRefs = externalZombieRefsRef || internalZombieRefs;
   
   const easterEggTimer = useRef(0);
   const easterEggBullets = useRef(0);
@@ -3602,21 +3695,14 @@ export const Scene: React.FC<SceneProps> = ({
       <Sky sunPosition={weather === 'clear' ? [100, 100, 100] : [0, -10, 0]} />
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
       
-      {weather === 'fog' ? (
-        <fog attach="fog" args={[mapConfig.fogColor, 1, 20]} />
-      ) : weather === 'rain' ? (
-        <fog attach="fog" args={['#222233', 5, 40]} />
-      ) : (
-        <fog attach="fog" args={[mapConfig.fogColor, (mapConfig.fogNear || 20) + 20, (mapConfig.fogFar || 100) + 50]} />
-      )}
-
-      <ambientLight intensity={weather === 'clear' ? 2.5 : weather === 'rain' ? 1.2 : 0.6} />
-      <hemisphereLight intensity={weather === 'clear' ? 1.0 : 0.4} groundColor="#444" />
-      <pointLight position={[10, 20, 10]} intensity={weather === 'clear' ? 100 : 40} distance={150} />
-      <pointLight position={[-20, 15, -20]} intensity={weather === 'clear' ? 60 : 30} distance={120} color="#ffaa88" />
+      <fogExp2 attach="fog" args={[mapConfig.fogColor, 0.01]} />
       
-      {weather === 'rain' && <Rain playerPosRef={playerPos} />}
+      <ambientLight ref={ambientLightRef} intensity={2.5} />
+      <hemisphereLight ref={hemiLightRef} intensity={1.0} groundColor="#222" />
+      <pointLight ref={pointLight1Ref} position={[10, 20, 10]} intensity={100} distance={150} />
+      <pointLight ref={pointLight2Ref} position={[-20, 15, -20]} intensity={60} distance={120} color="#ffaa88" />
       
+      {weather === 'rain' && <Rain playerPosRef={playerPos} opacity={rainOpacity.current} />}
       <Ground mapConfig={mapConfig} />
       <Debris count={50} range={200} />
       <Grid args={[400, 400]} cellColor="#006600" sectionColor="#00aa00" fadeDistance={150} position={[0, -0.04, 0]} />
@@ -3670,7 +3756,7 @@ export const Scene: React.FC<SceneProps> = ({
       })}
 
       {interactables.map((item) => {
-        if (item.id === 'box') return <MysteryBox key={item.id} pos={item.pos} />;
+        if (item.id === 'box') return <MysteryBox key={item.id} pos={item.pos} cyclingWeapon={cyclingWeapon} />;
         if (item.id === 'pap') return <PackAPunchMachine key={item.id} pos={item.pos} />;
         if (item.id === 'healthRefill') return <HealthRefillStation key={item.id} pos={item.pos} isLocked={gameState.healthRefillsBought >= 3} />;
         if (item.id.startsWith('heart_')) return (
@@ -4539,7 +4625,7 @@ const ZombieInstance: React.FC<{ position: THREE.Vector3; variant: number; hitFl
   );
 };
 
-const MysteryBox: React.FC<{ pos: THREE.Vector3 }> = ({ pos }) => {
+const MysteryBox: React.FC<{ pos: THREE.Vector3, cyclingWeapon?: string | null }> = ({ pos, cyclingWeapon }) => {
   const texture = useTexture('https://picsum.photos/seed/wood/512/512');
   const lightRef = useRef<THREE.PointLight>(null);
   
@@ -4551,6 +4637,13 @@ const MysteryBox: React.FC<{ pos: THREE.Vector3 }> = ({ pos }) => {
 
   return (
     <group position={pos}>
+      {/* Cycling Weapon Model */}
+      {cyclingWeapon && (
+        <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5} position={[0, 2.5, 0]}>
+          <WeaponModel weaponName={cyclingWeapon} camo="none" />
+        </Float>
+      )}
+
       {/* Main Box Body */}
       <Box args={[4, 1.2, 1.5]} position={[0, 0.6, 0]}>
         <meshStandardMaterial color="#4a3525" map={texture} metalness={0.1} roughness={0.9} />
@@ -4565,18 +4658,22 @@ const MysteryBox: React.FC<{ pos: THREE.Vector3 }> = ({ pos }) => {
       </Box>
 
       {/* Glowing Question Marks */}
-      <Text position={[0, 0.6, 0.76]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
-        ?
-      </Text>
-      <Text position={[0, 0.6, -0.76]} rotation={[0, Math.PI, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
-        ?
-      </Text>
-      <Text position={[2.01, 0.6, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
-        ?
-      </Text>
-      <Text position={[-2.01, 0.6, 0]} rotation={[0, -Math.PI / 2, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
-        ?
-      </Text>
+      {!cyclingWeapon && (
+        <>
+          <Text position={[0, 0.6, 0.76]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+            ?
+          </Text>
+          <Text position={[0, 0.6, -0.76]} rotation={[0, Math.PI, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+            ?
+          </Text>
+          <Text position={[2.01, 0.6, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+            ?
+          </Text>
+          <Text position={[-2.01, 0.6, 0]} rotation={[0, -Math.PI / 2, 0]} fontSize={0.8} color="#ffffaa" outlineWidth={0.02} outlineColor="#ffaa00">
+            ?
+          </Text>
+        </>
+      )}
 
       {/* Lid (Slightly Open) */}
       <group position={[0, 1.2, -0.75]} rotation={[-0.2, 0, 0]}>

@@ -142,7 +142,7 @@ export interface GamepadSettings {
 export interface GameSettings {
   sfxVolume: number;
   musicVolume: number;
-  weatherType: 'dynamic' | 'clear' | 'rain' | 'fog';
+  weatherType: 'clear' | 'rain' | 'fog' | 'dynamic';
   musicEnabled: boolean;
   customMusicUrl: string;
   customPlaylist: { name: string; url: string }[];

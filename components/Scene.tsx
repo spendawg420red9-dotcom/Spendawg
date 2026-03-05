@@ -2839,16 +2839,13 @@ export const Scene: React.FC<SceneProps> = ({
         let closestHit = { dist: 100, zombie: null as ZombieData | null, isHeadshot: false, hitPos: new THREE.Vector3(), isDragon: false };
         
         zombieRefs.current.forEach(z => {
+          tempVec1.current.copy(z.position).add(new THREE.Vector3(0, 2, 0));
+          tempBox.current.setFromCenterAndSize(tempVec1.current, new THREE.Vector3(0.4, 0.4, 0.4));
+          const headIntersection = ray.ray.intersectBox(tempBox.current, new THREE.Vector3());
+          
           tempVec1.current.copy(z.position).add(new THREE.Vector3(0, 0.9, 0));
           tempBox.current.setFromCenterAndSize(tempVec1.current, new THREE.Vector3(0.6, 1.8, 0.4));
-          const bodyBox = tempBox.current;
-          
-          tempVec2.current.copy(z.position).add(new THREE.Vector3(0, 2, 0));
-          tempBox.current.setFromCenterAndSize(tempVec2.current, new THREE.Vector3(0.4, 0.4, 0.4));
-          const headBox = tempBox.current;
-          
-          const headIntersection = ray.ray.intersectBox(headBox, new THREE.Vector3());
-          const bodyIntersection = ray.ray.intersectBox(bodyBox, new THREE.Vector3());
+          const bodyIntersection = ray.ray.intersectBox(tempBox.current, new THREE.Vector3());
           
           if (headIntersection) {
             const d = headIntersection.distanceTo(rayOrigin);

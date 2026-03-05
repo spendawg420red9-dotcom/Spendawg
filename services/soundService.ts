@@ -119,7 +119,7 @@ class SoundManager {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    if (weapon === 'RAY GUN') {
+    if (weapon === 'RED9 BLASTER') {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sine';

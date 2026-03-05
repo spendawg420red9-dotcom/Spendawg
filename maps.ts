@@ -17,31 +17,31 @@ export const MAPS: MapConfig[] = [
     ],
     craftingTablePos: [0, 1.5, -110],
     interactables: [
-      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [-25, 0, -15], color: '#ff0000' },
-      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [25, 0, 5], color: '#00ff00' },
-      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [-35, 0, 35], color: '#ffff00' },
-      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [35, 0, -35], color: '#ff8800' },
-      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [0, 0, -45], color: '#4f46e2' },
-      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [82, 0, 85], color: '#9333ea' },
-      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [-75, 0, -70], color: '#4b5563' },
-      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [75, 0, -75], color: '#06b2d2' },
-      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [-85, 0, 75], color: '#3b82f6' },
-      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [85, 0, 25], color: '#84cc16' },
-      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-50, 0, 0], color: '#db2677' },
-      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [50, 0, 0], color: '#fb923c' },
-      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [-70, 0, -70], color: '#a5f3fc' },
-      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [-80, 0, 75], color: '#ef4444' },
-      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [70, 0, -75], color: '#a855f7' },
-      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [-30, 0, 35], color: '#67e8f9' },
-      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [20, 0, 5], color: '#fbbf24' },
-      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [-20, 0, -15], color: '#10b981' },
-      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [5, 0, -45], color: '#ea580c' },
-      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [0, 0, 60], color: '#78350f' },
-      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [60, 0, 30], color: '#991b1b' },
-      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [-60, 0, -30], color: '#ec4899' },
+      { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [-25, 0, -15], color: '#ff0000' },
+      { id: 'speed', type: 'PERK: Fast Hands', cost: 3000, pos: [25, 0, 5], color: '#00ff00' },
+      { id: 'stamin', type: 'PERK: Marathon Soda', cost: 2000, pos: [-35, 0, 35], color: '#ffff00' },
+      { id: 'double', type: 'PERK: Double Shot', cost: 2000, pos: [35, 0, -35], color: '#ff8800' },
+      { id: 'mule', type: 'PERK: Third Arm', cost: 4000, pos: [0, 0, -45], color: '#4f46e2' },
+      { id: 'phd', type: 'PERK: Blast Proof', cost: 2500, pos: [82, 0, 85], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Aim Assist', cost: 1500, pos: [-75, 0, -70], color: '#4b5563' },
+      { id: 'electric', type: 'PERK: Shock Burst', cost: 2000, pos: [75, 0, -75], color: '#06b2d2' },
+      { id: 'revive', type: 'PERK: Life Brew', cost: 1500, pos: [-85, 0, 75], color: '#3b82f6' },
+      { id: 'vulture', type: 'PERK: Loot Vision', cost: 3000, pos: [85, 0, 25], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Spider Brew', cost: 4000, pos: [-50, 0, 0], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slide Boom', cost: 2500, pos: [50, 0, 0], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Ice Shield', cost: 3000, pos: [-70, 0, -70], color: '#a5f3fc' },
+      { id: 'dying', type: 'PERK: Death Defy', cost: 4000, pos: [-80, 0, 75], color: '#ef4444' },
+      { id: 'razor', type: 'PERK: Sharp Edge', cost: 2500, pos: [70, 0, -75], color: '#a855f7' },
+      { id: 'timeslip', type: 'PERK: Time Warp', cost: 2000, pos: [-30, 0, 35], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Deep Pockets', cost: 2500, pos: [20, 0, 5], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Armor Shell', cost: 3000, pos: [-20, 0, -15], color: '#10b981' },
+      { id: 'blaze', type: 'PERK: Fire Trail', cost: 2500, pos: [5, 0, -45], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Fortress', cost: 2500, pos: [0, 0, 60], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Wolf Spirit', cost: 3000, pos: [60, 0, 30], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Chaos Burst', cost: 3000, pos: [-60, 0, -30], color: '#ec4899' },
       { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, -40] },
-      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, 0] },
-      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [88, 0, 85] },
+      { id: 'box', type: 'Gun Box', cost: 950, pos: [0, 0, 0] },
+      { id: 'pap', type: 'Upgrade Station', cost: 5000, pos: [88, 0, 85] },
       { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, -95] },
       { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [20, 1.5, 18] },
       { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [-30, 1.5, 50] },
@@ -97,31 +97,31 @@ export const MAPS: MapConfig[] = [
     ],
     craftingTablePos: [0, 1.5, -50],
     interactables: [
-      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [-10, 0, -10], color: '#ff0000' },
-      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [10, 0, 10], color: '#00ff00' },
-      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [-20, 0, 20], color: '#ffff00' },
-      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [20, 0, -20], color: '#ff8800' },
-      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [-30, 0, -30], color: '#4f46e2' },
-      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [30, 0, -30], color: '#9333ea' },
-      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [-30, 0, 30], color: '#4b5563' },
-      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [0, 0, 35], color: '#06b2d2' },
-      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [0, 0, 15], color: '#3b82f6' },
-      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [-40, 0, -40], color: '#84cc16' },
-      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [40, 0, 40], color: '#db2677' },
-      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [0, 0, -40], color: '#fb923c' },
-      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [40, 0, -40], color: '#a5f3fc' },
-      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [-40, 0, 40], color: '#ef4444' },
-      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [30, 0, 30], color: '#a855f7' },
-      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [-30, 0, -10], color: '#67e8f9' },
-      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [15, 0, -10], color: '#fbbf24' },
-      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [-15, 0, 10], color: '#10b981' },
-      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [10, 0, -15], color: '#ea580c' },
-      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [45, 0, -15], color: '#78350f' },
-      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [-45, 0, 15], color: '#991b1b' },
-      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [0, 0, -55], color: '#ec4899' },
+      { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [-10, 0, -10], color: '#ff0000' },
+      { id: 'speed', type: 'PERK: Fast Hands', cost: 3000, pos: [10, 0, 10], color: '#00ff00' },
+      { id: 'stamin', type: 'PERK: Marathon Soda', cost: 2000, pos: [-20, 0, 20], color: '#ffff00' },
+      { id: 'double', type: 'PERK: Double Shot', cost: 2000, pos: [20, 0, -20], color: '#ff8800' },
+      { id: 'mule', type: 'PERK: Third Arm', cost: 4000, pos: [-30, 0, -30], color: '#4f46e2' },
+      { id: 'phd', type: 'PERK: Blast Proof', cost: 2500, pos: [30, 0, -30], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Aim Assist', cost: 1500, pos: [-30, 0, 30], color: '#4b5563' },
+      { id: 'electric', type: 'PERK: Shock Burst', cost: 2000, pos: [0, 0, 35], color: '#06b2d2' },
+      { id: 'revive', type: 'PERK: Life Brew', cost: 1500, pos: [0, 0, 15], color: '#3b82f6' },
+      { id: 'vulture', type: 'PERK: Loot Vision', cost: 3000, pos: [-40, 0, -40], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Spider Brew', cost: 4000, pos: [40, 0, 40], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slide Boom', cost: 2500, pos: [0, 0, -40], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Ice Shield', cost: 3000, pos: [40, 0, -40], color: '#a5f3fc' },
+      { id: 'dying', type: 'PERK: Death Defy', cost: 4000, pos: [-40, 0, 40], color: '#ef4444' },
+      { id: 'razor', type: 'PERK: Sharp Edge', cost: 2500, pos: [30, 0, 30], color: '#a855f7' },
+      { id: 'timeslip', type: 'PERK: Time Warp', cost: 2000, pos: [-30, 0, -10], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Deep Pockets', cost: 2500, pos: [15, 0, -10], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Armor Shell', cost: 3000, pos: [-15, 0, 10], color: '#10b981' },
+      { id: 'blaze', type: 'PERK: Fire Trail', cost: 2500, pos: [10, 0, -15], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Fortress', cost: 2500, pos: [45, 0, -15], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Wolf Spirit', cost: 3000, pos: [-45, 0, 15], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Chaos Burst', cost: 3000, pos: [0, 0, -55], color: '#ec4899' },
       { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, -25] },
-      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, 0] },
-      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [50, 0, 50] },
+      { id: 'box', type: 'Gun Box', cost: 950, pos: [0, 0, 0] },
+      { id: 'pap', type: 'Upgrade Station', cost: 5000, pos: [50, 0, 50] },
       { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 60] },
       { id: 'bowie', type: 'WALLBUY: Bowie Knife', cost: 3000, pos: [20.6, 1.5, 5], rotation: [0, Math.PI / 2, 0], color: '#ffffff' }
     ],
@@ -139,10 +139,10 @@ export const MAPS: MapConfig[] = [
     ]
   },
   {
-    id: 'nuketown',
-    name: 'Nuketown',
+    id: 'mukkatown',
+    name: 'MUKKATOWN',
     description: 'A destroyed nuclear testing neighborhood. 1:1 Scale Remaster.',
-    thumbnail: 'https://dummyimage.com/400x225/aa7755/000.png&text=Nuketown',
+    thumbnail: 'https://dummyimage.com/400x225/aa7755/000.png&text=MUKKATOWN',
     floorColor: '#5c4033',
     floorTexture: 'https://picsum.photos/seed/dirt/512/512',
     skyColor: '#ffcc88',
@@ -155,38 +155,38 @@ export const MAPS: MapConfig[] = [
     craftingTablePos: [0, 1.5, -60],
     interactables: [
       // Yellow House Perks (West)
-      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [-65, 0, 5], color: '#ff0000' }, // Inside Yellow House (Living Room)
-      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [-65, 0, -5], color: '#00ff00' }, // Inside Yellow House (Kitchen)
-      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [-85, 0, 0], color: '#4f46e2' }, // Yellow Backyard
+      { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [-65, 0, 5], color: '#ff0000' }, // Inside Yellow House (Living Room)
+      { id: 'speed', type: 'PERK: Fast Hands', cost: 3000, pos: [-65, 0, -5], color: '#00ff00' }, // Inside Yellow House (Kitchen)
+      { id: 'mule', type: 'PERK: Third Arm', cost: 4000, pos: [-85, 0, 0], color: '#4f46e2' }, // Yellow Backyard
       
       // Green House Perks (East)
-      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [65, 0, 5], color: '#ffff00' }, // Inside Green House (Living Room)
-      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [65, 0, -5], color: '#ff8800' }, // Inside Green House (Kitchen)
-      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [85, 0, 0], color: '#9333ea' }, // Green Backyard
+      { id: 'stamin', type: 'PERK: Marathon Soda', cost: 2000, pos: [65, 0, 5], color: '#ffff00' }, // Inside Green House (Living Room)
+      { id: 'double', type: 'PERK: Double Shot', cost: 2000, pos: [65, 0, -5], color: '#ff8800' }, // Inside Green House (Kitchen)
+      { id: 'phd', type: 'PERK: Blast Proof', cost: 2500, pos: [85, 0, 0], color: '#9333ea' }, // Green Backyard
 
       // Street/Garage Perks
-      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [0, 0, 25], color: '#3b82f6' }, // Near Bus/Spawn
-      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [-65, 0, 35], color: '#4b5563' }, // Yellow Garage
-      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [65, 0, 35], color: '#06b2d2' }, // Green Garage
+      { id: 'revive', type: 'PERK: Life Brew', cost: 1500, pos: [0, 0, 25], color: '#3b82f6' }, // Near Bus/Spawn
+      { id: 'deadshot', type: 'PERK: Aim Assist', cost: 1500, pos: [-65, 0, 35], color: '#4b5563' }, // Yellow Garage
+      { id: 'electric', type: 'PERK: Shock Burst', cost: 2000, pos: [65, 0, 35], color: '#06b2d2' }, // Green Garage
       
       // Other Perks scattered
-      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [-85, 0, 30], color: '#84cc16' },
-      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [85, 0, 30], color: '#db2677' },
-      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [-85, 0, -30], color: '#fb923c' },
-      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [85, 0, -30], color: '#a5f3fc' },
-      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [-30, 0, -50], color: '#ef4444' }, // Near Garden
-      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [30, 0, -50], color: '#a855f7' },
-      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [0, 0, -55], color: '#67e8f9' },
-      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [0, 0, 55], color: '#fbbf24' },
-      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [-30, 0, 50], color: '#10b981' },
-      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [30, 0, 50], color: '#ea580c' },
-      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [-50, 0, 0], color: '#78350f' },
-      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [50, 0, 0], color: '#991b1b' },
-      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [0, 0, -75], color: '#ec4899' },
+      { id: 'vulture', type: 'PERK: Loot Vision', cost: 3000, pos: [-85, 0, 30], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Spider Brew', cost: 4000, pos: [85, 0, 30], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slide Boom', cost: 2500, pos: [-85, 0, -30], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Ice Shield', cost: 3000, pos: [85, 0, -30], color: '#a5f3fc' },
+      { id: 'dying', type: 'PERK: Death Defy', cost: 4000, pos: [-30, 0, -50], color: '#ef4444' }, // Near Garden
+      { id: 'razor', type: 'PERK: Sharp Edge', cost: 2500, pos: [30, 0, -50], color: '#a855f7' },
+      { id: 'timeslip', type: 'PERK: Time Warp', cost: 2000, pos: [0, 0, -55], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Deep Pockets', cost: 2500, pos: [0, 0, 55], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Armor Shell', cost: 3000, pos: [-30, 0, 50], color: '#10b981' },
+      { id: 'blaze', type: 'PERK: Fire Trail', cost: 2500, pos: [30, 0, 50], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Fortress', cost: 2500, pos: [-50, 0, 0], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Wolf Spirit', cost: 3000, pos: [50, 0, 0], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Chaos Burst', cost: 3000, pos: [0, 0, -75], color: '#ec4899' },
       
       { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, -15] },
-      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, 10] },
-      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [85, 0, -15] }, // Green Backyard
+      { id: 'box', type: 'Gun Box', cost: 950, pos: [0, 0, 10] },
+      { id: 'pap', type: 'Upgrade Station', cost: 5000, pos: [85, 0, -15] }, // Green Backyard
       { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 90] },
       
       // Wall Buys - Adjusted for new building positions
@@ -225,8 +225,8 @@ export const MAPS: MapConfig[] = [
     ]
   },
   {
-    id: 'farm',
-    name: 'Farm',
+    id: 'king_robbos_farm',
+    name: 'King Robbos farm',
     description: 'A desolate farm overrun by the undead. 1:1 Scale Remaster.',
     thumbnail: 'https://dummyimage.com/400x225/556644/000.png&text=Farm',
     floorColor: '#3f4c3b',
@@ -241,38 +241,38 @@ export const MAPS: MapConfig[] = [
     craftingTablePos: [0, 1.5, 0],
     interactables: [
       // Barn Perks (North)
-      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [0, 0, -50], color: '#ff0000' }, // Inside Barn
-      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [15, 0, -50], color: '#00ff00' }, // Inside Barn
-      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [-15, 0, -50], color: '#ff8800' }, // Inside Barn
+      { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [0, 0, -50], color: '#ff0000' }, // Inside Barn
+      { id: 'speed', type: 'PERK: Fast Hands', cost: 3000, pos: [15, 0, -50], color: '#00ff00' }, // Inside Barn
+      { id: 'double', type: 'PERK: Double Shot', cost: 2000, pos: [-15, 0, -50], color: '#ff8800' }, // Inside Barn
       
       // House Perks (West)
-      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [-60, 0, 0], color: '#3b82f6' }, // Inside House
-      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [-60, 0, 10], color: '#ffff00' }, // Inside House
-      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [-60, 0, -10], color: '#4f46e2' }, // Inside House
+      { id: 'revive', type: 'PERK: Life Brew', cost: 1500, pos: [-60, 0, 0], color: '#3b82f6' }, // Inside House
+      { id: 'stamin', type: 'PERK: Marathon Soda', cost: 2000, pos: [-60, 0, 10], color: '#ffff00' }, // Inside House
+      { id: 'mule', type: 'PERK: Third Arm', cost: 4000, pos: [-60, 0, -10], color: '#4f46e2' }, // Inside House
       
       // Shed/Outside Perks
       { id: 'tombstone', type: 'PERK: Tombstone Soda', cost: 2000, pos: [50, 0, 0], color: '#4b5563' }, // Near Shed
-      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [50, 0, 20], color: '#9333ea' },
-      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [50, 0, -20], color: '#4b5563' },
+      { id: 'phd', type: 'PERK: Blast Proof', cost: 2500, pos: [50, 0, 20], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Aim Assist', cost: 1500, pos: [50, 0, -20], color: '#4b5563' },
       
       // Other Perks
-      { id: 'vulture', type: 'PERK: Vulture Aid', cost: 3000, pos: [0, 0, 50], color: '#84cc16' },
-      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-30, 0, 50], color: '#db2677' },
-      { id: 'slider', type: 'PERK: Slider Wine', cost: 2500, pos: [30, 0, 50], color: '#fb923c' },
-      { id: 'winter', type: 'PERK: Winter\'s Wail', cost: 3000, pos: [-30, 0, -80], color: '#a5f3fc' }, // Behind Barn
-      { id: 'dying', type: 'PERK: Dying Wish', cost: 4000, pos: [30, 0, -80], color: '#ef4444' },
-      { id: 'razor', type: 'PERK: Ethereal Razor', cost: 2500, pos: [-80, 0, 0], color: '#a855f7' }, // Behind House
-      { id: 'timeslip', type: 'PERK: Timeslip', cost: 2000, pos: [-80, 0, 30], color: '#67e8f9' },
-      { id: 'bandolier', type: 'PERK: Bandolier Bandit', cost: 2500, pos: [-80, 0, -30], color: '#fbbf24' },
-      { id: 'tortoise', type: 'PERK: Victorious Tortoise', cost: 3000, pos: [80, 0, 0], color: '#10b981' }, // Behind Shed
-      { id: 'blaze', type: 'PERK: Blaze Phase', cost: 2500, pos: [80, 0, 30], color: '#ea580c' },
-      { id: 'stronghold', type: 'PERK: Stone Cold Stronghold', cost: 2500, pos: [80, 0, -30], color: '#78350f' },
-      { id: 'blood', type: 'PERK: Blood Wolf Bite', cost: 3000, pos: [0, 0, -90], color: '#991b1b' },
-      { id: 'elemental', type: 'PERK: Elemental Pop', cost: 3000, pos: [0, 0, 70], color: '#ec4899' },
+      { id: 'vulture', type: 'PERK: Loot Vision', cost: 3000, pos: [0, 0, 50], color: '#84cc16' },
+      { id: 'widow', type: 'PERK: Spider Brew', cost: 4000, pos: [-30, 0, 50], color: '#db2677' },
+      { id: 'slider', type: 'PERK: Slide Boom', cost: 2500, pos: [30, 0, 50], color: '#fb923c' },
+      { id: 'winter', type: 'PERK: Ice Shield', cost: 3000, pos: [-30, 0, -80], color: '#a5f3fc' }, // Behind Barn
+      { id: 'dying', type: 'PERK: Death Defy', cost: 4000, pos: [30, 0, -80], color: '#ef4444' },
+      { id: 'razor', type: 'PERK: Sharp Edge', cost: 2500, pos: [-80, 0, 0], color: '#a855f7' }, // Behind House
+      { id: 'timeslip', type: 'PERK: Time Warp', cost: 2000, pos: [-80, 0, 30], color: '#67e8f9' },
+      { id: 'bandolier', type: 'PERK: Deep Pockets', cost: 2500, pos: [-80, 0, -30], color: '#fbbf24' },
+      { id: 'tortoise', type: 'PERK: Armor Shell', cost: 3000, pos: [80, 0, 0], color: '#10b981' }, // Behind Shed
+      { id: 'blaze', type: 'PERK: Fire Trail', cost: 2500, pos: [80, 0, 30], color: '#ea580c' },
+      { id: 'stronghold', type: 'PERK: Fortress', cost: 2500, pos: [80, 0, -30], color: '#78350f' },
+      { id: 'blood', type: 'PERK: Wolf Spirit', cost: 3000, pos: [0, 0, -90], color: '#991b1b' },
+      { id: 'elemental', type: 'PERK: Chaos Burst', cost: 3000, pos: [0, 0, 70], color: '#ec4899' },
 
       { id: 'healthRefill', type: 'Health Refill', cost: 1500, pos: [0, 0, 10] },
-      { id: 'box', type: 'Mystery Box', cost: 950, pos: [0, 0, -20] }, // Near Barn entrance
-      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [0, 0, -60] }, // Inside Barn Back
+      { id: 'box', type: 'Gun Box', cost: 950, pos: [0, 0, -20] }, // Near Barn entrance
+      { id: 'pap', type: 'Upgrade Station', cost: 5000, pos: [0, 0, -60] }, // Inside Barn Back
       { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, 80] },
       
       // Wall Buys - Adjusted
@@ -310,10 +310,10 @@ export const MAPS: MapConfig[] = [
     ]
   },
   {
-    id: 'tranzit',
-    name: 'Z-Town Transit',
+    id: 'z-town',
+    name: 'Z-Town',
     description: 'A massive open world connecting all areas. Beware the lava and catch the bus!',
-    thumbnail: 'https://dummyimage.com/400x225/331100/ffaa00.png&text=Tranzit',
+    thumbnail: 'https://dummyimage.com/400x225/331100/ffaa00.png&text=Z-Town',
     floorColor: '#2a1a10',
     floorTexture: 'https://picsum.photos/seed/dirt/512/512',
     skyColor: '#331100',
@@ -329,48 +329,63 @@ export const MAPS: MapConfig[] = [
     craftingTablePos: [0, 1.5, -10],
     interactables: [
       // Bus Depot Area (Start) - Building at (0, 0, -25)
-      { id: 'revive', type: 'PERK: Quick Revive', cost: 1500, pos: [-10, 0, -25], color: '#3b82f6' },
+      { id: 'revive', type: 'PERK: Life Brew', cost: 1500, pos: [-10, 0, -25], color: '#3b82f6' },
       { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [10, 1.5, -20], rotation: [0, -Math.PI / 2, 0] },
       { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [10, 1.5, -30], rotation: [0, -Math.PI / 2, 0] },
       
       // Town Area (North - Group at 0, 0, -150)
       // Bank at (0, 0, -180), Bar at (40, 0, -180)
-      { id: 'jugg', type: 'PERK: Juggernog', cost: 2500, pos: [40, 0, -180], color: '#ff0000' }, // In Bar
-      { id: 'stamin', type: 'PERK: Stamin-Up', cost: 2000, pos: [20, 0, -180], color: '#ffff00' }, // Near Bar
-      { id: 'box_town', type: 'Mystery Box', cost: 950, pos: [40, 0, -170] }, // Outside Bar
-      { id: 'pap', type: 'Pack-A-Punch', cost: 5000, pos: [0, 0, -180] }, // In Bank Vault
+      { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [40, 0, -180], color: '#ff0000' }, // In Bar
+      { id: 'stamin', type: 'PERK: Marathon Soda', cost: 2000, pos: [20, 0, -180], color: '#ffff00' }, // Near Bar
+      { id: 'box_town', type: 'Gun Box', cost: 950, pos: [40, 0, -170] }, // Outside Bar
+      { id: 'pap', type: 'Upgrade Station', cost: 5000, pos: [0, 0, -180] }, // In Bank Vault
       { id: 'wall_galil', type: 'WALLBUY: GALIL', cost: 2000, pos: [0, 1.5, -190], rotation: [0, 0, 0] }, // Bank Back Wall
-
+ 
       // Farm Area (West - Group at -100, 0, 100)
       // House at (-100, 0, 120), Barn at (-130, 0, 100)
-      { id: 'double', type: 'PERK: Double Tap', cost: 2000, pos: [-130, 0, 100], color: '#ff8800' }, // In Barn
-      { id: 'speed', type: 'PERK: Speed Cola', cost: 3000, pos: [-100, 0, 120], color: '#00ff00' }, // In House
+      { id: 'double', type: 'PERK: Double Shot', cost: 2000, pos: [-130, 0, 100], color: '#ff8800' }, // In Barn
+      { id: 'speed', type: 'PERK: Fast Hands', cost: 3000, pos: [-100, 0, 120], color: '#00ff00' }, // In House
       { id: 'wall_mp5', type: 'WALLBUY: MP5', cost: 1000, pos: [-100, 1.5, 110], rotation: [0, Math.PI, 0] }, // House Front
-      { id: 'box_farm', type: 'Mystery Box', cost: 950, pos: [-130, 0, 110] }, // Barn Side
-
+      { id: 'box_farm', type: 'Gun Box', cost: 950, pos: [-130, 0, 110] }, // Barn Side
+ 
       // Power Station (East - Group at 100, 0, 100)
       // Building at (100, 0, 120)
-      { id: 'electric', type: 'PERK: Electric Cherry', cost: 2000, pos: [100, 0, 120], color: '#06b2d2' },
+      { id: 'electric', type: 'PERK: Shock Burst', cost: 2000, pos: [100, 0, 120], color: '#06b2d2' },
       { id: 'tombstone', type: 'PERK: Tombstone Soda', cost: 2000, pos: [110, 0, 120], color: '#4b5563' },
       { id: 'wall_ak47', type: 'WALLBUY: AK-47', cost: 1800, pos: [90, 1.5, 120], rotation: [0, Math.PI / 2, 0] },
       
       // Diner (Far West - Group at -150, 0, 0)
       // Diner at (-150, 0, -20)
-      { id: 'speed_diner', type: 'PERK: Speed Cola', cost: 3000, pos: [-150, 0, -20], color: '#00ff00' }, // In Diner
-      { id: 'box_diner', type: 'Mystery Box', cost: 950, pos: [-125, 0, -10] }, // In Garage
+      { id: 'speed_diner', type: 'PERK: Fast Hands', cost: 3000, pos: [-150, 0, -20], color: '#00ff00' }, // In Diner
+      { id: 'box_diner', type: 'Gun Box', cost: 950, pos: [-125, 0, -10] }, // In Garage
       
       // Scattered Perks
-      { id: 'mule', type: 'PERK: Mule Kick', cost: 4000, pos: [0, 0, 50], color: '#4f46e2' }, // Middle of nowhere
-      { id: 'phd', type: 'PERK: PHD Flopper', cost: 2500, pos: [-50, 0, 50], color: '#9333ea' },
-      { id: 'deadshot', type: 'PERK: Deadshot', cost: 1500, pos: [50, 0, -50], color: '#4b5563' },
-      { id: 'widow', type: 'PERK: Widow\'s Wine', cost: 4000, pos: [-50, 0, -50], color: '#db2677' },
+      { id: 'mule', type: 'PERK: Third Arm', cost: 4000, pos: [0, 0, 50], color: '#4f46e2' }, // Middle of nowhere
+      { id: 'phd', type: 'PERK: Blast Proof', cost: 2500, pos: [-50, 0, 50], color: '#9333ea' },
+      { id: 'deadshot', type: 'PERK: Aim Assist', cost: 1500, pos: [50, 0, -50], color: '#4b5563' },
+      { id: 'widow', type: 'PERK: Spider Brew', cost: 4000, pos: [-50, 0, -50], color: '#db2677' },
       
       { id: 'buyableEnding', type: 'Buyable Ending', cost: 50000, pos: [0, 0, -200] }, // Behind Town
     ],
     objects: [
-      // Only keeping boundaries and streetlights here. 
-      // Buildings and Bus are handled in Scene.tsx TranzitBuildings component.
+      // Bus Depot (Start)
+      { type: 'building', pos: [0, 5, -25], args: [20, 10, 20], color: "#444", label: "DEPOT", lightColor: "#aaa", doorCost: 750, doorId: "depot_door" },
       
+      // Town Area
+      { type: 'building', pos: [0, 7.5, -180], args: [30, 15, 20], color: "#800000", label: "BANK", lightColor: "#ff4444", doorCost: 1000, doorId: "bank_door_tranzit" },
+      { type: 'building', pos: [40, 6, -180], args: [20, 12, 20], color: "#a52a2a", label: "BAR", lightColor: "#ff6666", doorCost: 1000, doorId: "bar_door_tranzit" },
+      
+      // Farm Area
+      { type: 'building', pos: [-100, 7.5, 120], args: [25, 15, 25], color: "#fef3c7", label: "FARMHOUSE", lightColor: "#ffffaa", doorCost: 1000, doorId: "farmhouse_door_tranzit" },
+      { type: 'building', pos: [-130, 9, 100], args: [30, 18, 25], color: "#7f1d1d", label: "BARN", lightColor: "#ffaa00", doorCost: 1000, doorId: "barn_door_tranzit" },
+
+      // Power Station Area
+      { type: 'building', pos: [100, 10, 120], args: [40, 20, 30], color: "#222", label: "POWER STATION", lightColor: "#00ffff", doorCost: 1500, doorId: "power_door" },
+
+      // Diner Area
+      { type: 'building', pos: [-150, 5, -20], args: [25, 10, 20], color: "#440000", label: "DINER", lightColor: "#ff0000", doorCost: 750, doorId: "diner_door_tranzit" },
+      { type: 'building', pos: [-125, 6, -10], args: [15, 12, 15], color: "#333", label: "GARAGE", lightColor: "#fff", doorCost: 750, doorId: "diner_garage_door" },
+
       // Roads/Fog (Visual Guides - Streetlights)
       { type: 'streetlight', pos: [0, 0, 25], color: '#ffaa00' },
       { type: 'streetlight', pos: [0, 0, 50], color: '#ffaa00' },

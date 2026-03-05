@@ -16,9 +16,9 @@ export enum GameStatus {
 
 export type GameMode = 'standard' | 'dead_ops';
 
-export type PowerUpType = 'MAX_AMMO' | 'INSTA_KILL' | 'DOUBLE_POINTS' | 'NUKE' | 'DEATH_MACHINE' | 'FIRE_SALE' | 'ZOMBIE_BLOOD' | 'SKIP_ROUND' | 'GEM' | 'GRENADE' | 'FLASHBANG' | 'MONKEY_BOMB';
+export type PowerUpType = 'MAX_AMMO' | 'INSTA_KILL' | 'DOUBLE_POINTS' | 'NUKE' | 'DEATH_MACHINE' | 'FIRE_SALE' | 'ZOMBIE_BLOOD' | 'SKIP_ROUND' | 'GEM' | 'GRENADE' | 'FLASHBANG' | 'KING_ROBBO' | 'MONKEY_BOMB';
 
-export type WeaponCamo = 'none' | 'gold' | 'diamond' | 'dark_matter' | 'cherry_blossom' | 'dragon' | 'ice' | 'magma' | 'nebula' | 'red_hex' | 'into_the_void' | 'cosmic' | 'spectrum';
+export type WeaponCamo = 'none' | 'gilded' | 'crystal' | 'void_matter' | 'sakura' | 'wyvern' | 'frost' | 'lava' | 'galaxy' | 'crimson_hex' | 'abyss' | 'stellar' | 'prism';
 export type WeaponAttachment = 'none' | 'red_dot' | 'acog' | 'foregrip' | 'extended_mag' | 'laser_sight' | 'suppressor';
 
 export interface ScoreEntry {
@@ -36,9 +36,9 @@ export interface ScoreEntry {
   bossDefeated?: boolean;
   red9QuestCompleted?: boolean;
   mainEasterEggCompleted?: boolean;
-  prestigeMasterStars?: number;
+  rankMasteryStars?: number;
   level?: number;
-  prestige?: number;
+  rankMastery?: number;
 }
 
 export interface PlayerStats {
@@ -73,7 +73,7 @@ export interface PlayerStats {
   healthRefillsBought: number;
   grenades: number;
   flashbangs: number;
-  monkeyBombs: number;
+  kingRobbos: number;
   time: number;
   activeMapId?: string;
   selectedCamo: WeaponCamo;
@@ -81,6 +81,7 @@ export interface PlayerStats {
   isDowned: boolean;
   downedTimer: number;
   downs: number;
+  deaths: number;
   revives: number;
   isReviving: boolean;
   variant: number;
@@ -112,7 +113,7 @@ export interface HUDSettings {
   shootPos: { x: number; y: number };
   reloadPos: { x: number; y: number };
   ammoPos: { x: number; y: number };
-  monkeyBombPos: { x: number; y: number };
+  kingRobboPos: { x: number; y: number };
   minimapPos?: { x: number; y: number };
   minimapVisible?: boolean;
   minimapScale?: number;
@@ -129,7 +130,7 @@ export interface GamepadSettings {
   knife: number;
   grenade: number;
   flashbang: number;
-  monkeyBomb: number;
+  kingRobbo: number;
   slide: number;
   select: number;
   pause: number;
@@ -165,7 +166,7 @@ export interface KeybindSettings {
   knife: string;
   grenade: string;
   flashbang: string;
-  monkeyBomb: string;
+  kingRobbo: string;
   slide: string;
   select: string;
   scrollUp: string;
@@ -259,14 +260,14 @@ export interface PlayerScore {
   hp: number;
   position?: { x: number; y: number; z: number };
   level?: number;
-  prestige?: number;
+  rankMastery?: number;
   variant?: number;
   isReviving?: boolean;
 }
 
 export interface Progression {
   xp: number;
-  prestige: number;
+  rankMastery: number;
   stars: number;
   achievements: string[];
   weaponAttachments?: Record<string, WeaponAttachment[]>;

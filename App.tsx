@@ -21,13 +21,13 @@ const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate:
   'HAMR': { clip: 125, max: 375, damage: 75, rate: 130, color: '#4a4a4a', speed: 0.07, reload: 4000, unlockLevel: 40 },
   'RPD': { clip: 100, max: 400, damage: 70, rate: 125, color: '#2a2a2a', speed: 0.07, reload: 4500, unlockLevel: 36 },
   'DSR-50': { clip: 5, max: 50, damage: 800, rate: 1500, color: '#1a1a1a', speed: 0.06, reload: 3500, unlockLevel: 48 },
-  'RAY GUN': { clip: 20, max: 160, damage: 1000, rate: 180, color: '#ff0000', speed: 0.09, reload: 2000, unlockLevel: 50 },
+  'RED9 BLASTER': { clip: 20, max: 160, damage: 1000, rate: 180, color: '#ff0000', speed: 0.09, reload: 2000, unlockLevel: 50 },
   'AK-47': { clip: 30, max: 150, damage: 95, rate: 110, color: '#4b3621', speed: 0.09, reload: 2200, unlockLevel: 10 },
   'SCAR-H': { clip: 20, max: 140, damage: 110, rate: 130, color: '#c2b280', speed: 0.08, reload: 2400, unlockLevel: 24 },
   'STRIKER': { clip: 12, max: 60, damage: 220, rate: 400, color: '#333333', speed: 0.09, reload: 2800, unlockLevel: 30 },
   'VECTOR': { clip: 40, max: 200, damage: 45, rate: 60, color: '#1a1a1a', speed: 0.11, reload: 1800, unlockLevel: 22 },
-  'WUNDERWAFFE DG-2': { clip: 3, max: 15, damage: 5000, rate: 1000, color: '#00ffff', speed: 0.08, reload: 5000, unlockLevel: 52 },
-  'THUNDERGUN': { clip: 2, max: 12, damage: 10000, rate: 1200, color: '#888888', speed: 0.08, reload: 6000, unlockLevel: 55 },
+  'VOLT DRIVER': { clip: 3, max: 15, damage: 5000, rate: 1000, color: '#00ffff', speed: 0.08, reload: 5000, unlockLevel: 52 },
+  'CYCLONE CANNON': { clip: 2, max: 12, damage: 10000, rate: 1200, color: '#888888', speed: 0.08, reload: 6000, unlockLevel: 55 },
   'M14': { clip: 10, max: 80, damage: 120, rate: 300, color: '#5c4033', speed: 0.09, reload: 2000, unlockLevel: 4 },
   'OLYMPIA': { clip: 2, max: 40, damage: 350, rate: 500, color: '#3d2b1f', speed: 0.1, reload: 2200, unlockLevel: 2 },
   'PYTHON': { clip: 6, max: 60, damage: 250, rate: 400, color: '#71706e', speed: 0.1, reload: 2500, unlockLevel: 28 },
@@ -40,20 +40,20 @@ const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate:
   'TYPE 100': { clip: 30, max: 180, damage: 50, rate: 130, color: '#554433', speed: 0.1, reload: 2200, unlockLevel: 8 },
   
   // Pack-A-Punched variants
-  'MUSTANG & SALLY': { clip: 1212, max: 240, damage: 2200, rate: 150, color: '#ff00ff', speed: 0.1, reload: 1200, description: 'Twin Grenade Launchers' },
+  'PICKLES & HENNESSY': { clip: 1212, max: 240, damage: 2200, rate: 150, color: '#ff00ff', speed: 0.1, reload: 1200, description: 'Twin Grenade Launchers' },
   'MP115 KOLLIDER': { clip: 40, max: 200, damage: 110, rate: 80, color: '#00ffff', speed: 0.1, reload: 1500 },
   'LAMENTATION': { clip: 50, max: 300, damage: 180, rate: 100, color: '#00ff00', speed: 0.09, reload: 2000 },
   'PUNISHMENT': { clip: 12, max: 80, damage: 600, rate: 600, color: '#ff8800', speed: 0.08, reload: 2500 },
   'HAMR DOWN': { clip: 150, max: 600, damage: 160, rate: 110, color: '#ffffff', speed: 0.07, reload: 3500 },
   'RELATIVISTIC PUNISHER': { clip: 120, max: 600, damage: 150, rate: 100, color: '#ff0000', speed: 0.07, reload: 4000 },
   'DEAD SPECIMEN REACTOR': { clip: 10, max: 100, damage: 2000, rate: 1200, color: '#000000', speed: 0.06, reload: 3000 },
-  'PORTER\'S X2 RAY GUN': { clip: 40, max: 200, damage: 2500, rate: 150, color: '#ff0000', speed: 0.09, reload: 1500 },
+  'RED9 & SPENDAWG BLASTER': { clip: 40, max: 200, damage: 2500, rate: 150, color: '#ff0000', speed: 0.09, reload: 1500 },
   'REZNOV\'S REVENGE': { clip: 45, max: 300, damage: 180, rate: 100, color: '#8b0000', speed: 0.09, reload: 1800 },
   'AGAMEMNON': { clip: 30, max: 240, damage: 220, rate: 120, color: '#ffd700', speed: 0.08, reload: 2000 },
   'STRIKE-OUT': { clip: 24, max: 120, damage: 450, rate: 350, color: '#ff4500', speed: 0.09, reload: 2200 },
   'KINETIC CONVERTER': { clip: 60, max: 400, damage: 90, rate: 50, color: '#adff2f', speed: 0.11, reload: 1400 },
-  'WUNDERWAFFE DG-3 JZ': { clip: 6, max: 30, damage: 10000, rate: 800, color: '#ffffff', speed: 0.08, reload: 4000 },
-  'ZEUS CANNON': { clip: 4, max: 24, damage: 20000, rate: 1000, color: '#ffffff', speed: 0.08, reload: 5000 },
+  'VOLT DRIVER JZ': { clip: 6, max: 30, damage: 10000, rate: 800, color: '#ffffff', speed: 0.08, reload: 4000 },
+  'STORM CANNON': { clip: 4, max: 24, damage: 20000, rate: 1000, color: '#ffffff', speed: 0.08, reload: 5000 },
   'M118': { clip: 20, max: 160, damage: 250, rate: 250, color: '#a0522d', speed: 0.09, reload: 1600 },
   'HADES': { clip: 2, max: 80, damage: 800, rate: 400, color: '#8b4513', speed: 0.1, reload: 1800 },
   'COBRA': { clip: 6, max: 120, damage: 600, rate: 300, color: '#c0c0c0', speed: 0.1, reload: 2000 },
@@ -69,20 +69,20 @@ const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate:
 };
 
 const PAP_MAPPING: Record<string, string> = {
-  'M1911': 'MUSTANG & SALLY',
+  'M1911': 'PICKLES & HENNESSY',
   'MP5': 'MP115 KOLLIDER',
   'GALIL': 'LAMENTATION',
   'REMINGTON': 'PUNISHMENT',
   'HAMR': 'HAMR DOWN',
   'RPD': 'RELATIVISTIC PUNISHER',
   'DSR-50': 'DEAD SPECIMEN REACTOR',
-  'RAY GUN': 'PORTER\'S X2 RAY GUN',
+  'RED9 BLASTER': 'RED9 & SPENDAWG BLASTER',
   'AK-47': 'REZNOV\'S REVENGE',
   'SCAR-H': 'AGAMEMNON',
   'STRIKER': 'STRIKE-OUT',
   'VECTOR': 'KINETIC CONVERTER',
-  'WUNDERWAFFE DG-2': 'WUNDERWAFFE DG-3 JZ',
-  'THUNDERGUN': 'ZEUS CANNON',
+  'VOLT DRIVER': 'VOLT DRIVER JZ',
+  'CYCLONE CANNON': 'STORM CANNON',
   'M14': 'M118',
   'OLYMPIA': 'HADES',
   'PYTHON': 'COBRA',
@@ -96,7 +96,7 @@ const PAP_MAPPING: Record<string, string> = {
 };
 
 const isPapWeapon = (name: string) => Object.values(PAP_MAPPING).includes(name);
-const isWonderWeapon = (name: string) => name.includes('RAY') || name.includes('WUNDER') || name.includes('THUNDER');
+const isWonderWeapon = (name: string) => name.includes('RAY') || name.includes('VOLT') || name.includes('CYCLONE') || name.includes('STORM');
 
 const getBaseWeaponName = (name: string) => {
   const entry = Object.entries(PAP_MAPPING).find(([base, pap]) => pap === name);
@@ -117,8 +117,8 @@ const SORTED_WEAPONS = Object.entries(WEAPONS).sort((a, b) => {
   return b[1].damage - a[1].damage;
 });
 
-const getPrestigeIcon = (prestige: number, size: number = 20) => {
-  switch (prestige) {
+const getRankMasteryIcon = (rankMastery: number, size: number = 20) => {
+  switch (rankMastery) {
     case 1: return <Star size={size} className="text-amber-600 fill-amber-600/20" />;
     case 2: return <Shield size={size} className="text-orange-500 fill-orange-500/20" />;
     case 3: return <Zap size={size} className="text-blue-500 fill-blue-500/20" />;
@@ -133,8 +133,8 @@ const getPrestigeIcon = (prestige: number, size: number = 20) => {
   }
 };
 
-const getPrestigeColor = (prestige: number) => {
-  switch (prestige) {
+const getRankMasteryColor = (rankMastery: number) => {
+  switch (rankMastery) {
     case 1: return "text-amber-600";
     case 2: return "text-orange-500";
     case 3: return "text-blue-500";
@@ -151,7 +151,7 @@ const getPrestigeColor = (prestige: number) => {
 
 const getWeaponIcon = (name: string, size: number = 20) => {
   const upperName = name.toUpperCase();
-  if (upperName.includes('RAY') || upperName.includes('WUNDER') || upperName.includes('THUNDER') || upperName.includes('MUSTANG')) return <Zap size={size} className="text-cyan-400" />;
+  if (upperName.includes('RAY') || upperName.includes('VOLT') || upperName.includes('CYCLONE') || upperName.includes('BLAZE')) return <Zap size={size} className="text-cyan-400" />;
   if (upperName.includes('KNIFE')) return <Swords size={size} className="text-slate-400" />;
   if (upperName.includes('DSR') || upperName.includes('SNIPER')) return <Eye size={size} className="text-blue-400" />;
   if (upperName.includes('HAMR') || upperName.includes('RPD') || upperName.includes('BROWNING') || upperName.includes('LMG')) return <Database size={size} className="text-orange-400" />;
@@ -173,11 +173,15 @@ const getAttachmentIcon = (att: WeaponAttachment, size: number = 14) => {
   }
 };
 
-const getInitialStats = (level: number, prestige: number, activeMapId: string = 'town', selectedCamo: WeaponCamo = 'none', weaponAttachments: Record<string, WeaponAttachment[]> = {}): PlayerStats => ({
-  hp: 100 + (level - 1) * 1 + prestige * 10,
-  maxHp: 100 + (level - 1) * 1 + prestige * 10,
-  points: 500 + (level - 1) * 10 + prestige * 500,
-  totalPoints: 500 + (level - 1) * 10 + prestige * 500,
+const getInitialStats = (level: number, rankMastery: number, activeMapId: string = 'town', selectedCamo: WeaponCamo = 'none', weaponAttachments: Record<string, WeaponAttachment[]> = {}): PlayerStats => {
+  const safeLevel = isNaN(level) ? 1 : Math.max(1, level);
+  const safeRankMastery = isNaN(rankMastery) ? 0 : Math.max(0, rankMastery);
+  
+  return {
+    hp: 100 + (safeLevel - 1) * 1 + safeRankMastery * 10,
+    maxHp: 100 + (safeLevel - 1) * 1 + safeRankMastery * 10,
+    points: 500 + (safeLevel - 1) * 10 + safeRankMastery * 500,
+    totalPoints: 500 + (safeLevel - 1) * 10 + safeRankMastery * 500,
   kills: 0,
   headshots: 0,
   knifeKills: 0,
@@ -204,7 +208,7 @@ const getInitialStats = (level: number, prestige: number, activeMapId: string = 
   healthRefillsBought: 0,
   grenades: 2,
   flashbangs: 1,
-  monkeyBombs: 0,
+  kingRobbos: 0,
   gems: 0,
   time: 0,
   activeMapId,
@@ -215,8 +219,10 @@ const getInitialStats = (level: number, prestige: number, activeMapId: string = 
   downs: 0,
   revives: 0,
   isReviving: false,
-  variant: Math.floor(Math.random() * 1000)
-});
+  variant: Math.floor(Math.random() * 1000),
+  deaths: 0,
+  };
+};
 
 const INITIAL_HUD_SETTINGS: HUDSettings = {
   buttonScale: 1,
@@ -234,7 +240,7 @@ const INITIAL_HUD_SETTINGS: HUDSettings = {
   shootPos: { x: 40, y: 112 },
   reloadPos: { x: 40, y: 24 },
   ammoPos: { x: 40, y: 248 },
-  monkeyBombPos: { x: 200, y: 176 },
+  kingRobboPos: { x: 200, y: 176 },
   minimapPos: { x: 20, y: 20 },
   minimapVisible: true,
   minimapScale: 1,
@@ -247,10 +253,8 @@ const INITIAL_GAME_SETTINGS: GameSettings = {
   musicVolume: 1.0,
   weatherType: 'clear',
   musicEnabled: true,
-  customMusicUrl: 'https://image2url.com/r2/default/audio/1772516475665-1a554687-3f96-41c7-b11f-bc5150e7dbc3.ogg',
-  customPlaylist: [
-    { name: 'Custom Audio', url: 'https://image2url.com/r2/default/audio/1772516475665-1a554687-3f96-41c7-b11f-bc5150e7dbc3.ogg' }
-  ],
+  customMusicUrl: '',
+  customPlaylist: [],
 };
 
 const INITIAL_GAMEPAD_SETTINGS: GamepadSettings = {
@@ -262,7 +266,7 @@ const INITIAL_GAMEPAD_SETTINGS: GamepadSettings = {
   knife: 11, // R3
   grenade: 5, // RB
   flashbang: 4, // LB
-  monkeyBomb: 1, // B
+  kingRobbo: 1, // B
   slide: 1, // B
   select: 0, // A
   pause: 9, // Start
@@ -289,7 +293,7 @@ const INITIAL_KEYBIND_SETTINGS: KeybindSettings = {
   knife: 'v',
   grenade: 'g',
   flashbang: 'h',
-  monkeyBomb: 'b',
+  kingRobbo: 'b',
   slide: 'c',
   select: 'enter',
   scrollUp: 'arrowup',
@@ -302,7 +306,7 @@ const INITIAL_KEYBIND_SETTINGS: KeybindSettings = {
 };
 
 const GunModel = ({ color, isPap, name }: { color: string, isPap: boolean, name: string }) => {
-  const isPistol = name.includes('M1911') || name.includes('MUSTANG') || name.includes('PYTHON') || name.includes('COBRA');
+  const isPistol = name.includes('M1911') || name.includes('BLAZE') || name.includes('PYTHON') || name.includes('COBRA');
   const isShotgun = name.includes('REMINGTON') || name.includes('PUNISHMENT') || name.includes('STRIKER') || name.includes('STRIKE-OUT') || name.includes('OLYMPIA') || name.includes('HADES');
   const isSniper = name.includes('DSR-50') || name.includes('REACTOR');
   const isWonder = name.includes('RAY') || name.includes('WUNDER') || name.includes('THUNDER') || name.includes('PORTER') || name.includes('JZ') || name.includes('ZEUS');
@@ -341,7 +345,7 @@ const GunModel = ({ color, isPap, name }: { color: string, isPap: boolean, name:
             <div className="absolute top-3 left-12 w-12 h-1 rounded-full transform rotate-12" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} />
           </>
         ) : isPistol ? (
-          name === 'MUSTANG & SALLY' ? (
+          name === 'BLAZE & GLORY' ? (
             <div className="relative w-full h-full">
               {/* Left Pistol */}
               <div className="absolute top-0 left-0 transform -rotate-12 scale-75">
@@ -524,17 +528,17 @@ const DragonModel = () => {
 const MAX_LEVEL = 55;
 
 const ACHIEVEMENTS: Achievement[] = [
-  { id: 'town_hero', name: 'Town Hero', description: 'Reach round 20 on Town', icon: '🏆', mapId: 'town', category: 'map' },
-  { id: 'town_perkaholic', name: 'Perk-a-Holic (Town)', description: 'Obtain all perks on Town', icon: '🍺', mapId: 'town', category: 'map' },
-  { id: 'town_pap', name: 'Pack-a-Puncher', description: 'Pack-a-Punch a weapon on Town', icon: '🔫', mapId: 'town', category: 'map' },
-  { id: 'farm_hand', name: 'Farm Hand', description: 'Reach round 20 on Farm', icon: '🚜', mapId: 'farm', category: 'map' },
-  { id: 'farm_perkaholic', name: 'Perk-a-Holic (Farm)', description: 'Obtain all perks on Farm', icon: '🍺', mapId: 'farm', category: 'map' },
-  { id: 'nuke_survivor', name: 'Nuclear Survivor', description: 'Reach round 25 on Nuketown', icon: '☢️', mapId: 'nuketown', category: 'map' },
-  { id: 'nuke_perkaholic', name: 'Perk-a-Holic (Nuketown)', description: 'Obtain all perks on Nuketown', icon: '🍺', mapId: 'nuketown', category: 'map' },
+  { id: 'red9_hero', name: 'Red9 Hero', description: 'Reach round 20 on Red9', icon: '🏆', mapId: 'Red9', category: 'map' },
+  { id: 'red9_perkaholic', name: 'Perk-a-Holic (Red9)', description: 'Obtain all perks on Red9', icon: '🍺', mapId: 'Red9', category: 'map' },
+  { id: 'red9_pap', name: 'Upgrade Master', description: 'Upgrade a weapon on Red9', icon: '🔫', mapId: 'Red9', category: 'map' },
+  { id: 'farm_hand', name: 'Farm Hand', description: 'Reach round 20 on King Robbos farm', icon: '🚜', mapId: 'king_robbos_farm', category: 'map' },
+  { id: 'farm_perkaholic', name: 'Perk-a-Holic (King Robbos farm)', description: 'Obtain all perks on King Robbos farm', icon: '🍺', mapId: 'king_robbos_farm', category: 'map' },
+  { id: 'nuke_survivor', name: 'Nuclear Survivor', description: 'Reach round 25 on MUKKATOWN', icon: '☢️', mapId: 'mukkatown', category: 'map' },
+  { id: 'nuke_perkaholic', name: 'Perk-a-Holic (MUKKATOWN)', description: 'Obtain all perks on MUKKATOWN', icon: '🍺', mapId: 'mukkatown', category: 'map' },
   { id: 'headshot_machine', name: 'Headshot Machine', description: 'Get 100 headshots in a single game', icon: '🎯', category: 'combat' },
   { id: 'knife_only', name: 'Knife Only', description: 'Reach round 5 using only the knife', icon: '🔪', category: 'combat' },
-  { id: 'prestige_master', name: 'Prestige Master', description: 'Reach Prestige 10', icon: '🌟', category: 'progression' },
-  { id: 'star_collector', name: 'Star Collector', description: 'Obtain your first Prestige Master Star', icon: '⭐', category: 'progression' },
+  { id: 'rank_mastery_10', name: 'Rank Mastery', description: 'Reach Rank Mastery 10', icon: '🌟', category: 'progression' },
+  { id: 'star_collector', name: 'Star Collector', description: 'Obtain your first Rank Mastery Star', icon: '⭐', category: 'progression' },
   { id: 'red9_blessing', name: 'Red9 Blessing', description: 'Complete the Red9 Quest', icon: '💎', category: 'easter_egg' },
   { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat the Map Boss', icon: '👹', category: 'combat' },
   { id: 'round_50', name: 'Halfway There', description: 'Reach round 50', icon: '🔥', category: 'progression' },
@@ -567,12 +571,12 @@ const getLevelData = (totalXp: number) => {
 
 const CamoPreloader = () => {
   const textures = [
-    'https://picsum.photos/seed/diamond/256/256',
-    'https://picsum.photos/seed/nebula/256/256',
-    'https://picsum.photos/seed/cherry/256/256',
-    'https://picsum.photos/seed/dragon/256/256',
+    'https://picsum.photos/seed/crystal/256/256',
+    'https://picsum.photos/seed/galaxy/256/256',
+    'https://picsum.photos/seed/sakura/256/256',
+    'https://picsum.photos/seed/wyvern/256/256',
     'https://picsum.photos/seed/lava/256/256',
-    'https://picsum.photos/seed/space/256/256'
+    'https://picsum.photos/seed/stellar/256/256'
   ];
   useTexture(textures);
   return null;
@@ -648,14 +652,20 @@ const App: React.FC = () => {
   const [activeBots, setActiveBots] = useState(0);
   const [progression, setProgression] = useState<Progression>(() => {
     const saved = localStorage.getItem('ztown_progression');
-    const p = saved ? JSON.parse(saved) : { xp: 0, prestige: 0, stars: 0, achievements: [], weaponAttachments: {}, totalKills: 0, totalRevives: 0 };
+    let p;
+    try {
+      p = saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      p = {};
+    }
     return { 
-      ...p, 
-      stars: p.stars || 0, 
-      achievements: p.achievements || [], 
+      xp: isNaN(p.xp) ? 0 : (p.xp || 0),
+      rankMastery: isNaN(p.rankMastery) ? 0 : (p.rankMastery || 0),
+      stars: isNaN(p.stars) ? 0 : (p.stars || 0), 
+      achievements: Array.isArray(p.achievements) ? p.achievements : [], 
       weaponAttachments: p.weaponAttachments || {},
-      totalKills: p.totalKills || 0,
-      totalRevives: p.totalRevives || 0
+      totalKills: isNaN(p.totalKills) ? 0 : (p.totalKills || 0),
+      totalRevives: isNaN(p.totalRevives) ? 0 : (p.totalRevives || 0)
     };
   });
   const [isCustomGameSession, setIsCustomGameSession] = useState(false);
@@ -677,15 +687,15 @@ const App: React.FC = () => {
         localStorage.setItem('ztown_progression', JSON.stringify(newP));
         return newP;
       });
-    } else if (progression.prestige < 10) {
+    } else if (progression.rankMastery < 10) {
       setProgression(prev => {
-        const newP = { ...prev, xp: 0, prestige: prev.prestige + 1 };
-        if (newP.prestige === 10) unlockAchievement('prestige_master');
+        const newP = { ...prev, xp: 0, rankMastery: prev.rankMastery + 1 };
+        if (newP.rankMastery === 10) unlockAchievement('rank_mastery_10');
         localStorage.setItem('ztown_progression', JSON.stringify(newP));
         return newP;
       });
-    } else if (progression.prestige === 10 && currentData.level === MAX_LEVEL) {
-      // Prestige Master Reset
+    } else if (progression.rankMastery === 10 && currentData.level === MAX_LEVEL) {
+      // Rank Mastery Reset
       setProgression(prev => {
         const newP = { ...prev, xp: 0, stars: (prev.stars || 0) + 1 };
         if (newP.stars === 1) unlockAchievement('star_collector');
@@ -722,10 +732,10 @@ const App: React.FC = () => {
         localStorage.setItem('ztown_progression', JSON.stringify(newP));
         return newP;
       });
-    } else if (progression.prestige > 0) {
+    } else if (progression.rankMastery > 0) {
       const maxLevelXp = getXpForLevel(MAX_LEVEL);
       setProgression(prev => {
-        const newP = { ...prev, xp: maxLevelXp, prestige: prev.prestige - 1 };
+        const newP = { ...prev, xp: maxLevelXp, rankMastery: prev.rankMastery - 1 };
         localStorage.setItem('ztown_progression', JSON.stringify(newP));
         return newP;
       });
@@ -741,9 +751,9 @@ const App: React.FC = () => {
   }, [progression, getXpForLevel]);
   const [stats, setStats] = useState<PlayerStats>(() => {
     const saved = localStorage.getItem('ztown_progression');
-    const p = saved ? JSON.parse(saved) : { xp: 0, prestige: 0, stars: 0, achievements: [] };
+    const p = saved ? JSON.parse(saved) : { xp: 0, rankMastery: 0, stars: 0, achievements: [] };
     const level = getLevelData(p.xp).level;
-    return getInitialStats(level, p.prestige);
+    return getInitialStats(level, p.rankMastery);
   });
 
   const handleMaxWeaponLevel = useCallback(() => {
@@ -792,7 +802,7 @@ const App: React.FC = () => {
   const [flashOverlay, setFlashOverlay] = useState(0);
   const [showRoundSplash, setShowRoundSplash] = useState(false);
   const [levelUpNotif, setLevelUpNotif] = useState<{level: number, show: boolean}>({level: 1, show: false});
-  const [prestigeNotif, setPrestigeNotif] = useState<{prestige: number, show: boolean}>({prestige: 1, show: false});
+  const [rankMasteryNotif, setRankMasteryNotif] = useState<{rankMastery: number, show: boolean}>({rankMastery: 1, show: false});
   const [achievementNotif, setAchievementNotif] = useState<{name: string, icon: string, show: boolean}>({ name: '', icon: '', show: false });
   const prevLevelRef = useRef(getLevelData(progression.xp).level);
   const playerPosRef = useRef(new THREE.Vector3(0, 1.2, 15));
@@ -1049,6 +1059,9 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        if (parsed.customPlaylist) {
+          parsed.customPlaylist = parsed.customPlaylist.filter((t: any) => t.url !== 'https://image2url.com/r2/default/audio/1772516475665-1a554687-3f96-41c7-b11f-bc5150e7dbc3.ogg');
+        }
         return { ...INITIAL_GAME_SETTINGS, ...parsed };
       } catch (e) {
         return INITIAL_GAME_SETTINGS;
@@ -1339,7 +1352,7 @@ const App: React.FC = () => {
       if (loadoutCategory === 'all') return true;
       const upperName = name.toUpperCase();
       let category = 'ar';
-      if (upperName.includes('RAY') || upperName.includes('WUNDER') || upperName.includes('THUNDER') || upperName.includes('MUSTANG')) category = 'wonder';
+      if (upperName.includes('RAY') || upperName.includes('VOLT') || upperName.includes('CYCLONE') || upperName.includes('BLAZE')) category = 'wonder';
       else if (upperName.includes('KNIFE')) category = 'melee';
       else if (upperName.includes('DSR') || upperName.includes('SNIPER')) category = 'sniper';
       else if (upperName.includes('HAMR') || upperName.includes('RPD') || upperName.includes('BROWNING') || upperName.includes('LMG')) category = 'lmg';
@@ -1510,7 +1523,7 @@ const App: React.FC = () => {
           if (selectedMenuIndex === 0) status === GameStatus.PAUSED ? setShowPauseSettings(false) : setStatus(GameStatus.START);
           else if (selectedMenuIndex === 1) setHudMode(prev => prev === 'all' ? 'info' : prev === 'info' ? 'hidden' : 'all');
           else if (selectedMenuIndex >= 2 && selectedMenuIndex <= 11) {
-            const camos = ['none', 'gold', 'diamond', 'dark_matter', 'cherry_blossom', 'dragon', 'ice', 'magma', 'nebula', 'spectrum'] as const;
+            const camos = ['none', 'gilded', 'crystal', 'void_matter', 'sakura', 'wyvern', 'frost', 'lava', 'galaxy', 'prism'] as const;
             setStats(prev => ({ ...prev, selectedCamo: camos[selectedMenuIndex - 2] }));
           }
           else if (selectedMenuIndex === 42) setHudSettings(INITIAL_HUD_SETTINGS);
@@ -1559,7 +1572,7 @@ const App: React.FC = () => {
         } else if (selectedMenuIndex >= 14 && selectedMenuIndex <= 47) {
           const posIndex = Math.floor((selectedMenuIndex - 14) / 2);
           const isY = (selectedMenuIndex - 14) % 2 === 1;
-          const keys = ['statsPos', 'healthBarPos', 'pausePos', 'weaponPos', 'ammoPos', 'joystickPos', 'grenadePos', 'flashbangPos', 'monkeyBombPos', 'jumpPos', 'switchPos', 'knifePos', 'shootPos', 'reloadPos', 'minimapPos', 'gemPos', 'slidePos'];
+          const keys = ['statsPos', 'healthBarPos', 'pausePos', 'weaponPos', 'ammoPos', 'joystickPos', 'grenadePos', 'flashbangPos', 'kingRobboPos', 'jumpPos', 'switchPos', 'knifePos', 'shootPos', 'reloadPos', 'minimapPos', 'gemPos', 'slidePos'];
           const key = keys[posIndex];
           setHudSettings(prev => ({ 
             ...prev, 
@@ -1619,7 +1632,7 @@ const App: React.FC = () => {
   const slideRequest = useRef(false);
   const grenadeRequest = useRef(false);
   const flashbangRequest = useRef(false);
-  const monkeyBombRequest = useRef(false);
+  const kingRobboRequest = useRef(false);
   const sprintRequest = useRef(false);
   const aimRequest = useRef(false);
   const lastDamageTime = useRef(0);
@@ -1638,7 +1651,7 @@ const App: React.FC = () => {
     instaKill: instaKillExpiry > now,
     doublePoints: doublePointsExpiry > now,
     nukeTrigger: false,
-    monkeyBombActive: false,
+    kingRobboActive: false,
     healthRefillsBought: stats.healthRefillsBought,
     godMode,
     selectedCamo: stats.selectedCamo,
@@ -1648,8 +1661,8 @@ const App: React.FC = () => {
     zombiesRemaining: stats.zombiesRemaining,
     hp: stats.hp,
     level: getLevelData(progression.xp).level,
-    prestige: progression.prestige
-  }), [stats, isReloading, instaKillExpiry, doublePointsExpiry, now, godMode, progression.xp, progression.prestige]);
+    rankMastery: progression.rankMastery
+  }), [stats, isReloading, instaKillExpiry, doublePointsExpiry, now, godMode, progression.xp, progression.rankMastery]);
 
   const [killAllZombies, setKillAllZombies] = useState(false);
   const [teleportZombiesToMe, setTeleportZombiesToMe] = useState(false);
@@ -1699,9 +1712,9 @@ const App: React.FC = () => {
       bossDefeated: bossDefeated,
       red9QuestCompleted: red9BlessingClaimed,
       mainEasterEggCompleted: easterEggTriggered,
-      prestigeMasterStars: progression.stars || 0,
+      rankMasteryStars: progression.stars || 0,
       level: getLevelData(progression.xp).level,
-      prestige: progression.prestige,
+      rankMastery: progression.rankMastery,
       gems: finalStats.gems || 0
     };
     const newBoard = [...leaderboard, entry]
@@ -1848,8 +1861,9 @@ const App: React.FC = () => {
       let changed = false;
 
       if (update.hp !== undefined) {
-        if (godMode && update.hp < 0) return prev;
-        if (update.hp < 0) {
+        const hpUpdate = isNaN(update.hp) ? 0 : update.hp;
+        if (godMode && hpUpdate < 0) return prev;
+        if (hpUpdate < 0) {
           if (Date.now() < dyingWishExpiry.current) return prev; // Invincible
           setBloodOverlay(0.6);
           soundService.playHurt();
@@ -1857,7 +1871,7 @@ const App: React.FC = () => {
         }
         
         const oldHp = next.hp;
-        next.hp = Math.min(next.maxHp, Math.max(0, next.hp + update.hp));
+        next.hp = Math.min(next.maxHp, Math.max(0, (isNaN(next.hp) ? 0 : next.hp) + hpUpdate));
         
         // Downed Logic for Player
         if (next.hp <= 0 && !next.isDowned && oldHp > 0) {
@@ -1893,14 +1907,15 @@ const App: React.FC = () => {
         changed = true;
       }
       if (update.points !== undefined) {
-        const prestigeMultiplier = 1 + progression.prestige * 0.05;
+        const pointsUpdate = isNaN(update.points) ? 0 : update.points;
+        const rankMasteryMultiplier = 1 + progression.rankMastery * 0.05;
         const levelMultiplier = 1 + Math.floor(getLevelData(progression.xp).level / 5) * 0.01;
         const doublePointsMultiplier = Date.now() < doublePointsExpiry ? 2 : 1;
-        const pts = update.points > 0 ? Math.floor(update.points * doublePointsMultiplier * prestigeMultiplier * levelMultiplier) : update.points;
+        const pts = pointsUpdate > 0 ? Math.floor(pointsUpdate * doublePointsMultiplier * rankMasteryMultiplier * levelMultiplier) : pointsUpdate;
         
-        next.points += pts; 
+        next.points = (isNaN(next.points) ? 0 : next.points) + pts; 
         if (pts > 0) {
-          next.totalPoints += pts;
+          next.totalPoints = (isNaN(next.totalPoints) ? 0 : next.totalPoints) + pts;
           if (!isCustomGameSession) {
             setProgression(p => {
               // Reduce XP gain to 10% of points to make leveling harder
@@ -1968,12 +1983,12 @@ const App: React.FC = () => {
         next.flashbangs = update.flashbangs;
         changed = true;
       }
-      if (update.monkeyBombs !== undefined) {
-        next.monkeyBombs = update.monkeyBombs;
+      if (update.kingRobbos !== undefined) {
+        next.kingRobbos = update.kingRobbos;
         changed = true;
       }
-      if (update.monkeyBombActive !== undefined) {
-        gameState.monkeyBombActive = update.monkeyBombActive;
+      if (update.kingRobboActive !== undefined) {
+        gameState.kingRobboActive = update.kingRobboActive;
       }
       if (update.round !== undefined) {
         if (update.round > next.round) {
@@ -2067,7 +2082,7 @@ const App: React.FC = () => {
 
       return changed ? next : prev;
     });
-  }, [doublePointsExpiry, godMode, red9CurseActive, progression.prestige, isCustomGameSession, activeBots]);
+  }, [doublePointsExpiry, godMode, red9CurseActive, progression.rankMastery, isCustomGameSession, activeBots]);
 
   const handlePowerUp = useCallback((type: PowerUpType) => {
     soundService.playPowerUpPickup();
@@ -2083,7 +2098,7 @@ const App: React.FC = () => {
             maxAmmo: prev.perks.includes('bandolier') ? Math.floor(WEAPONS[prev.weaponName].max * 1.5) : WEAPONS[prev.weaponName].max,
             grenades: 4, 
             flashbangs: 2,
-            monkeyBombs: Math.max(prev.monkeyBombs, 3)
+            kingRobbos: Math.max(prev.kingRobbos, 3)
           };
           if (prev.secondaryWeaponName) {
             next.secondaryAmmo = WEAPONS[prev.secondaryWeaponName].clip;
@@ -2141,8 +2156,8 @@ const App: React.FC = () => {
       case 'FLASHBANG':
         setStats(prev => ({ ...prev, flashbangs: Math.min(2, prev.flashbangs + 1) }));
         break;
-      case 'MONKEY_BOMB':
-        setStats(prev => ({ ...prev, monkeyBombs: Math.min(3, prev.monkeyBombs + 1) }));
+      case 'KING_ROBBO':
+        setStats(prev => ({ ...prev, kingRobbos: Math.min(3, prev.kingRobbos + 1) }));
         break;
       case 'SKIP_ROUND':
         setStats(prev => ({ ...prev, zombiesRemaining: 0 }));
@@ -2214,7 +2229,7 @@ const App: React.FC = () => {
       setIsBoxCycling(true);
       setStats(prev => ({ ...prev, points: prev.points - interactPrompt.cost }));
       const weaponKeys = Object.keys(WEAPONS).filter(k => !Object.values(PAP_MAPPING).includes(k));
-      const boxItems = [...weaponKeys, 'MONKEY BOMBS'];
+      const boxItems = [...weaponKeys, 'KING ROBBOS'];
       const cycleInterval = setInterval(() => {
         setCyclingWeapon(boxItems[Math.floor(Math.random() * boxItems.length)]);
         soundService.playBoxTick();
@@ -2226,15 +2241,15 @@ const App: React.FC = () => {
         if (rand < 0.05) {
           finalWeapon = 'RAY GUN';
         } else if (rand < 0.15) {
-          finalWeapon = 'MONKEY BOMBS';
+          finalWeapon = 'KING ROBBOS';
         } else {
           const normalWeapons = weaponKeys.filter(w => w !== 'RAY GUN' && w !== 'M1911');
           finalWeapon = normalWeapons[Math.floor(Math.random() * normalWeapons.length)];
         }
         
-        if (finalWeapon === 'MONKEY BOMBS') {
-           setStats(prev => ({ ...prev, monkeyBombs: Math.max(prev.monkeyBombs, 3) }));
-           setLastPerkGained("MONKEY BOMBS ACQUIRED!");
+        if (finalWeapon === 'KING ROBBOS') {
+           setStats(prev => ({ ...prev, kingRobbos: Math.max(prev.kingRobbos, 3) }));
+           setLastPerkGained("KING ROBBOS ACQUIRED!");
            setTimeout(() => setLastPerkGained(null), 3000);
         } else {
           setStats(prev => {
@@ -2322,7 +2337,7 @@ const App: React.FC = () => {
       if (!papName) return; 
       
       soundService.playPerk();
-      unlockAchievement('town_pap');
+      unlockAchievement('red9_pap');
       setStats(prev => ({
         ...prev,
         points: prev.points - interactPrompt.cost,
@@ -2675,12 +2690,12 @@ const App: React.FC = () => {
     }
   };
 
-  const throwMonkeyBomb = (e?: React.TouchEvent | React.MouseEvent) => {
+  const throwKingRobbo = (e?: React.TouchEvent | React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (stats.monkeyBombs > 0 && status === GameStatus.PLAYING) {
-      monkeyBombRequest.current = true;
-      setStats(prev => ({ ...prev, monkeyBombs: prev.monkeyBombs - 1 }));
-      setTimeout(() => monkeyBombRequest.current = false, 100);
+    if (stats.kingRobbos > 0 && status === GameStatus.PLAYING) {
+      kingRobboRequest.current = true;
+      setStats(prev => ({ ...prev, kingRobbos: prev.kingRobbos - 1 }));
+      setTimeout(() => kingRobboRequest.current = false, 100);
     }
   };
 
@@ -2691,7 +2706,7 @@ const App: React.FC = () => {
     handleJumpOrSlide,
     throwGrenade,
     throwFlashbang,
-    throwMonkeyBomb
+    throwKingRobbo
   });
 
   useEffect(() => {
@@ -2702,7 +2717,7 @@ const App: React.FC = () => {
       handleJumpOrSlide,
       throwGrenade,
       throwFlashbang,
-      throwMonkeyBomb
+      throwKingRobbo
     };
   });
 
@@ -2776,7 +2791,7 @@ const App: React.FC = () => {
       else if (key === keybindSettings.knife) knifeRequest.current = true;
       else if (key === keybindSettings.shoot) shootRequest.current = true;
       else if (key === keybindSettings.aim) {
-        if (stats.weaponName === 'MUSTANG & SALLY') {
+        if (stats.weaponName === 'BLAZE & GLORY') {
           shootLeftRequest.current = true;
         } else {
           aimRequest.current = true;
@@ -2820,7 +2835,7 @@ const App: React.FC = () => {
       else if (key === keybindSettings.knife) knifeRequest.current = false;
       else if (key === keybindSettings.shoot) shootRequest.current = false;
       else if (key === keybindSettings.aim) {
-        if (stats.weaponName === 'MUSTANG & SALLY') {
+        if (stats.weaponName === 'BLAZE & GLORY') {
           shootLeftRequest.current = false;
         } else {
           aimRequest.current = false;
@@ -2853,7 +2868,7 @@ const App: React.FC = () => {
       const key = `mouse${e.button}`;
       if (key === keybindSettings.shoot) shootRequest.current = true;
       else if (key === keybindSettings.aim) {
-        if (stats.weaponName === 'MUSTANG & SALLY') {
+        if (stats.weaponName === 'BLAZE & GLORY') {
           shootLeftRequest.current = true;
         } else {
           aimRequest.current = true;
@@ -2867,7 +2882,7 @@ const App: React.FC = () => {
       const key = `mouse${e.button}`;
       if (key === keybindSettings.shoot) shootRequest.current = false;
       else if (key === keybindSettings.aim) {
-        if (stats.weaponName === 'MUSTANG & SALLY') {
+        if (stats.weaponName === 'BLAZE & GLORY') {
           shootLeftRequest.current = false;
         } else {
           aimRequest.current = false;
@@ -2972,7 +2987,7 @@ const App: React.FC = () => {
         checkButton(gamepadSettings.grenade, () => callbacksRef.current.throwGrenade());
         checkButton(gamepadSettings.pause, () => togglePause());
         checkButton(gamepadSettings.flashbang, () => callbacksRef.current.throwFlashbang());
-        checkButton(gamepadSettings.monkeyBomb, () => callbacksRef.current.throwMonkeyBomb());
+        checkButton(gamepadSettings.kingRobbo, () => callbacksRef.current.throwKingRobbo());
 
         // Continuous actions
         const isShootingButton = activeGamepad.buttons[gamepadSettings.shoot]?.pressed || false;
@@ -2993,7 +3008,7 @@ const App: React.FC = () => {
         setIsSprinting(isSprinting);
 
         const isAiming = activeGamepad.buttons[gamepadSettings.aim]?.pressed || false;
-        if (stats.weaponName === 'MUSTANG & SALLY') {
+        if (stats.weaponName === 'BLAZE & GLORY') {
           shootLeftRequest.current = isAiming;
           aimRequest.current = false;
         } else {
@@ -3132,10 +3147,10 @@ const App: React.FC = () => {
         ping: 20,
         variant: p.variant || Math.floor(Math.random() * 1000)
       })));
-      setStats(prev => ({ ...getInitialStats(getLevelData(progression.xp).level, progression.prestige, room.mapId, prev.selectedCamo, progression.weaponAttachments), activeMapId: room.mapId }));
+      setStats(prev => ({ ...getInitialStats(getLevelData(progression.xp).level, progression.rankMastery, room.mapId, prev.selectedCamo, progression.weaponAttachments), activeMapId: room.mapId }));
     } else {
       setOtherPlayers([]);
-      setStats(prev => getInitialStats(getLevelData(progression.xp).level, progression.prestige, prev.activeMapId, prev.selectedCamo, progression.weaponAttachments));
+      setStats(prev => getInitialStats(getLevelData(progression.xp).level, progression.rankMastery, prev.activeMapId, prev.selectedCamo, progression.weaponAttachments));
     }
     
     setGodMode(false);
@@ -3196,7 +3211,7 @@ const App: React.FC = () => {
         downedTimer: 0,
         hp: 150,
         level: Math.floor(Math.random() * 55) + 1,
-        prestige: Math.floor(Math.random() * 11),
+        rankMastery: Math.floor(Math.random() * 11),
         variant: Math.floor(Math.random() * 5),
         isReviving: false
       });
@@ -3204,7 +3219,7 @@ const App: React.FC = () => {
     setOtherPlayers(bots);
 
     setStats(prev => {
-      const initial = getInitialStats(getLevelData(progression.xp).level, progression.prestige, customGameConfig.mapId, prev.selectedCamo, progression.weaponAttachments);
+      const initial = getInitialStats(getLevelData(progression.xp).level, progression.rankMastery, customGameConfig.mapId, prev.selectedCamo, progression.weaponAttachments);
       const startingWeapon = customGameConfig.gameMode === 'dead_ops' ? 'M1911' : customGameConfig.startingWeapon;
       return {
         ...initial,
@@ -3244,7 +3259,7 @@ const App: React.FC = () => {
 
   const fullRestart = () => {
     setGameKey(prev => prev + 1);
-    setStats(prev => getInitialStats(getLevelData(progression.xp).level, progression.prestige, prev.activeMapId, prev.selectedCamo, progression.weaponAttachments));
+    setStats(prev => getInitialStats(getLevelData(progression.xp).level, progression.rankMastery, prev.activeMapId, prev.selectedCamo, progression.weaponAttachments));
     setBloodOverlay(0);
     setOpenDoors([]);
     setStatus(GameStatus.START);
@@ -3434,7 +3449,7 @@ const App: React.FC = () => {
               slideRequest={slideRequest}
               grenadeRequest={grenadeRequest}
               flashbangRequest={flashbangRequest}
-              monkeyBombRequest={monkeyBombRequest}
+              kingRobboRequest={kingRobboRequest}
               sprintRequest={sprintRequest}
               aimRequest={aimRequest}
               onStatsUpdate={handleStatsUpdate}
@@ -3569,7 +3584,7 @@ const App: React.FC = () => {
                  </div>
               </div>
               <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-yellow-500 backdrop-blur-md shadow-xl">
-                 {progression.prestige > 0 ? getPrestigeIcon(progression.prestige, 24) : <Star className="text-yellow-500 w-6 h-6" />}
+                 {progression.rankMastery > 0 ? getRankMasteryIcon(progression.rankMastery, 24) : <Star className="text-yellow-500 w-6 h-6" />}
                  <div className="flex flex-col">
                     <div className="flex items-center gap-1">
                       <span className="text-yellow-400 font-black text-xl italic leading-none">Lvl {getLevelData(progression.xp).level}</span>
@@ -3577,7 +3592,7 @@ const App: React.FC = () => {
                         <Star key={i} className="text-yellow-400 w-3 h-3 fill-yellow-400" />
                       ))}
                     </div>
-                   {progression.prestige > 0 && <span className={`${getPrestigeColor(progression.prestige)} font-black text-[10px] uppercase tracking-widest`}>Prestige {progression.prestige}</span>}
+                   {progression.rankMastery > 0 && <span className={`${getRankMasteryColor(progression.rankMastery)} font-black text-[10px] uppercase tracking-widest whitespace-nowrap`}>Rank Mastery {progression.rankMastery}</span>}
                  </div>
               </div>
               <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-blue-500 backdrop-blur-md shadow-xl">
@@ -3688,7 +3703,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-3 bg-red-600/90 text-white px-4 py-1.5 rounded-full border border-white/30 shadow-lg animate-pulse backdrop-blur-sm">
                       <Crosshair size={18} />
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">INSTA-KILL</span>
+                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">ONE SHOT</span>
                         <span className="text-sm font-black italic tabular-nums leading-none">{instaKillTimeLeft}s</span>
                       </div>
                    </div>
@@ -3697,7 +3712,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-3 bg-emerald-600/90 text-white px-4 py-1.5 rounded-full border border-white/30 shadow-lg animate-pulse backdrop-blur-sm">
                       <TrendingUp size={18} />
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">DOUBLE POINTS</span>
+                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">DOUBLE SCORE</span>
                         <span className="text-sm font-black italic tabular-nums leading-none">{doublePointsTimeLeft}s</span>
                       </div>
                    </div>
@@ -3706,7 +3721,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-3 bg-orange-600/90 text-white px-4 py-1.5 rounded-full border border-white/30 shadow-lg animate-pulse backdrop-blur-sm">
                       <Flame size={18} />
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">FIRE SALE</span>
+                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">CLEARANCE SALE</span>
                         <span className="text-sm font-black italic tabular-nums leading-none">{fireSaleTimeLeft}s</span>
                       </div>
                    </div>
@@ -3715,7 +3730,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-3 bg-red-900/90 text-white px-4 py-1.5 rounded-full border border-white/30 shadow-lg animate-pulse backdrop-blur-sm">
                       <Droplet size={18} />
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">ZOMBIE BLOOD</span>
+                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">UNDEAD MASK</span>
                         <span className="text-sm font-black italic tabular-nums leading-none">{zombieBloodTimeLeft}s</span>
                       </div>
                    </div>
@@ -3724,7 +3739,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-3 bg-cyan-600/90 text-white px-4 py-1.5 rounded-full border border-white/30 shadow-lg animate-pulse backdrop-blur-sm">
                       <Skull size={18} />
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">DEATH MACHINE</span>
+                        <span className="text-[10px] font-black uppercase italic tracking-wider leading-none">HEAVY GUN</span>
                         <span className="text-sm font-black italic tabular-nums leading-none">{deathMachineTimeLeft}s</span>
                       </div>
                    </div>
@@ -3753,10 +3768,10 @@ const App: React.FC = () => {
                 style={{ top: hudSettings.weaponPos.y, right: hudSettings.weaponPos.x, transform: `scale(${hudSettings.hudScale})`, transformOrigin: 'top right' }}
               >
                 <div className="flex flex-col items-end">
-                  {stats.weaponName === 'MUSTANG & SALLY' ? (
+                  {stats.weaponName === 'BLAZE & GLORY' ? (
                     <>
-                      <div className={`font-black italic tracking-tighter text-2xl drop-shadow-lg uppercase leading-none transition-colors duration-500 ${stats.weaponTier > 1 ? 'text-blue-400 animate-pulse' : 'text-white'}`}>MUSTANG</div>
-                      <div className={`font-black italic tracking-tighter text-2xl drop-shadow-lg uppercase leading-none transition-colors duration-500 ${stats.weaponTier > 1 ? 'text-blue-400 animate-pulse' : 'text-white'}`}>SALLY</div>
+                      <div className={`font-black italic tracking-tighter text-2xl drop-shadow-lg uppercase leading-none transition-colors duration-500 ${stats.weaponTier > 1 ? 'text-blue-400 animate-pulse' : 'text-white'}`}>BLAZE</div>
+                      <div className={`font-black italic tracking-tighter text-2xl drop-shadow-lg uppercase leading-none transition-colors duration-500 ${stats.weaponTier > 1 ? 'text-blue-400 animate-pulse' : 'text-white'}`}>GLORY</div>
                       <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mt-1">Twin Guns</div>
                     </>
                   ) : (
@@ -3876,13 +3891,13 @@ const App: React.FC = () => {
                   </button>
 
                   <button 
-                    onTouchStart={throwMonkeyBomb} 
-                    onMouseDown={throwMonkeyBomb} 
+                    onTouchStart={throwKingRobbo} 
+                    onMouseDown={throwKingRobbo} 
                     className="absolute z-30 pointer-events-auto w-16 h-16 bg-red-900/80 active:bg-red-700 rounded-full flex flex-col items-center justify-center border-2 border-white/20 shadow-xl active:scale-90 transition-all backdrop-blur-md"
-                    style={{ bottom: hudSettings.monkeyBombPos.y, left: hudSettings.monkeyBombPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom left' }}
+                    style={{ bottom: hudSettings.kingRobboPos.y, left: hudSettings.kingRobboPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom left' }}
                   >
                      <BoxIcon size={24} className="text-white" />
-                     <span className="text-[10px] font-black text-white">{stats.monkeyBombs}</span>
+                     <span className="text-[10px] font-black text-white">{stats.kingRobbos}</span>
                   </button>
                 </>
               )}
@@ -3904,7 +3919,7 @@ const App: React.FC = () => {
                       <BoxIcon className="w-6 h-6 animate-spin" />
                       <div className="flex flex-col items-start">
                         <span className="text-[10px] font-bold uppercase opacity-60">
-                          Mystery Box
+                          Gun Box
                         </span>
                         <span className="text-xl font-black italic tracking-tighter">
                           {cyclingWeapon}
@@ -3948,7 +3963,7 @@ const App: React.FC = () => {
                   style={{ bottom: hudSettings.ammoPos.y, right: hudSettings.ammoPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
                 >
                     {isReloading ? <span className="text-blue-500 text-xl animate-pulse block">RELOADING</span> : (
-                      stats.weaponName === 'MUSTANG & SALLY' ? 
+                      stats.weaponName === 'BLAZE & GLORY' ? 
                         `${Math.floor(stats.ammo / 100)}/${stats.ammo % 100}` : 
                         `${stats.ammo}/${WEAPONS[stats.weaponName].clip}`
                     )}
@@ -4152,7 +4167,7 @@ const App: React.FC = () => {
                         </td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            {getPrestigeIcon(progression.prestige, 12)}
+                            {getRankMasteryIcon(progression.rankMastery, 12)}
                             <span className="text-yellow-400 font-black italic">{getLevelData(progression.xp).level}</span>
                           </div>
                         </td>
@@ -4176,7 +4191,7 @@ const App: React.FC = () => {
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              {player.prestige !== undefined ? getPrestigeIcon(player.prestige, 12) : null}
+                              {player.rankMastery !== undefined ? getRankMasteryIcon(player.rankMastery, 12) : null}
                               <span className="text-yellow-400/60 font-black italic">{player.level !== undefined ? player.level : '-'}</span>
                             </div>
                           </td>
@@ -4254,7 +4269,7 @@ const App: React.FC = () => {
                             </td>
                             <td className="p-3 text-center">
                               <div className="flex items-center justify-center gap-1">
-                                {getPrestigeIcon(progression.prestige, 12)}
+                                {getRankMasteryIcon(progression.rankMastery, 12)}
                                 <span className="text-yellow-400 font-black italic">{getLevelData(progression.xp).level}</span>
                               </div>
                             </td>
@@ -4282,7 +4297,7 @@ const App: React.FC = () => {
                               </td>
                               <td className="p-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
-                                  {player.prestige !== undefined ? getPrestigeIcon(player.prestige, 12) : null}
+                                  {player.rankMastery !== undefined ? getRankMasteryIcon(player.rankMastery, 12) : null}
                                   <span className="text-yellow-400/60 font-black italic">{player.level !== undefined ? player.level : '-'}</span>
                                 </div>
                               </td>
@@ -4322,7 +4337,7 @@ const App: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
-                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Mystery Box Easter Egg</span>
+                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Gun Box Easter Egg</span>
                           <span className={`text-sm font-black italic ${easterEggTriggered ? 'text-emerald-500' : 'text-red-500'}`}>
                             {easterEggTriggered ? 'DONE' : 'NOT DONE'}
                           </span>
@@ -4613,7 +4628,7 @@ const App: React.FC = () => {
 
                     {modMenuType === 'full' && (
                       <div className="pt-4 border-t border-white/10">
-                        <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Prestige Manager</h3>
+                        <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Rank Mastery Manager</h3>
                         <div className="grid grid-cols-5 gap-2 mb-4">
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((p, i) => (
                             <button
@@ -4622,18 +4637,18 @@ const App: React.FC = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setProgression((prev) => {
-                                  const newP = { ...prev, prestige: p };
+                                  const newP = { ...prev, rankMastery: p };
                                   localStorage.setItem('ztown_progression', JSON.stringify(newP));
                                   return newP;
                                 });
                               }}
                               className={`aspect-square flex flex-col items-center justify-center bg-black/40 border ${
-                                progression.prestige === p
+                                progression.rankMastery === p
                                   ? "border-yellow-500 bg-yellow-500/20"
                                   : "border-white/10 hover:bg-white/10"
                               } rounded-sm transition-all active:scale-95 ${selectedMenuIndex === 10 + i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                             >
-                              {getPrestigeIcon(p, 24)}
+                              {getRankMasteryIcon(p, 24)}
                               <span className="text-[10px] font-bold text-white/60 mt-1">{p}</span>
                             </button>
                           ))}
@@ -4643,7 +4658,7 @@ const App: React.FC = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
-                              const newP = { xp: 0, prestige: 0, stars: 0, achievements: [] };
+                              const newP = { xp: 0, rankMastery: 0, stars: 0, achievements: [] };
                               setProgression(newP);
                               localStorage.setItem('ztown_progression', JSON.stringify(newP));
                             }
@@ -4663,49 +4678,49 @@ const App: React.FC = () => {
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('MAX_AMMO'); }}
                           className={`py-3 bg-green-900/40 text-green-500 font-black text-sm rounded-sm border border-green-900/50 hover:bg-green-900/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 21 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Max Ammo
+                          Full Resupply
                         </button>
                         <button 
                           id="menu-item-22"
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('INSTA_KILL'); }}
                           className={`py-3 bg-red-900/40 text-red-500 font-black text-sm rounded-sm border border-red-900/50 hover:bg-red-900/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 22 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Insta-Kill
+                          One Shot
                         </button>
                         <button 
                           id="menu-item-23"
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('DOUBLE_POINTS'); }}
                           className={`py-3 bg-yellow-900/40 text-yellow-500 font-black text-sm rounded-sm border border-yellow-900/50 hover:bg-yellow-900/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 23 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Double Points
+                          Double Score
                         </button>
                         <button 
                           id="menu-item-24"
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('NUKE'); }}
                           className={`py-3 bg-orange-900/40 text-orange-500 font-black text-sm rounded-sm border border-orange-900/50 hover:bg-orange-900/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 24 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Nuke
+                          Total Blast
                         </button>
                          <button 
                           id="menu-item-25"
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('DEATH_MACHINE'); }}
                           className={`py-3 bg-cyan-900/40 text-cyan-500 font-black text-sm rounded-sm border border-cyan-900/50 hover:bg-cyan-900/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 25 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Death Machine
+                          Heavy Gun
                         </button>
                          <button 
                           id="menu-item-26"
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('FIRE_SALE'); }}
                           className={`py-3 bg-orange-600/40 text-orange-300 font-black text-sm rounded-sm border border-orange-600/50 hover:bg-orange-600/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 26 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Fire Sale
+                          Clearance Sale
                         </button>
                          <button 
                           id="menu-item-27"
                           onClick={(e) => { e.stopPropagation(); handlePowerUp('ZOMBIE_BLOOD'); }}
                           className={`py-3 bg-red-950/40 text-red-300 font-black text-sm rounded-sm border border-red-950/50 hover:bg-red-950/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 27 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          Zombie Blood
+                          Undead Mask
                         </button>
                         <button 
                           id="menu-item-28"
@@ -4808,39 +4823,39 @@ const App: React.FC = () => {
                       <div className={status === GameStatus.CUSTOM_GAME ? "grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1" : "grid grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1"}>
                         {[
                           { name: 'Spawn', pos: [0, 1.2, 15], color: 'bg-blue-600/40 text-blue-400 border-blue-600/50' },
-                          { name: 'Juggernog', pos: [-25, 1.2, -15], color: 'bg-red-600/40 text-red-400 border-red-600/50' },
-                          { name: 'Speed Cola', pos: [25, 1.2, 5], color: 'bg-emerald-600/40 text-emerald-400 border-emerald-600/50' },
-                          { name: 'Stamin-Up', pos: [-35, 1.2, 35], color: 'bg-yellow-600/40 text-yellow-400 border-yellow-600/50' },
-                          { name: 'Double Tap', pos: [35, 1.2, -35], color: 'bg-orange-600/40 text-orange-400 border-orange-600/50' },
-                          { name: 'Mule Kick', pos: [0, 1.2, -45], color: 'bg-indigo-600/40 text-indigo-400 border-indigo-600/50' },
-                          { name: 'PHD Flopper', pos: [82, 1.2, 85], color: 'bg-purple-600/40 text-purple-400 border-purple-600/50' },
-                          { name: 'Deadshot', pos: [-75, 1.2, -70], color: 'bg-gray-600/40 text-gray-400 border-gray-600/50' },
-                          { name: 'Electric Cherry', pos: [75, 1.2, -75], color: 'bg-cyan-600/40 text-cyan-400 border-cyan-600/50' },
-                          { name: 'Quick Revive', pos: [-85, 1.2, 75], color: 'bg-blue-500/40 text-blue-300 border-blue-500/50' },
-                          { name: 'Vulture Aid', pos: [85, 1.2, 25], color: 'bg-lime-600/40 text-lime-400 border-lime-600/50' },
-                          { name: 'Widow\'s Wine', pos: [-50, 1.2, 0], color: 'bg-pink-600/40 text-pink-400 border-pink-600/50' },
-                          { name: 'Slider Wine', pos: [50, 1.2, 0], color: 'bg-orange-500/40 text-orange-300 border-orange-500/50' },
-                          { name: 'Winter\'s Wail', pos: [-70, 1.2, -70], color: 'bg-blue-300/40 text-blue-200 border-blue-300/50' },
-                          { name: 'Dying Wish', pos: [-80, 1.2, 75], color: 'bg-red-500/40 text-red-300 border-red-500/50' },
-                          { name: 'Ethereal Razor', pos: [70, 1.2, -75], color: 'bg-purple-500/40 text-purple-300 border-purple-500/50' },
-                          { name: 'Timeslip', pos: [-30, 1.2, 35], color: 'bg-cyan-400/40 text-cyan-200 border-cyan-400/50' },
-                          { name: 'Bandolier', pos: [20, 1.2, 5], color: 'bg-orange-400/40 text-orange-200 border-orange-400/50' },
-                          { name: 'Tortoise', pos: [-20, 1.2, -15], color: 'bg-emerald-500/40 text-emerald-300 border-emerald-500/50' },
-                          { name: 'Blaze Phase', pos: [5, 1.2, -45], color: 'bg-orange-700/40 text-orange-500 border-orange-700/50' },
-                          { name: 'Stone Cold Stronghold', pos: (() => {
+                          { name: 'Toughness Brew', pos: [-25, 1.2, -15], color: 'bg-red-600/40 text-red-400 border-red-600/50' },
+                          { name: 'Fast Hands', pos: [25, 1.2, 5], color: 'bg-emerald-600/40 text-emerald-400 border-emerald-600/50' },
+                          { name: 'Marathon Soda', pos: [-35, 1.2, 35], color: 'bg-yellow-600/40 text-yellow-400 border-yellow-600/50' },
+                          { name: 'Double Shot', pos: [35, 1.2, -35], color: 'bg-orange-600/40 text-orange-400 border-orange-600/50' },
+                          { name: 'Third Arm', pos: [0, 1.2, -45], color: 'bg-indigo-600/40 text-indigo-400 border-indigo-600/50' },
+                          { name: 'Blast Proof', pos: [82, 1.2, 85], color: 'bg-purple-600/40 text-purple-400 border-purple-600/50' },
+                          { name: 'Aim Assist', pos: [-75, 1.2, -70], color: 'bg-gray-600/40 text-gray-400 border-gray-600/50' },
+                          { name: 'Shock Burst', pos: [75, 1.2, -75], color: 'bg-cyan-600/40 text-cyan-400 border-cyan-600/50' },
+                          { name: 'Life Brew', pos: [-85, 1.2, 75], color: 'bg-blue-500/40 text-blue-300 border-blue-500/50' },
+                          { name: 'Loot Vision', pos: [85, 1.2, 25], color: 'bg-lime-600/40 text-lime-400 border-lime-600/50' },
+                          { name: 'Spider Brew', pos: [-50, 1.2, 0], color: 'bg-pink-600/40 text-pink-400 border-pink-600/50' },
+                          { name: 'Slide Boom', pos: [50, 1.2, 0], color: 'bg-orange-500/40 text-orange-300 border-orange-500/50' },
+                          { name: 'Ice Shield', pos: [-70, 1.2, -70], color: 'bg-blue-300/40 text-blue-200 border-blue-300/50' },
+                          { name: 'Death Defy', pos: [-80, 1.2, 75], color: 'bg-red-500/40 text-red-300 border-red-500/50' },
+                          { name: 'Sharp Edge', pos: [70, 1.2, -75], color: 'bg-purple-500/40 text-purple-300 border-purple-500/50' },
+                          { name: 'Time Warp', pos: [-30, 1.2, 35], color: 'bg-cyan-400/40 text-cyan-200 border-cyan-400/50' },
+                          { name: 'Deep Pockets', pos: [20, 1.2, 5], color: 'bg-orange-400/40 text-orange-200 border-orange-400/50' },
+                          { name: 'Armor Shell', pos: [-20, 1.2, -15], color: 'bg-emerald-500/40 text-emerald-300 border-emerald-500/50' },
+                          { name: 'Fire Trail', pos: [5, 1.2, -45], color: 'bg-orange-700/40 text-orange-500 border-orange-700/50' },
+                          { name: 'Fortress', pos: (() => {
                             const pos = MAPS.find(m => m.id === stats.activeMapId)?.interactables.find(i => i.id === 'stronghold')?.pos;
                             return pos ? [pos[0], 1.2, pos[2]] : [0, 1.2, 0];
                           })(), color: 'bg-purple-700/40 text-purple-500 border-purple-700/50' },
-                          { name: 'Blood Wolf Bite', pos: (() => {
+                          { name: 'Wolf Spirit', pos: (() => {
                             const pos = MAPS.find(m => m.id === stats.activeMapId)?.interactables.find(i => i.id === 'blood')?.pos;
                             return pos ? [pos[0], 1.2, pos[2]] : [0, 1.2, 0];
                           })(), color: 'bg-red-800/40 text-red-600 border-red-800/50' },
-                          { name: 'Elemental Pop', pos: (() => {
+                          { name: 'Chaos Burst', pos: (() => {
                             const pos = MAPS.find(m => m.id === stats.activeMapId)?.interactables.find(i => i.id === 'elemental')?.pos;
                             return pos ? [pos[0], 1.2, pos[2]] : [0, 1.2, 0];
                           })(), color: 'bg-pink-500/40 text-pink-300 border-pink-500/50' },
-                          { name: 'Pack-A-Punch', pos: [88, 1.2, 85], color: 'bg-cyan-500/40 text-cyan-300 border-cyan-500/50' },
-                          { name: 'Mystery Box', pos: [0, 1.2, 0], color: 'bg-yellow-500/40 text-yellow-300 border-yellow-500/50' },
+                          { name: 'Upgrade Station', pos: [88, 1.2, 85], color: 'bg-cyan-500/40 text-cyan-300 border-cyan-500/50' },
+                          { name: 'Gun Box', pos: [0, 1.2, 0], color: 'bg-yellow-500/40 text-yellow-300 border-yellow-500/50' },
                           { name: 'MP5 Wallbuy', pos: [20, 1.2, 20], color: 'bg-stone-600/40 text-stone-400 border-stone-600/50' },
                           { name: 'M14 Wallbuy', pos: [-30, 1.2, 48], color: 'bg-stone-600/40 text-stone-400 border-stone-600/50' },
                           { name: 'Olympia Wallbuy', pos: [30, 1.2, -25], color: 'bg-stone-600/40 text-stone-400 border-stone-600/50' },
@@ -4892,10 +4907,10 @@ const App: React.FC = () => {
                         </button>
                         <button 
                           id={`menu-item-${22 + teleportCount + 2}`}
-                          onClick={() => setStats(prev => ({ ...prev, monkeyBombs: prev.monkeyBombs + 3 }))} 
+                          onClick={() => setStats(prev => ({ ...prev, kingRobbos: prev.kingRobbos + 3 }))} 
                           className={`py-4 bg-cyan-900/40 text-cyan-500 font-black text-sm rounded-sm border border-cyan-900/50 uppercase italic tracking-tighter active:scale-95 transition-all flex flex-col items-center gap-2 shadow-xl hover:bg-cyan-900/60 ${selectedMenuIndex === 22 + teleportCount + 2 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
-                          <BoxIcon size={20} /> +3 Monkey
+                          <BoxIcon size={20} /> +3 King Robbo
                         </button>
                       </div>
                     </div>
@@ -4904,28 +4919,28 @@ const App: React.FC = () => {
                       <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Individual Perks</h3>
                       <div className="grid grid-cols-2 gap-2">
                         {[
-                          { id: 'jugg', name: 'Juggernog', icon: Heart, color: 'text-red-500', bg: 'bg-red-900/40 border-red-900/50' },
-                          { id: 'speed', name: 'Speed Cola', icon: RefreshCw, color: 'text-emerald-500', bg: 'bg-emerald-900/40 border-emerald-900/50' },
-                          { id: 'stamin', name: 'Stamin-Up', icon: Wind, color: 'text-yellow-500', bg: 'bg-yellow-900/40 border-yellow-900/50' },
-                          { id: 'double', name: 'Double Tap', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-900/40 border-orange-900/50' },
-                          { id: 'mule', name: 'Mule Kick', icon: ShoppingCart, color: 'text-indigo-500', bg: 'bg-indigo-900/40 border-indigo-900/50' },
-                          { id: 'phd', name: 'PHD Flopper', icon: Bomb, color: 'text-purple-500', bg: 'bg-purple-900/40 border-purple-900/50' },
-                          { id: 'deadshot', name: 'Deadshot', icon: Crosshair, color: 'text-gray-400', bg: 'bg-gray-800/40 border-gray-800/50' },
-                          { id: 'electric', name: 'Electric Cherry', icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-900/50' },
-                          { id: 'revive', name: 'Quick Revive', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-900/40 border-blue-900/50' },
-                          { id: 'vulture', name: 'Vulture Aid', icon: Database, color: 'text-lime-500', bg: 'bg-lime-900/40 border-lime-900/50' },
-                          { id: 'widow', name: 'Widow\'s Wine', icon: Swords, color: 'text-pink-600', bg: 'bg-pink-900/40 border-pink-900/50' },
-                          { id: 'slider', name: 'Slider Wine', icon: SlideIcon, color: 'text-orange-400', bg: 'bg-orange-800/40 border-orange-800/50' },
-                          { id: 'winter', name: 'Winter\'s Wail', icon: Snowflake, color: 'text-blue-200', bg: 'bg-blue-800/40 border-blue-800/50' },
-                          { id: 'dying', name: 'Dying Wish', icon: Flame, color: 'text-red-600', bg: 'bg-red-950/40 border-red-950/50' },
-                          { id: 'razor', name: 'Ethereal Razor', icon: Scissors, color: 'text-purple-400', bg: 'bg-purple-800/40 border-purple-800/50' },
-                          { id: 'timeslip', name: 'Timeslip', icon: Hourglass, color: 'text-cyan-300', bg: 'bg-cyan-800/40 border-cyan-800/50' },
-                          { id: 'bandolier', name: 'Bandolier Bandit', icon: Database, color: 'text-orange-400', bg: 'bg-orange-700/40 border-orange-700/50' },
-                          { id: 'tortoise', name: 'Victorious Tortoise', icon: Shield, color: 'text-emerald-400', bg: 'bg-emerald-800/40 border-emerald-800/50' },
-                          { id: 'blaze', name: 'Blaze Phase', icon: Flame, color: 'text-orange-600', bg: 'bg-orange-950/40 border-orange-950/50' },
-                          { id: 'stronghold', name: 'Stone Cold', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-950/40 border-purple-950/50' },
-                          { id: 'blood', name: 'Blood Wolf', icon: Swords, color: 'text-red-700', bg: 'bg-red-950/40 border-red-950/50' },
-                          { id: 'elemental', name: 'Elemental Pop', icon: Zap, color: 'text-pink-500', bg: 'bg-pink-800/40 border-pink-800/50' },
+                          { id: 'jugg', name: 'Titan Tonic', icon: Heart, color: 'text-red-500', bg: 'bg-red-900/40 border-red-900/50' },
+                          { id: 'speed', name: 'Velocity Vigor', icon: RefreshCw, color: 'text-emerald-500', bg: 'bg-emerald-900/40 border-emerald-900/50' },
+                          { id: 'stamin', name: 'Endurance Elixir', icon: Wind, color: 'text-yellow-500', bg: 'bg-yellow-900/40 border-yellow-900/50' },
+                          { id: 'double', name: 'Rapid Fire', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-900/40 border-orange-900/50' },
+                          { id: 'mule', name: 'Extra Equipment', icon: ShoppingCart, color: 'text-indigo-500', bg: 'bg-indigo-900/40 border-indigo-900/50' },
+                          { id: 'phd', name: 'Impact Infusion', icon: Bomb, color: 'text-purple-500', bg: 'bg-purple-900/40 border-purple-900/50' },
+                          { id: 'deadshot', name: 'Precision Potion', icon: Crosshair, color: 'text-gray-400', bg: 'bg-gray-800/40 border-gray-800/50' },
+                          { id: 'electric', name: 'Static Surge', icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-900/50' },
+                          { id: 'revive', name: 'Rapid Resuscitation', icon: Activity, color: 'text-blue-500', bg: 'bg-blue-900/40 border-blue-900/50' },
+                          { id: 'vulture', name: 'Scavenger Serum', icon: Database, color: 'text-lime-500', bg: 'bg-lime-900/40 border-lime-900/50' },
+                          { id: 'widow', name: 'Web Weaver', icon: Swords, color: 'text-pink-600', bg: 'bg-pink-900/40 border-pink-900/50' },
+                          { id: 'slider', name: 'Slide Vigor', icon: SlideIcon, color: 'text-orange-400', bg: 'bg-orange-800/40 border-orange-800/50' },
+                          { id: 'winter', name: 'Frost Breath', icon: Snowflake, color: 'text-blue-200', bg: 'bg-blue-800/40 border-blue-800/50' },
+                          { id: 'dying', name: 'Last Chance', icon: Flame, color: 'text-red-600', bg: 'bg-red-950/40 border-red-950/50' },
+                          { id: 'razor', name: 'Blade Master', icon: Scissors, color: 'text-purple-400', bg: 'bg-purple-800/40 border-purple-800/50' },
+                          { id: 'timeslip', name: 'Temporal Shift', icon: Hourglass, color: 'text-cyan-300', bg: 'bg-cyan-800/40 border-cyan-800/50' },
+                          { id: 'bandolier', name: 'Ammo Reserve', icon: Database, color: 'text-orange-400', bg: 'bg-orange-700/40 border-orange-700/50' },
+                          { id: 'tortoise', name: 'Shield Shell', icon: Shield, color: 'text-emerald-400', bg: 'bg-emerald-800/40 border-emerald-800/50' },
+                          { id: 'blaze', name: 'Fire Dash', icon: Flame, color: 'text-orange-600', bg: 'bg-orange-950/40 border-orange-950/50' },
+                          { id: 'stronghold', name: 'Static Defense', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-950/40 border-purple-950/50' },
+                          { id: 'blood', name: 'Blood Pack', icon: Swords, color: 'text-red-700', bg: 'bg-red-950/40 border-red-950/50' },
+                          { id: 'elemental', name: 'Elemental Burst', icon: Zap, color: 'text-pink-500', bg: 'bg-pink-800/40 border-pink-800/50' },
                         ].map((perk, i) => (
                           <button
                             key={perk.id}
@@ -5071,7 +5086,7 @@ const App: React.FC = () => {
                           }}
                           className={`px-3 py-1 bg-cyan-600/20 text-cyan-400 border border-cyan-600/30 rounded-sm text-[10px] font-black uppercase italic tracking-tighter active:scale-95 transition-all flex items-center gap-1 ${selectedMenuIndex === 22 + teleportCount + 3 + 24 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                         >
-                          <PapIcon size={12} /> Pack-A-Punch Current
+                          <PapIcon size={12} /> Upgraded Current
                         </button>
                       </div>
                       <div className={status === GameStatus.CUSTOM_GAME ? "grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1" : "grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1"}>
@@ -5137,7 +5152,7 @@ const App: React.FC = () => {
                     <div className="pt-4 border-t border-white/10">
                       <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Weapon Camos</h3>
                       <div className="grid grid-cols-4 gap-2">
-                        {(['none', 'gold', 'diamond', 'dark_matter', 'cherry_blossom', 'dragon', 'ice', 'magma', 'nebula', 'red_hex', 'into_the_void', 'cosmic', 'spectrum'] as any[]).map((camo, i) => (
+                        {(['none', 'gilded', 'crystal', 'void_matter', 'sakura', 'wyvern', 'frost', 'lava', 'galaxy', 'crimson_hex', 'abyss', 'stellar', 'prism'] as any[]).map((camo, i) => (
                           <button 
                             key={camo}
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + i}`}
@@ -5153,18 +5168,18 @@ const App: React.FC = () => {
                           >
                             <div className={`absolute inset-0 ${
                               camo === 'none' ? 'bg-stone-800' :
-                              camo === 'gold' ? 'bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700' :
-                              camo === 'diamond' ? 'bg-gradient-to-br from-cyan-300 via-blue-400 to-blue-600' :
-                              camo === 'dark_matter' ? 'bg-gradient-to-br from-purple-900 via-fuchsia-900 to-black' :
-                              camo === 'cherry_blossom' ? 'bg-gradient-to-br from-pink-200 via-pink-400 to-red-400' :
-                              camo === 'dragon' ? 'bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500' :
-                              camo === 'ice' ? 'bg-gradient-to-br from-cyan-100 via-cyan-300 to-blue-500' :
-                              camo === 'magma' ? 'bg-gradient-to-br from-orange-500 via-red-600 to-stone-900' :
-                              camo === 'nebula' ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500' :
-                              camo === 'red_hex' ? 'bg-gradient-to-br from-red-500 via-red-700 to-black' :
-                              camo === 'into_the_void' ? 'bg-gradient-to-br from-violet-900 via-indigo-900 to-black' :
-                              camo === 'cosmic' ? 'bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-800' :
-                              camo === 'spectrum' ? 'bg-gradient-to-r from-red-500 via-green-500 to-blue-500' :
+                              camo === 'gilded' ? 'bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700' :
+                              camo === 'crystal' ? 'bg-gradient-to-br from-cyan-300 via-blue-400 to-blue-600' :
+                              camo === 'void_matter' ? 'bg-gradient-to-br from-purple-900 via-fuchsia-900 to-black' :
+                              camo === 'sakura' ? 'bg-gradient-to-br from-pink-200 via-pink-400 to-red-400' :
+                              camo === 'wyvern' ? 'bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500' :
+                              camo === 'frost' ? 'bg-gradient-to-br from-cyan-100 via-cyan-300 to-blue-500' :
+                              camo === 'lava' ? 'bg-gradient-to-br from-orange-500 via-red-600 to-stone-900' :
+                              camo === 'galaxy' ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500' :
+                              camo === 'crimson_hex' ? 'bg-gradient-to-br from-red-500 via-red-700 to-black' :
+                              camo === 'abyss' ? 'bg-gradient-to-br from-violet-900 via-indigo-900 to-black' :
+                              camo === 'stellar' ? 'bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-800' :
+                              camo === 'prism' ? 'bg-gradient-to-r from-red-500 via-green-500 to-blue-500' :
                               'bg-gray-800'
                             }`} />
                             <div className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 px-1 z-20">
@@ -5190,7 +5205,7 @@ const App: React.FC = () => {
                               Date.now() < instaKillExpiry ? 'bg-red-600/20 border-red-600/40 text-red-500' : 'bg-white/5 border-white/10 text-white/40'
                             } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 13 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <Skull size={14} /> Insta-Kill
+                            <Skull size={14} /> One Shot
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 14}`}
@@ -5199,21 +5214,21 @@ const App: React.FC = () => {
                               Date.now() < doublePointsExpiry ? 'bg-yellow-600/20 border-yellow-600/40 text-yellow-500' : 'bg-white/5 border-white/10 text-white/40'
                             } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 14 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <Database size={14} /> Double Pts
+                            <Database size={14} /> Double Score
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 15}`}
                             onClick={() => handlePowerUp('MAX_AMMO')} 
                             className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 15 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <RefreshCw size={14} /> Max Ammo
+                            <RefreshCw size={14} /> Full Resupply
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 16}`}
                             onClick={() => handlePowerUp('NUKE')} 
                             className={`py-3 px-3 bg-white/5 border border-white/10 text-white/40 rounded-sm flex items-center justify-center gap-2 text-xs font-black uppercase italic tracking-tighter active:bg-white/10 ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 16 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <Bomb size={14} /> Nuke
+                            <Bomb size={14} /> Total Blast
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 17}`}
@@ -5222,7 +5237,7 @@ const App: React.FC = () => {
                               Date.now() < deathMachineExpiry ? 'bg-cyan-600/20 border-cyan-600/40 text-cyan-500' : 'bg-white/5 border-white/10 text-white/40'
                             } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 17 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <Skull size={14} /> Death Machine
+                            <Skull size={14} /> Heavy Gun
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 18}`}
@@ -5231,7 +5246,7 @@ const App: React.FC = () => {
                               Date.now() < fireSaleExpiry ? 'bg-orange-600/20 border-orange-600/40 text-orange-500' : 'bg-white/5 border-white/10 text-white/40'
                             } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 18 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <Flame size={14} /> Fire Sale
+                            <Flame size={14} /> Clearance Sale
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 19}`}
@@ -5240,7 +5255,7 @@ const App: React.FC = () => {
                               Date.now() < zombieBloodExpiry ? 'bg-red-900/20 border-red-900/40 text-red-500' : 'bg-white/5 border-white/10 text-white/40'
                             } ${selectedMenuIndex === 22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 19 ? 'ring-2 ring-white bg-white/20 z-10' : ''}`}
                           >
-                            <Droplet size={14} /> Zombie Blood
+                            <Droplet size={14} /> Undead Mask
                           </button>
                           <button 
                             id={`menu-item-${22 + teleportCount + 3 + 25 + Object.keys(WEAPONS).length + 20}`}
@@ -5271,7 +5286,7 @@ const App: React.FC = () => {
            <div className="max-w-lg w-full text-center space-y-8 relative z-10 my-auto py-8">
               <div className="space-y-1">
                 <div className="text-red-600 font-black italic uppercase tracking-widest text-lg drop-shadow-lg">Z-Town Red9&Spendawg</div>
-                <p className="text-red-500 font-bold italic uppercase tracking-[0.2em] text-sm mt-4">You did not survive the town</p>
+                <p className="text-red-500 font-bold italic uppercase tracking-[0.2em] text-sm mt-4">You did not survive Red9</p>
               </div>
               <div className="bg-white/5 border border-white/10 p-8 rounded-sm shadow-2xl space-y-8">
                   {isCustomGameSession ? (
@@ -5313,7 +5328,7 @@ const App: React.FC = () => {
                               </td>
                               <td className="p-3 text-center">
                                 <div className="flex items-center justify-center gap-1">
-                                  {getPrestigeIcon(progression.prestige, 12)}
+                                  {getRankMasteryIcon(progression.rankMastery, 12)}
                                   <span className="text-yellow-400 font-black italic">{getLevelData(progression.xp).level}</span>
                                 </div>
                               </td>
@@ -5458,7 +5473,7 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px] gap-4 p-4 border-b border-white/10 bg-white/5 sticky top-0 z-10">
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Rank</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Nickname</span>
-                  <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Prestige</span>
+                  <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Rank Mastery</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Level</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Date</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Time</span>
@@ -5494,7 +5509,8 @@ const App: React.FC = () => {
                   }
 
                   if (data.length === 0) {
-                    return <div className="p-12 text-center text-white/30 italic">No legends recorded for {MAPS.find(m => m.id === leaderboardMapId)?.name} yet.</div>;
+                    const mapName = MAPS.find(m => m.id === leaderboardMapId)?.name || 'Unknown Map';
+                    return <div className="p-12 text-center text-white/30 italic">No legends recorded for {mapName} yet.</div>;
                   }
                   return data.map((entry, idx) => (
                     <div 
@@ -5507,16 +5523,16 @@ const App: React.FC = () => {
                       <span className={`text-xl font-black italic ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-white/20'}`}>#{idx + 1}</span>
                       <div className="flex flex-col min-w-0">
                         <span className="text-white font-black italic tracking-tighter text-lg uppercase truncate">{entry.nickname || 'Anonymous'}</span>
-                        {entry.prestigeMasterStars && entry.prestigeMasterStars > 0 && (
+                        {entry.rankMasteryStars && entry.rankMasteryStars > 0 && (
                           <div className="flex gap-0.5">
-                            {Array.from({ length: entry.prestigeMasterStars }).map((_, i) => (
+                            {Array.from({ length: entry.rankMasteryStars }).map((_, i) => (
                               <Star key={i} className="text-yellow-400 w-2 h-2 fill-yellow-400" />
                             ))}
                           </div>
                         )}
                       </div>
                       <div className="flex justify-center">
-                        {entry.prestige !== undefined ? getPrestigeIcon(entry.prestige, 20) : <span className="text-white/10">-</span>}
+                        {entry.rankMastery !== undefined ? getRankMasteryIcon(entry.rankMastery, 20) : <span className="text-white/10">-</span>}
                       </div>
                       <span className="text-yellow-400 font-black italic text-lg text-center">{entry.level || '-'}</span>
                       <span className="text-white/30 text-[9px] font-bold uppercase tracking-widest text-center">{new Date(entry.date).toLocaleDateString()}</span>
@@ -5608,7 +5624,7 @@ const App: React.FC = () => {
                <div className="space-y-6">
                   <span className="text-white/40 uppercase font-black text-xs tracking-[0.3em]">Weapon Camo</span>
                   <div className="grid grid-cols-4 gap-2">
-                    {(['none', 'gold', 'diamond', 'dark_matter', 'cherry_blossom', 'dragon', 'ice', 'magma', 'nebula', 'red_hex', 'into_the_void', 'cosmic', 'spectrum'] as const).map((camo, idx) => (
+                    {(['none', 'gilded', 'crystal', 'void_matter', 'sakura', 'wyvern', 'frost', 'lava', 'galaxy', 'crimson_hex', 'abyss', 'stellar', 'prism'] as const).map((camo, idx) => (
                       <button
                         key={camo}
                         id={`menu-item-${idx + 3}`}
@@ -5622,26 +5638,27 @@ const App: React.FC = () => {
                       >
                         <div className={`absolute inset-0 ${
                           camo === 'none' ? 'bg-zinc-800' :
-                          camo === 'gold' ? 'bg-yellow-400' :
-                          camo === 'diamond' ? 'bg-cyan-100' :
-                          camo === 'dark_matter' ? 'bg-purple-900' :
-                          camo === 'cherry_blossom' ? 'bg-pink-300' :
-                          camo === 'dragon' ? 'bg-red-900' :
-                          camo === 'ice' ? 'bg-blue-200' :
-                          camo === 'magma' ? 'bg-orange-600' :
-                          camo === 'nebula' ? 'bg-indigo-900' :
-                          camo === 'red_hex' ? 'bg-red-900' :
-                          camo === 'into_the_void' ? 'bg-black' :
-                          camo === 'cosmic' ? 'bg-blue-900' :
-                          'bg-gradient-to-r from-red-500 via-green-500 to-blue-500 animate-gradient'
+                          camo === 'gilded' ? 'bg-yellow-400' :
+                          camo === 'crystal' ? 'bg-cyan-100' :
+                          camo === 'void_matter' ? 'bg-purple-900' :
+                          camo === 'sakura' ? 'bg-pink-300' :
+                          camo === 'wyvern' ? 'bg-red-900' :
+                          camo === 'frost' ? 'bg-blue-200' :
+                          camo === 'lava' ? 'bg-orange-600' :
+                          camo === 'galaxy' ? 'bg-indigo-900' :
+                          camo === 'crimson_hex' ? 'bg-red-900' :
+                          camo === 'abyss' ? 'bg-black' :
+                          camo === 'stellar' ? 'bg-blue-900' :
+                          camo === 'prism' ? 'bg-gradient-to-r from-red-500 via-green-500 to-blue-500 animate-gradient' :
+                          'bg-gray-800'
                         }`} />
-                        {camo === 'diamond' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diamond-upholstery.png')] opacity-50" />}
-                        {camo === 'dark_matter' && <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-black to-purple-800 animate-pulse" />}
-                        {camo === 'magma' && <div className="absolute inset-0 bg-gradient-to-t from-red-600 to-yellow-500 opacity-80" />}
-                        {camo === 'spectrum' && <div className="absolute inset-0 bg-white/20 animate-pulse" />}
-                        {camo === 'red_hex' && <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/hex/256/256')] opacity-50 mix-blend-overlay" />}
-                        {camo === 'into_the_void' && <div className="absolute inset-0 bg-purple-900/50 animate-pulse" />}
-                        {camo === 'cosmic' && <div className="absolute inset-0 bg-cyan-500/30 animate-pulse" />}
+                        {camo === 'crystal' && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diamond-upholstery.png')] opacity-50" />}
+                        {camo === 'void_matter' && <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-black to-purple-800 animate-pulse" />}
+                        {camo === 'lava' && <div className="absolute inset-0 bg-gradient-to-t from-red-600 to-yellow-500 opacity-80" />}
+                        {camo === 'prism' && <div className="absolute inset-0 bg-white/20 animate-pulse" />}
+                        {camo === 'crimson_hex' && <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/hex/256/256')] opacity-50 mix-blend-overlay" />}
+                        {camo === 'abyss' && <div className="absolute inset-0 bg-purple-900/50 animate-pulse" />}
+                        {camo === 'stellar' && <div className="absolute inset-0 bg-cyan-500/30 animate-pulse" />}
                         
                         <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-[8px] text-white font-bold uppercase text-center py-1 truncate px-1">
                           {camo.replace('_', ' ')}
@@ -5661,7 +5678,7 @@ const App: React.FC = () => {
                         type="text" 
                         value={newHudProfileName}
                         onChange={(e) => setNewHudProfileName(e.target.value)}
-                        placeholder="Profile Name (e.g. Dead Ops)"
+                        placeholder="Profile Name (e.g. Z-Town)"
                         className="flex-1 bg-black/50 border border-white/10 text-white p-3 rounded-sm font-black italic outline-none focus:border-blue-500 transition-colors"
                         maxLength={20}
                       />
@@ -5759,7 +5776,7 @@ const App: React.FC = () => {
                         { key: 'joystickPos', label: 'Joystick (Bottom/Left)' },
                         { key: 'grenadePos', label: 'Grenade (Bottom/Left)' },
                         { key: 'flashbangPos', label: 'Flashbang (Bottom/Left)' },
-                        { key: 'monkeyBombPos', label: 'Monkey Bomb (Bottom/Left)' },
+                        { key: 'kingRobboPos', label: 'King Robbo (Bottom/Left)' },
                         { key: 'jumpPos', label: 'Jump (Bottom/Right)' },
                         { key: 'switchPos', label: 'Switch (Bottom/Right)' },
                         { key: 'knifePos', label: 'Knife (Bottom/Right)' },
@@ -5978,7 +5995,8 @@ const App: React.FC = () => {
       </div>
       )}
 
-      {status === GameStatus.START && (
+      <div>
+        {status === GameStatus.START && (
         <div className="absolute inset-0 z-50 flex flex-col items-center bg-black/95 p-8 overflow-y-auto">
           {achievementNotif.show && (
             <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-4 bg-black/80 backdrop-blur-xl border-2 border-purple-500/50 p-4 rounded-sm shadow-[0_0_30px_rgba(168,85,247,0.4)] animate-in slide-in-from-top duration-500 pointer-events-none">
@@ -5991,12 +6009,12 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-          {prestigeNotif.show && (
+          {rankMasteryNotif.show && (
             <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 pointer-events-none animate-in fade-in zoom-in duration-1000">
-              <div className={`bg-gradient-to-b from-white to-${getPrestigeColor(prestigeNotif.prestige).replace('text-', '')} text-transparent bg-clip-text font-black text-8xl uppercase italic tracking-widest drop-shadow-[0_0_50px_currentColor] flex items-center gap-6 mb-8`}>
-                <div className="animate-pulse">{getPrestigeIcon(prestigeNotif.prestige, 80)}</div>
-                Prestige {prestigeNotif.prestige}
-                <div className="animate-pulse">{getPrestigeIcon(prestigeNotif.prestige, 80)}</div>
+              <div className={`bg-gradient-to-b from-white to-${getRankMasteryColor(rankMasteryNotif.rankMastery).replace('text-', '')} text-transparent bg-clip-text font-black text-8xl uppercase italic tracking-widest drop-shadow-[0_0_50px_currentColor] flex items-center gap-6 mb-8`}>
+                <div className="animate-pulse">{getRankMasteryIcon(rankMasteryNotif.rankMastery, 80)}</div>
+                Rank Mastery {rankMasteryNotif.rankMastery}
+                <div className="animate-pulse">{getRankMasteryIcon(rankMasteryNotif.rankMastery, 80)}</div>
               </div>
               <div className="text-white font-bold text-3xl uppercase tracking-widest animate-pulse drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]">
                 You have reached a new level of power
@@ -6041,9 +6059,9 @@ const App: React.FC = () => {
                     <Star key={i} className="text-yellow-400 w-4 h-4 fill-yellow-400" />
                   ))}
                 </div>
-                {progression.prestige > 0 && (
-                  <span className={`${getPrestigeColor(progression.prestige)} font-black italic text-xl flex items-center gap-2`}>
-                    {getPrestigeIcon(progression.prestige, 20)} Prestige {progression.prestige}
+                {progression.rankMastery > 0 && (
+                  <span className={`${getRankMasteryColor(progression.rankMastery)} font-black italic text-xl flex items-center gap-2 whitespace-nowrap`}>
+                    {getRankMasteryIcon(progression.rankMastery, 20)} Rank Mastery {progression.rankMastery}
                   </span>
                 )}
               </div>
@@ -6060,20 +6078,20 @@ const App: React.FC = () => {
               {getLevelData(progression.xp).isMaxLevel && (
                 <button 
                   onClick={() => {
-                    if (progression.prestige < 10) {
-                      if (confirm('Are you sure you want to prestige? This will reset your level to 1.')) {
+                    if (progression.rankMastery < 10) {
+                      if (confirm('Are you sure you want to enter Rank Mastery? This will reset your level to 1.')) {
                         setProgression(p => {
-                          const newP = { ...p, xp: 0, prestige: p.prestige + 1 };
-                          if (newP.prestige === 10) unlockAchievement('prestige_master');
+                          const newP = { ...p, xp: 0, rankMastery: p.rankMastery + 1 };
+                          if (newP.rankMastery === 10) unlockAchievement('rank_mastery_10');
                           localStorage.setItem('ztown_progression', JSON.stringify(newP));
-                          setPrestigeNotif({ prestige: newP.prestige, show: true });
+                          setRankMasteryNotif({ rankMastery: newP.rankMastery, show: true });
                           soundService.playPowerUpPickup();
-                          setTimeout(() => setPrestigeNotif(prev => ({ ...prev, show: false })), 6000);
+                          setTimeout(() => setRankMasteryNotif(prev => ({ ...prev, show: false })), 6000);
                           return newP;
                         });
                       }
                     } else {
-                      if (confirm('Are you sure you want to reset to Level 1? You will gain a Prestige Master Star!')) {
+                      if (confirm('Are you sure you want to reset to Level 1? You will gain a Rank Mastery Star!')) {
                         setProgression(p => {
                           const newP = { ...p, xp: 0, stars: (p.stars || 0) + 1 };
                           if (newP.stars === 1) unlockAchievement('star_collector');
@@ -6086,43 +6104,41 @@ const App: React.FC = () => {
                   }}
                   className="mt-2 w-full py-2 bg-yellow-600/20 text-yellow-500 border border-yellow-600/50 font-black uppercase italic tracking-widest rounded-sm hover:bg-yellow-600/40 transition-all"
                 >
-                  {progression.prestige < 10 ? 'Enter Prestige' : 'Reset Level (Gain Star)'}
+                  {progression.rankMastery < 10 ? 'Enter Rank Mastery' : 'Reset Level (Gain Star)'}
                 </button>
               )}
             </div>
 
-            <div className="space-y-6">
-              <div className="pt-4 border-t border-white/10">
-                <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
-                  <MapIcon size={16} /> Select Battlefield
-                </h3>
-                <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2">
-                  {MAPS.map((map, i) => (
-                    <button
-                      key={map.id}
-                      id={`menu-item-${i}`}
-                      onClick={() => setStats(prev => ({ ...prev, activeMapId: map.id }))}
-                      className={`relative group overflow-hidden rounded-sm border-2 transition-all aspect-video ${
-                        stats.activeMapId === map.id 
-                          ? 'border-red-600 ring-2 ring-red-600/50' 
-                          : 'border-white/10 grayscale hover:grayscale-0 opacity-60 hover:opacity-100'
-                      } ${selectedMenuIndex === i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
-                    >
-                      <img src={map.thumbnail} alt={map.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                      <div className="absolute bottom-2 left-2 right-2 text-left">
-                        <div className="text-xs font-black text-white uppercase italic tracking-tighter leading-none">{map.name}</div>
-                        <div className="text-[8px] font-bold text-white/60 uppercase tracking-widest mt-1 truncate">{map.description}</div>
+            <div className="bg-white/5 border border-white/10 p-6 rounded-sm">
+              <h3 className="text-xl font-black text-white uppercase italic mb-4 flex items-center gap-2">
+                <MapIcon size={20} /> Map Selection
+              </h3>
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                {MAPS.map((map, i) => (
+                  <button
+                    key={map.id}
+                    id={`menu-item-${i}`}
+                    onClick={() => setStats(prev => ({ ...prev, activeMapId: map.id }))}
+                    className={`relative group overflow-hidden rounded-sm border-2 transition-all aspect-video ${
+                      stats.activeMapId === map.id 
+                        ? 'border-red-600 ring-2 ring-red-600/50' 
+                        : 'border-white/10 grayscale hover:grayscale-0 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={map.thumbnail} alt={map.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                    <div className="absolute bottom-1 left-1 right-1 text-left">
+                      <div className="text-[10px] font-black text-white uppercase italic tracking-tighter leading-none truncate">{map.name}</div>
+                    </div>
+                    {stats.activeMapId === map.id && (
+                      <div className="absolute top-1 right-1 bg-red-600 text-white p-0.5 rounded-full shadow-lg">
+                        <Activity size={10} />
                       </div>
-                      {stats.activeMapId === map.id && (
-                        <div className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow-lg">
-                          <Activity size={10} />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                    )}
+                  </button>
+                ))}
               </div>
+            </div>
 
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-red-500 transition-colors" size={20} />
@@ -6190,7 +6206,8 @@ const App: React.FC = () => {
                 <button 
                   id={`menu-item-${MAPS.length + 2}`}
                   onClick={() => {
-                    setLeaderboardMapId(stats.activeMapId || 'town');
+                    const validMapId = MAPS.find(m => m.id === stats.activeMapId) ? stats.activeMapId : 'town';
+                    setLeaderboardMapId(validMapId || 'town');
                     setStatus(GameStatus.LEADERBOARD);
                   }} 
                   className={`py-5 bg-white/5 border border-white/10 text-white/80 font-black text-xl rounded-sm active:scale-95 flex items-center justify-center gap-3 uppercase italic transition-all hover:bg-white/10 ${selectedMenuIndex === MAPS.length + 2 ? 'ring-2 ring-white bg-white/20' : ''}`}
@@ -6608,7 +6625,7 @@ const App: React.FC = () => {
                             : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
                         }`}
                       >
-                        <span className="text-lg uppercase">Dead Ops Arcade</span>
+                        <span className="text-lg uppercase">Z-Town Arcade Top View Mode</span>
                         <span className="text-[10px] font-normal opacity-60">Top-Down Twin Stick Shooter</span>
                       </button>
                     </div>
@@ -6715,7 +6732,7 @@ const App: React.FC = () => {
                   <label className="block text-white/60 font-bold uppercase text-xs mb-2">Starting Weapon</label>
                   {customGameConfig.gameMode === 'dead_ops' ? (
                     <div className="bg-black/20 p-4 rounded-sm border border-white/10 text-center text-white/40 font-bold italic uppercase">
-                      Starting Weapon Locked in Dead Ops Arcade
+                      Starting Weapon Locked in Z-Town Arcade Top View Mode
                     </div>
                   ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-96 overflow-y-auto pr-2 bg-black/20 p-4 rounded-sm border border-white/10 custom-scrollbar">
@@ -6911,7 +6928,7 @@ const App: React.FC = () => {
                               <span className={`text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
                                 isWonder ? 'bg-red-600 text-white' : (isPap ? 'bg-blue-600 text-white' : 'text-white/40')
                               }`}>
-                                {isWonder ? 'Wonder' : (isPap ? 'Pack-A-Punch' : 'Standard')}
+                                {isWonder ? 'Wonder' : (isPap ? 'Upgraded' : 'Standard')}
                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-2">
@@ -6953,28 +6970,28 @@ const App: React.FC = () => {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
-                      { id: 'jugg', name: 'Juggernog', desc: 'Increases Max HP to 250. Essential for high rounds.', color: 'bg-red-600', icon: <Heart size={14} /> },
-                      { id: 'speed', name: 'Speed Cola', desc: '50% Faster Reload speed. Great for LMGs.', color: 'bg-green-600', icon: <Gauge size={14} /> },
-                      { id: 'stamin', name: 'Stamin-Up', desc: 'Increased Move Speed and sprint duration.', color: 'bg-yellow-500', icon: <Zap size={14} /> },
-                      { id: 'double', name: 'Double Tap', desc: '2x Weapon Damage and increased fire rate.', color: 'bg-orange-600', icon: <Shield size={14} /> },
-                      { id: 'mule', name: 'Mule Kick', desc: 'Carry a 3rd primary weapon slot.', color: 'bg-indigo-600', icon: <Database size={14} /> },
-                      { id: 'revive', name: 'Quick Revive', desc: 'Faster HP Regeneration delay and rate.', color: 'bg-blue-500', icon: <Activity size={14} /> },
-                      { id: 'phd', name: 'PHD Flopper', desc: 'Immunity to explosive self-damage.', color: 'bg-purple-600', icon: <Bomb size={14} /> },
-                      { id: 'deadshot', name: 'Deadshot', desc: '6x Headshot damage multiplier (Base 4x).', color: 'bg-gray-600', icon: <Target size={14} /> },
-                      { id: 'electric', name: 'Electric Cherry', desc: 'Shock nearby zombies when reloading empty.', color: 'bg-cyan-500', icon: <Zap size={14} /> },
-                      { id: 'vulture', name: 'Vulture Aid', desc: 'Zombies drop points/ammo. See through walls.', color: 'bg-lime-600', icon: <Eye size={14} /> },
-                      { id: 'widow', name: 'Widow\'s Wine', desc: 'Web grenades stun zombies when they hit you.', color: 'bg-pink-600', icon: <Swords size={14} /> },
-                      { id: 'slider', name: 'Slider Wine', desc: 'Explosive slide that damages zombies.', color: 'bg-orange-400', icon: <Zap size={14} /> },
-                      { id: 'winter', name: 'Winter\'s Wail', desc: 'Freezes zombies when they hit you.', color: 'bg-cyan-200', icon: <Sun size={14} /> },
-                      { id: 'dying', name: 'Dying Wish', desc: 'Invincibility for 10s when HP hits 0.', color: 'bg-red-500', icon: <Shield size={14} /> },
-                      { id: 'razor', name: 'Ethereal Razor', desc: 'Melee kills heal you for 20 HP.', color: 'bg-purple-500', icon: <Swords size={14} /> },
-                      { id: 'timeslip', name: 'Timeslip', desc: '50% longer Power-up duration (45s).', color: 'bg-cyan-400', icon: <Timer size={14} /> },
-                      { id: 'bandolier', name: 'Bandolier Bandit', desc: '50% more Max Ammo capacity.', color: 'bg-yellow-600', icon: <Database size={14} /> },
-                      { id: 'tortoise', name: 'Victorious Tortoise', desc: '+100 Max HP (Total 350 with Jugg).', color: 'bg-emerald-600', icon: <Shield size={14} /> },
-                      { id: 'blaze', name: 'Blaze Phase', desc: 'Faster slide with fire trail damage.', color: 'bg-orange-700', icon: <Flame size={14} /> },
-                      { id: 'stronghold', name: 'Stone Cold', desc: 'Standing still creates a defensive circle.', color: 'bg-purple-500', icon: <Shield size={14} /> },
-                      { id: 'blood', name: 'Blood Wolf', desc: 'Summons a wolf companion that attacks zombies.', color: 'bg-red-700', icon: <Swords size={14} /> },
-                      { id: 'elemental', name: 'Elemental Pop', desc: 'Chance to apply random elemental effect.', color: 'bg-pink-500', icon: <Zap size={14} /> },
+                      { id: 'jugg', name: 'Toughness Brew', desc: 'Increases Max HP to 250. Essential for high rounds.', color: 'bg-red-600', icon: <Heart size={14} /> },
+                      { id: 'speed', name: 'Fast Hands', desc: '50% Faster Reload speed. Great for LMGs.', color: 'bg-green-600', icon: <Gauge size={14} /> },
+                      { id: 'stamin', name: 'Marathon Soda', desc: 'Increased Move Speed and sprint duration.', color: 'bg-yellow-500', icon: <Zap size={14} /> },
+                      { id: 'double', name: 'Double Shot', desc: '2x Weapon Damage and increased fire rate.', color: 'bg-orange-600', icon: <Shield size={14} /> },
+                      { id: 'mule', name: 'Third Arm', desc: 'Carry a 3rd primary weapon slot.', color: 'bg-indigo-600', icon: <Database size={14} /> },
+                      { id: 'revive', name: 'Life Brew', desc: 'Faster HP Regeneration delay and rate.', color: 'bg-blue-500', icon: <Activity size={14} /> },
+                      { id: 'phd', name: 'Blast Proof', desc: 'Immunity to explosive self-damage.', color: 'bg-purple-600', icon: <Bomb size={14} /> },
+                      { id: 'deadshot', name: 'Aim Assist', desc: '6x Headshot damage multiplier (Base 4x).', color: 'bg-gray-600', icon: <Target size={14} /> },
+                      { id: 'electric', name: 'Shock Burst', desc: 'Shock nearby zombies when reloading empty.', color: 'bg-cyan-500', icon: <Zap size={14} /> },
+                      { id: 'vulture', name: 'Loot Vision', desc: 'Zombies drop points/ammo. See through walls.', color: 'bg-lime-600', icon: <Eye size={14} /> },
+                      { id: 'widow', name: 'Spider Brew', desc: 'Web grenades stun zombies when they hit you.', color: 'bg-pink-600', icon: <Swords size={14} /> },
+                      { id: 'slider', name: 'Slide Boom', desc: 'Explosive slide that damages zombies.', color: 'bg-orange-400', icon: <Zap size={14} /> },
+                      { id: 'winter', name: 'Ice Shield', desc: 'Freezes zombies when they hit you.', color: 'bg-cyan-200', icon: <Sun size={14} /> },
+                      { id: 'dying', name: 'Death Defy', desc: 'Invincibility for 10s when HP hits 0.', color: 'bg-red-500', icon: <Shield size={14} /> },
+                      { id: 'razor', name: 'Sharp Edge', desc: 'Melee kills heal you for 20 HP.', color: 'bg-purple-500', icon: <Swords size={14} /> },
+                      { id: 'timeslip', name: 'Time Warp', desc: '50% longer Power-up duration (45s).', color: 'bg-cyan-400', icon: <Timer size={14} /> },
+                      { id: 'bandolier', name: 'Deep Pockets', desc: '50% more Max Ammo capacity.', color: 'bg-yellow-600', icon: <Database size={14} /> },
+                      { id: 'tortoise', name: 'Armor Shell', desc: '+100 Max HP (Total 350 with Jugg).', color: 'bg-emerald-600', icon: <Shield size={14} /> },
+                      { id: 'blaze', name: 'Fire Trail', desc: 'Faster slide with fire trail damage.', color: 'bg-orange-700', icon: <Flame size={14} /> },
+                      { id: 'stronghold', name: 'Fortress', desc: 'Standing still creates a defensive circle.', color: 'bg-purple-500', icon: <Shield size={14} /> },
+                      { id: 'blood', name: 'Wolf Spirit', desc: 'Summons a wolf companion that attacks zombies.', color: 'bg-red-700', icon: <Swords size={14} /> },
+                      { id: 'elemental', name: 'Chaos Burst', desc: 'Chance to apply random elemental effect.', color: 'bg-pink-500', icon: <Zap size={14} /> },
                     ].map((perk, idx) => (
                       <div key={perk.id} id={`menu-item-${idx + 6}`} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex items-center gap-4 transition-colors ${selectedMenuIndex === idx + 6 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
                         <div className={`w-12 h-12 shrink-0 ${perk.color} rounded-full flex items-center justify-center border-2 border-white/20 shadow-lg`}>
@@ -7000,7 +7017,7 @@ const App: React.FC = () => {
                     {[
                       { name: 'Frag Grenade', desc: 'Standard explosive device. Cook it for timing. Refills every round.', damage: 'Up to 2400', radius: '8m', icon: <Bomb size={24} />, color: 'text-gray-400' },
                       { name: 'Flashbang', desc: 'Stuns and blinds zombies in a wide radius. Useful for escaping corners.', damage: 'Up to 1200', radius: '12m', icon: <Sun size={24} />, color: 'text-yellow-400' },
-                      { name: 'Monkey Bomb', desc: 'Attracts all zombies with music before exploding. The ultimate distraction.', damage: 'Up to 4800', radius: '12m', icon: <BoxIcon size={24} />, color: 'text-red-500' },
+                      { name: 'King Robbos', desc: 'Attracts all zombies with music before exploding. The ultimate distraction.', damage: 'Up to 4800', radius: '12m', icon: <BoxIcon size={24} />, color: 'text-red-500' },
                     ].map((bomb, idx) => (
                       <div key={bomb.name} id={`menu-item-${idx + 6}`} className={`bg-white/5 p-5 rounded-sm border border-white/10 flex items-center gap-6 transition-colors ${selectedMenuIndex === idx + 6 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
                         <div className={`${bomb.color} animate-pulse shrink-0`}>{bomb.icon}</div>
@@ -7328,17 +7345,17 @@ const App: React.FC = () => {
               {infoTab === 'powerups' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right duration-300">
                   <h3 className="text-xl font-black text-yellow-500 italic uppercase tracking-tighter flex items-center gap-2 border-b border-yellow-900/30 pb-2">
-                    <Zap size={20} /> Field Power-Ups
+                    <Zap size={20} /> Field Boosts
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
-                      { name: 'Max Ammo', desc: 'Instantly refills all weapon reserves and tactical equipment.', icon: <RefreshCw size={14} /> },
-                      { name: 'Insta-Kill', desc: 'For 30 seconds, any damage dealt to a zombie kills it instantly.', icon: <Skull size={14} /> },
-                      { name: 'Double Points', desc: 'All points earned are doubled for 30 seconds.', icon: <Database size={14} /> },
-                      { name: 'Nuke', desc: 'Explodes and kills all active zombies on the map. Grants 400 points.', icon: <Bomb size={14} /> },
-                      { name: 'Death Machine', desc: 'Grants a minigun with infinite ammo for 30 seconds.', icon: <Swords size={14} /> },
-                      { name: 'Fire Sale', desc: 'Spawns the Mystery Box at all locations for 10 points each.', icon: <Flame size={14} /> },
-                      { name: 'Zombie Blood', desc: 'Zombies ignore you for 30 seconds.', icon: <UserX size={14} /> },
+                      { name: 'Full Resupply', desc: 'Instantly refills all weapon reserves and tactical equipment.', icon: <RefreshCw size={14} /> },
+                      { name: 'One Shot', desc: 'For 30 seconds, any damage dealt to a zombie kills it instantly.', icon: <Skull size={14} /> },
+                      { name: 'Double Score', desc: 'All points earned are doubled for 30 seconds.', icon: <Database size={14} /> },
+                      { name: 'Total Blast', desc: 'Explodes and kills all active zombies on the map. Grants 400 points.', icon: <Bomb size={14} /> },
+                      { name: 'Heavy Gun', desc: 'Grants a minigun with infinite ammo for 30 seconds.', icon: <Swords size={14} /> },
+                      { name: 'Clearance Sale', desc: 'Spawns the Gun Box at all locations for 10 points each.', icon: <Flame size={14} /> },
+                      { name: 'Undead Mask', desc: 'Zombies ignore you for 30 seconds.', icon: <UserX size={14} /> },
                     ].map((pu, idx) => (
                       <div key={pu.name} id={`menu-item-${idx + 6}`} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex items-center gap-4 transition-colors ${selectedMenuIndex === idx + 6 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
                         <div className="w-10 h-10 shrink-0 bg-yellow-500/20 rounded-full flex items-center justify-center text-yellow-500 border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
@@ -7358,13 +7375,13 @@ const App: React.FC = () => {
               {infoTab === 'progression' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right duration-300">
                   <h3 className="text-xl font-black text-emerald-500 italic uppercase tracking-tighter flex items-center gap-2 border-b border-emerald-900/30 pb-2">
-                    <Trophy size={20} /> Progression & Prestige
+                    <Trophy size={20} /> Progression & Rank Mastery
                   </h3>
                   <div className="bg-white/5 p-6 rounded-sm border border-white/10 space-y-6">
                     <p className="text-white/70 text-sm font-medium leading-relaxed">
                       Earn XP by killing zombies, repairing barricades, and surviving rounds. 
                       Level up to increase your base stats and unlock permanent bonuses. 
-                      Reach Level 55 to Prestige and gain even greater rewards!
+                      Reach Level 55 to Rank Mastery and gain even greater rewards!
                     </p>
                     
                     <div className="space-y-4">
@@ -7396,25 +7413,25 @@ const App: React.FC = () => {
                           <div className="text-yellow-500 mt-0.5"><Trophy size={16} /></div>
                           <div>
                             <div className="text-sm font-bold text-white uppercase tracking-tight">Level 55</div>
-                            <div className="text-xs text-white/60">Unlock Prestige Mode & Exclusive Icon</div>
+                            <div className="text-xs text-white/60">Unlock Rank Mastery Mode & Exclusive Icon</div>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <h4 className="text-lg font-black text-yellow-500 italic uppercase tracking-tighter">Prestige Rewards</h4>
-                      <p className="text-xs text-white/40 font-bold uppercase tracking-widest">Stacking bonuses for each Prestige rank</p>
+                      <h4 className="text-lg font-black text-yellow-500 italic uppercase tracking-tighter">Rank Mastery Rewards</h4>
+                      <p className="text-xs text-white/40 font-bold uppercase tracking-widest">Stacking bonuses for each Rank Mastery level</p>
                       <ul className="space-y-2 text-sm text-white/60 font-medium">
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+500</span> Starting Points per Prestige</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+10</span> Max Health per Prestige</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+10%</span> Damage Multiplier per Prestige</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+5%</span> Points Earned per Prestige</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+500</span> Starting Points per Rank Mastery</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+10</span> Max Health per Rank Mastery</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+10%</span> Damage Multiplier per Rank Mastery</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-yellow-500" /> <span className="text-yellow-400 font-bold">+5%</span> Points Earned per Rank Mastery</li>
                       </ul>
                     </div>
 
                     <div className="space-y-4 pt-4 border-t border-white/10">
-                      <h4 className="text-lg font-black text-white italic uppercase tracking-tighter">Prestige Ranks</h4>
+                      <h4 className="text-lg font-black text-white italic uppercase tracking-tighter">Rank Mastery Levels</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                         {[
                           { level: 1, name: "Initiate", icon: <Star size={20} />, color: "text-amber-600", bg: "bg-amber-600/20", border: "border-amber-600/30" },
@@ -7426,11 +7443,11 @@ const App: React.FC = () => {
                           { level: 7, name: "Mythic", icon: <Award size={20} />, color: "text-pink-500", bg: "bg-pink-500/20", border: "border-pink-500/30" },
                           { level: 8, name: "Immortal", icon: <Medal size={20} />, color: "text-emerald-500", bg: "bg-emerald-500/20", border: "border-emerald-500/30" },
                           { level: 9, name: "Godlike", icon: <Trophy size={20} />, color: "text-yellow-400", bg: "bg-yellow-400/20", border: "border-yellow-400/30" },
-                          { level: 10, name: "Prestige Master", icon: <Skull size={20} />, color: "text-red-600", bg: "bg-red-600/20", border: "border-red-600/30" },
+                          { level: 10, name: "Rank Mastery Master", icon: <Skull size={20} />, color: "text-red-600", bg: "bg-red-600/20", border: "border-red-600/30" },
                         ].map(p => (
                           <div key={p.level} className={`flex flex-col items-center justify-center p-3 rounded-sm border ${p.border} ${p.bg} transition-transform hover:scale-105`}>
                             <div className={`mb-2 ${p.color} drop-shadow-[0_0_8px_currentColor]`}>{p.icon}</div>
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest opacity-50">Prestige {p.level}</span>
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest opacity-50 whitespace-nowrap">Rank Mastery {p.level}</span>
                             <span className={`text-xs font-bold ${p.color} text-center leading-tight mt-0.5 uppercase`}>{p.name}</span>
                           </div>
                         ))}
@@ -7466,7 +7483,7 @@ const App: React.FC = () => {
               </div>
               <div className="absolute bottom-3 left-3 z-20">
                 <span className="text-xs font-black uppercase tracking-widest text-white/80 bg-black/60 px-2 py-1 rounded-sm backdrop-blur-md border border-white/10">
-                  {isPapWeapon(selectedWeaponInfo) ? 'Pack-A-Punch' : (isWonderWeapon(selectedWeaponInfo) ? 'Wonder Weapon' : 'Standard Issue')}
+                  {isPapWeapon(selectedWeaponInfo) ? 'Upgraded' : (isWonderWeapon(selectedWeaponInfo) ? 'Wonder Weapon' : 'Standard Issue')}
                 </span>
               </div>
             </div>
@@ -7532,6 +7549,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       )}
     </div>
   );

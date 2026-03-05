@@ -102,7 +102,7 @@ export const Minimap: React.FC<MinimapProps> = ({
         }
       });
 
-      // Draw Perks and Mystery Box from interactables
+      // Draw Perks and Gun Box from interactables
       mapConfig.interactables?.forEach(interactable => {
         if (!interactable || !interactable.pos) return;
         const relX = (interactable.pos[0] - playerPos.current!.x) * zoom;
@@ -114,7 +114,7 @@ export const Minimap: React.FC<MinimapProps> = ({
                 ctx.beginPath();
                 ctx.arc(centerX + relX, centerY + relZ, 3, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (interactable.type === 'Mystery Box') {
+            } else if (interactable.type === 'Gun Box') {
                 ctx.fillStyle = '#3b82f6'; // blue
                 ctx.fillRect(centerX + relX - 3, centerY + relZ - 3, 6, 6);
             }

@@ -5995,8 +5995,7 @@ const App: React.FC = () => {
       </div>
       )}
 
-      <div>
-        {status === GameStatus.START && (
+      {status === GameStatus.START && (
         <div className="absolute inset-0 z-50 flex flex-col items-center bg-black/95 p-8 overflow-y-auto">
           {achievementNotif.show && (
             <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-4 bg-black/80 backdrop-blur-xl border-2 border-purple-500/50 p-4 rounded-sm shadow-[0_0_30px_rgba(168,85,247,0.4)] animate-in slide-in-from-top duration-500 pointer-events-none">
@@ -6109,36 +6108,38 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-white/5 border border-white/10 p-6 rounded-sm">
-              <h3 className="text-xl font-black text-white uppercase italic mb-4 flex items-center gap-2">
-                <MapIcon size={20} /> Map Selection
-              </h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
-                {MAPS.map((map, i) => (
-                  <button
-                    key={map.id}
-                    id={`menu-item-${i}`}
-                    onClick={() => setStats(prev => ({ ...prev, activeMapId: map.id }))}
-                    className={`relative group overflow-hidden rounded-sm border-2 transition-all aspect-video ${
-                      stats.activeMapId === map.id 
-                        ? 'border-red-600 ring-2 ring-red-600/50' 
-                        : 'border-white/10 grayscale hover:grayscale-0 opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={map.thumbnail} alt={map.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                    <div className="absolute bottom-1 left-1 right-1 text-left">
-                      <div className="text-[10px] font-black text-white uppercase italic tracking-tighter leading-none truncate">{map.name}</div>
-                    </div>
-                    {stats.activeMapId === map.id && (
-                      <div className="absolute top-1 right-1 bg-red-600 text-white p-0.5 rounded-full shadow-lg">
-                        <Activity size={10} />
+            <div className="space-y-6">
+              <div className="pt-4 border-t border-white/10">
+                <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
+                  <MapIcon size={16} /> Select Battlefield
+                </h3>
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {MAPS.map((map, i) => (
+                    <button
+                      key={map.id}
+                      id={`menu-item-${i}`}
+                      onClick={() => setStats(prev => ({ ...prev, activeMapId: map.id }))}
+                      className={`relative group overflow-hidden rounded-sm border-2 transition-all aspect-video ${
+                        stats.activeMapId === map.id 
+                          ? 'border-red-600 ring-2 ring-red-600/50' 
+                          : 'border-white/10 grayscale hover:grayscale-0 opacity-60 hover:opacity-100'
+                      } ${selectedMenuIndex === i ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                    >
+                      <img src={map.thumbnail} alt={map.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                      <div className="absolute bottom-2 left-2 right-2 text-left">
+                        <div className="text-xs font-black text-white uppercase italic tracking-tighter leading-none">{map.name}</div>
+                        <div className="text-[8px] font-bold text-white/60 uppercase tracking-widest mt-1 truncate">{map.description}</div>
                       </div>
-                    )}
-                  </button>
-                ))}
+                      {stats.activeMapId === map.id && (
+                        <div className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow-lg">
+                          <Activity size={10} />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-red-500 transition-colors" size={20} />
@@ -7549,7 +7550,6 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
       )}
     </div>
   );

@@ -2008,6 +2008,11 @@ export const Scene: React.FC<SceneProps> = ({
   };
 
   const frameCount = useRef(0);
+  const tempVec1 = useRef(new THREE.Vector3());
+  const tempVec2 = useRef(new THREE.Vector3());
+  const tempVec3 = useRef(new THREE.Vector3());
+  const tempEuler = useRef(new THREE.Euler());
+  const tempBox = useRef(new THREE.Box3());
   const _v1 = useMemo(() => new THREE.Vector3(), []);
   const _v2 = useMemo(() => new THREE.Vector3(), []);
   const _v3 = useMemo(() => new THREE.Vector3(), []);
@@ -2251,9 +2256,8 @@ export const Scene: React.FC<SceneProps> = ({
        targetRot.current.x = THREE.MathUtils.clamp(targetRot.current.x, -Math.PI / 2.2, Math.PI / 2.2);
     }
 
-    const lerpFactorRot = 1 - Math.exp(-15 * delta);
-    playerRot.current.x = THREE.MathUtils.lerp(playerRot.current.x, targetRot.current.x, lerpFactorRot);
-    playerRot.current.y = THREE.MathUtils.lerp(playerRot.current.y, targetRot.current.y, lerpFactorRot);
+    playerRot.current.x = THREE.MathUtils.lerp(playerRot.current.x, targetRot.current.x, 0.4);
+    playerRot.current.y = THREE.MathUtils.lerp(playerRot.current.y, targetRot.current.y, 0.4);
     lookInput.current = { x: 0, y: 0 };
 
     if (winterCooldown.current > 0) winterCooldown.current -= delta;
@@ -2393,29 +2397,21 @@ export const Scene: React.FC<SceneProps> = ({
        }
     }
 
-    let forward: THREE.Vector3;
-    let right: THREE.Vector3;
+    const forward = tempVec1.current;
+    const right = tempVec2.current;
 
     if (gameMode === 'dead_ops') {
       // Absolute movement for Dead Ops (Top-Down)
-      forward = new THREE.Vector3(0, 0, -1);
-      right = new THREE.Vector3(1, 0, 0);
-      
-      // For gamepad (twin-stick), we might want to override rotation logic here if lookInput represents axis
-      // But for now, we'll let the existing rotation logic handle it, or we can override it if needed.
-      // If lookInput is axis (gamepad), we can set rotation directly:
-      if (Math.abs(lookInput.current.x) > 0.1 || Math.abs(lookInput.current.y) > 0.1) {
-         // Check if this is likely gamepad input (values between -1 and 1)
-         // or just mouse delta. Mouse delta can be large.
-         // This is a heuristic.
-         // Ideally we'd know the input source.
-      }
+      forward.set(0, 0, -1);
+      right.set(1, 0, 0);
     } else {
-      forward = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
-      right = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
+      tempEuler.current.set(0, playerRot.current.y, 0);
+      forward.set(0, 0, -1).applyEuler(tempEuler.current);
+      right.set(1, 0, 0).applyEuler(tempEuler.current);
     }
     
-    let moveVector = new THREE.Vector3();
+    const moveVector = tempVec3.current;
+    moveVector.set(0, 0, 0);
     if (gameState.isDowned) {
       moveVector.set(0, 0, 0);
     } else if (isSliding.current) {
@@ -2459,36 +2455,36 @@ export const Scene: React.FC<SceneProps> = ({
       moveVector.multiplyScalar(speed);
     }
 
-    const nextPosX = playerPos.current.clone();
-    nextPosX.x += moveVector.x * delta;
+    const nextPos = tempVec1.current;
+    nextPos.copy(playerPos.current);
+    nextPos.x += moveVector.x * delta;
     let collidedX = false;
     for (const wall of collisionWalls) {
-      if (checkAABB(nextPosX, wall.pos, wall.size)) {
+      if (checkAABB(nextPos, wall.pos, wall.size)) {
         collidedX = true;
         break;
       }
     }
     if (!collidedX) {
-      playerPos.current.x = nextPosX.x;
+      playerPos.current.x = nextPos.x;
     }
 
-    const nextPosZ = playerPos.current.clone();
-    nextPosZ.z += moveVector.z * delta;
+    nextPos.copy(playerPos.current);
+    nextPos.z += moveVector.z * delta;
     let collidedZ = false;
     for (const wall of collisionWalls) {
-      if (checkAABB(nextPosZ, wall.pos, wall.size)) {
+      if (checkAABB(nextPos, wall.pos, wall.size)) {
         collidedZ = true;
         break;
       }
     }
     if (!collidedZ) {
-      playerPos.current.z = nextPosZ.z;
+      playerPos.current.z = nextPos.z;
     }
 
     // Camera height adjustment for sliding/crouching/downed
     const targetCamHeight = gameState.isDowned ? 0.2 : (isSliding.current ? 0.6 : 1.2);
-    const lerpFactorPos = 1 - Math.exp(-5 * delta);
-    playerPos.current.y = THREE.MathUtils.lerp(playerPos.current.y, targetCamHeight, lerpFactorPos);
+    playerPos.current.y = THREE.MathUtils.lerp(playerPos.current.y, targetCamHeight, 0.2);
 
     // Stronghold Logic
     const isMoving = Math.abs(moveInput.current.x) > 0.1 || Math.abs(moveInput.current.y) > 0.1;
@@ -2843,8 +2839,14 @@ export const Scene: React.FC<SceneProps> = ({
         let closestHit = { dist: 100, zombie: null as ZombieData | null, isHeadshot: false, hitPos: new THREE.Vector3(), isDragon: false };
         
         zombieRefs.current.forEach(z => {
-          const bodyBox = new THREE.Box3().setFromCenterAndSize(z.position.clone().add(new THREE.Vector3(0, 0.9, 0)), new THREE.Vector3(0.6, 1.8, 0.4));
-          const headBox = new THREE.Box3().setFromCenterAndSize(z.position.clone().add(new THREE.Vector3(0, 2, 0)), new THREE.Vector3(0.4, 0.4, 0.4));
+          tempVec1.current.copy(z.position).add(new THREE.Vector3(0, 0.9, 0));
+          tempBox.current.setFromCenterAndSize(tempVec1.current, new THREE.Vector3(0.6, 1.8, 0.4));
+          const bodyBox = tempBox.current;
+          
+          tempVec2.current.copy(z.position).add(new THREE.Vector3(0, 2, 0));
+          tempBox.current.setFromCenterAndSize(tempVec2.current, new THREE.Vector3(0.4, 0.4, 0.4));
+          const headBox = tempBox.current;
+          
           const headIntersection = ray.ray.intersectBox(headBox, new THREE.Vector3());
           const bodyIntersection = ray.ray.intersectBox(bodyBox, new THREE.Vector3());
           
@@ -3009,8 +3011,7 @@ export const Scene: React.FC<SceneProps> = ({
       if (weaponRecoil.current > 0) {
         offset.z += weaponRecoil.current * 0.2;
         offset.y += weaponRecoil.current * 0.1;
-        const lerpFactorRecoil = 1 - Math.exp(-5 * delta);
-        weaponRecoil.current = THREE.MathUtils.lerp(weaponRecoil.current, 0, lerpFactorRecoil);
+        weaponRecoil.current = THREE.MathUtils.lerp(weaponRecoil.current, 0, 0.1);
       }
 
       // Apply to camera transform
@@ -3286,7 +3287,7 @@ export const Scene: React.FC<SceneProps> = ({
         }
       });
     } else {
-      zombieRefs.current.forEach(z => {
+      zombieRefs.current.forEach((z, i) => {
         if (z.stunTimer > 0) { z.stunTimer -= delta; return; }
       
       const activeKingRobbo = projectiles.current.find(p => p.type === 'kingRobbo');

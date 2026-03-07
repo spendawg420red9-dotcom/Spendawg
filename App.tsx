@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { GameStatus, PlayerStats, PowerUpType, ScoreEntry, HUDSettings, KeybindSettings, GamepadSettings, GameSettings, WeaponCamo, Achievement, Progression, PlayerScore, WeaponAttachment, ZombieType, GameMode, ZombieData } from './types';
+import { GameStatus, PlayerStats, PowerUpType, ScoreEntry, HUDSettings, KeybindSettings, GamepadSettings, GameSettings, WeaponCamo, Achievement, Progression, PlayerScore, WeaponAttachment, ZombieType, GameMode, ZombieData, DEFAULT_PROFILE } from './types';
 import { Joystick } from './components/Joystick';
 import { Scene } from './components/Scene';
 import { Minimap } from './components/Minimap';
@@ -11,7 +11,7 @@ import { getRoundLore } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { MAPS } from './maps';
 import { io, Socket } from 'socket.io-client';
-import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, UserPlus, Users } from 'lucide-react';
+import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, UserPlus, Users, MessageSquare } from 'lucide-react';
 
 const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate: number, color: string, speed: number, reload: number, description?: string, unlockLevel?: number }> = {
   'M1911': { clip: 8, max: 80, damage: 65, rate: 200, color: '#999', speed: 0.1, reload: 1500, unlockLevel: 1 },
@@ -95,8 +95,25 @@ const PAP_MAPPING: Record<string, string> = {
   'TYPE 100': '1001 SAMURAIS'
 };
 
-const isPapWeapon = (name: string) => Object.values(PAP_MAPPING).includes(name);
-const isWonderWeapon = (name: string) => name.includes('RAY') || name.includes('VOLT') || name.includes('CYCLONE') || name.includes('STORM');
+const PAP_LEVELS = {
+  1: { multiplier: 2, effect: 'none' },
+  2: { multiplier: 3, effect: 'electric' },
+  3: { multiplier: 4, effect: 'brainrot' },
+  4: { multiplier: 5, effect: 'fire' },
+  5: { multiplier: 6, effect: 'ice' },
+};
+
+const isPapWeapon = (name: string) => Object.values(PAP_MAPPING).includes(name) || name.includes(' (PaP Lvl');
+
+const getWeaponLevel = (name: string) => {
+  if (name.includes(' (PaP Lvl 5)')) return 5;
+  if (name.includes(' (PaP Lvl 4)')) return 4;
+  if (name.includes(' (PaP Lvl 3)')) return 3;
+  if (name.includes(' (PaP Lvl 2)')) return 2;
+  if (Object.values(PAP_MAPPING).includes(name)) return 1;
+  return 0;
+};
+const isWonderWeapon = (name: string) => name.includes('VOLT') || name.includes('CYCLONE') || name.includes('STORM');
 
 const getBaseWeaponName = (name: string) => {
   const entry = Object.entries(PAP_MAPPING).find(([base, pap]) => pap === name);
@@ -147,6 +164,32 @@ const getRankMasteryColor = (rankMastery: number) => {
     case 10: return "text-red-600";
     default: return "text-yellow-500";
   }
+};
+
+const MAP_CHALLENGES: Record<string, { id: string, desc: string, target: number, type: 'round' | 'headshots' | 'points' | 'knife' | 'revives' | 'kills' }[]> = {
+  'town': [
+    { id: 'survive_10', desc: 'Survive 10 Rounds', target: 10, type: 'round' },
+    { id: 'headshots_50', desc: 'Get 50 Headshots', target: 50, type: 'headshots' },
+    { id: 'points_10k', desc: 'Earn 10,000 Points', target: 10000, type: 'points' },
+  ],
+  'bunker': [
+    { id: 'survive_15', desc: 'Survive 15 Rounds', target: 15, type: 'round' },
+    { id: 'knife_20', desc: 'Get 20 Knife Kills', target: 20, type: 'knife' },
+  ],
+  'mukkatown': [
+    { id: 'survive_20', desc: 'Survive 20 Rounds', target: 20, type: 'round' },
+    { id: 'revive_5', desc: 'Revive 5 times', target: 5, type: 'revives' },
+  ],
+  'king_robbos_farm': [
+    { id: 'survive_15', desc: 'Survive 15 Rounds', target: 15, type: 'round' },
+    { id: 'kills_500', desc: 'Get 500 Kills', target: 500, type: 'kills' },
+  ],
+  'z-town': [
+    { id: 'survive_25', desc: 'Survive 25 Rounds', target: 25, type: 'round' },
+    { id: 'headshots_100', desc: 'Get 100 Headshots', target: 100, type: 'headshots' },
+    { id: 'points_50k', desc: 'Earn 50,000 Points', target: 50000, type: 'points' },
+    { id: 'knife_50', desc: 'Get 50 Knife Kills', target: 50, type: 'knife' },
+  ]
 };
 
 const getWeaponIcon = (name: string, size: number = 20) => {
@@ -221,6 +264,7 @@ const getInitialStats = (level: number, rankMastery: number, activeMapId: string
   isReviving: false,
   variant: Math.floor(Math.random() * 1000),
   deaths: 0,
+  multiplayerMode: undefined,
   };
 };
 
@@ -246,6 +290,8 @@ const INITIAL_HUD_SETTINGS: HUDSettings = {
   minimapScale: 1,
   gemPos: { x: 50, y: 15 },
   slidePos: { x: 360, y: 176 },
+  bossHealthPos: { x: 50, y: 32 },
+  bossHealthScale: 1,
 };
 
 const INITIAL_GAME_SETTINGS: GameSettings = {
@@ -582,13 +628,13 @@ const CamoPreloader = () => {
   return null;
 };
 
-const getWeaponLevel = (xp: number) => {
+const getWeaponLevelFromXp = (xp: number) => {
   const level = Math.floor(xp / 500) + 1;
   return Math.min(level, 30);
 };
 
 const getWeaponProgress = (xp: number) => {
-  const level = getWeaponLevel(xp);
+  const level = getWeaponLevelFromXp(xp);
   if (level >= 30) return 100;
   const currentLevelXp = (level - 1) * 500;
   const nextLevelXp = level * 500;
@@ -626,6 +672,121 @@ const getWeaponStatsWithAttachments = (baseStats: any, attachments: WeaponAttach
   return stats;
 };
 
+const PlayerProfileModal = ({ progression, onClose, onUpdateProfile }: { progression: Progression, onClose: () => void, onUpdateProfile?: (p: Progression) => void }) => {
+  const p = progression.profile || DEFAULT_PROFILE;
+  const [clanTag, setClanTag] = useState(p.clanTag || '');
+  const [avatarVariant, setAvatarVariant] = useState(p.customization?.avatarVariant || 0);
+  const [bodyColor, setBodyColor] = useState(p.customization?.bodyColor || '#ffffff');
+  const [clothesColor, setClothesColor] = useState(p.customization?.clothesColor || '#333333');
+  const [headAccessory, setHeadAccessory] = useState(p.customization?.headAccessory || 'none');
+
+  const handleSave = () => {
+    if (onUpdateProfile) {
+      onUpdateProfile({
+        ...progression,
+        profile: {
+          ...p,
+          clanTag,
+          customization: { ...p.customization, avatarVariant, bodyColor, clothesColor, headAccessory }
+        }
+      });
+    }
+    onClose();
+  };
+
+  return (
+    <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 w-full max-w-4xl text-white max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black italic uppercase">Player Profile: {p.nickname}</h2>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="bg-white/10 px-4 py-2 rounded-xl">Close</button>
+            {onUpdateProfile && <button onClick={handleSave} className="bg-emerald-600 px-4 py-2 rounded-xl font-black italic">Save</button>}
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-zinc-800 p-4 rounded-xl space-y-4">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase">Customization</h3>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Clan Tag (Max 5)</label>
+              <input 
+                type="text" 
+                value={clanTag} 
+                onChange={(e) => setClanTag(e.target.value.slice(0, 5))}
+                maxLength={5}
+                className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase"
+                placeholder="TAG"
+                disabled={!onUpdateProfile}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Avatar Variant</label>
+              <div className="flex gap-2 mt-1">
+                {[0, 1, 2, 3].map(v => (
+                  <button key={v} onClick={() => onUpdateProfile && setAvatarVariant(v)} disabled={!onUpdateProfile} className={`p-2 rounded ${avatarVariant === v ? 'bg-emerald-600' : 'bg-zinc-700'} ${!onUpdateProfile ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    Var {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase">Body Color</label>
+                <input type="color" value={bodyColor} onChange={(e) => setBodyColor(e.target.value)} disabled={!onUpdateProfile} className="w-full h-8 mt-1 rounded cursor-pointer bg-zinc-700 border-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase">Clothes Color</label>
+                <input type="color" value={clothesColor} onChange={(e) => setClothesColor(e.target.value)} disabled={!onUpdateProfile} className="w-full h-8 mt-1 rounded cursor-pointer bg-zinc-700 border-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Head Accessory</label>
+              <select value={headAccessory} onChange={(e) => setHeadAccessory(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                <option value="none">None</option>
+                <option value="hat">Hat</option>
+                <option value="glasses">Glasses</option>
+                <option value="mask">Mask</option>
+                <option value="helmet">Helmet</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="bg-zinc-800 p-4 rounded-xl">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">General Stats</h3>
+            <p>Level: {p.level}</p>
+            <p>Total Kills: {p.totalKills}</p>
+            <p>Boss Kills: {p.bossKills}</p>
+            <p>Most Played Mode: {p.mostPlayedMode}</p>
+          </div>
+
+          <div className="bg-zinc-800 p-4 rounded-xl">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Most Used Guns</h3>
+            {Object.entries(p.mostUsedGuns || {}).length > 0 ? Object.entries(p.mostUsedGuns || {}).map(([gun, kills]) => <p key={gun}>{gun}: {kills} kills</p>) : <p className="text-zinc-500 italic">No data</p>}
+          </div>
+          
+          <div className="bg-zinc-800 p-4 rounded-xl">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Most Used Perks</h3>
+            {Object.entries(p.mostUsedPerks || {}).length > 0 ? Object.entries(p.mostUsedPerks || {}).map(([perk, uses]) => <p key={perk}>{perk}: {uses} uses</p>) : <p className="text-zinc-500 italic">No data</p>}
+          </div>
+
+          <div className="bg-zinc-800 p-4 rounded-xl">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Zombie Kills</h3>
+            {Object.entries(p.killsPerZombieType || {}).length > 0 ? Object.entries(p.killsPerZombieType || {}).map(([type, kills]) => <p key={type}>{type}: {kills} kills</p>) : <p className="text-zinc-500 italic">No data</p>}
+          </div>
+
+          <div className="bg-zinc-800 p-4 rounded-xl md:col-span-2">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Game History</h3>
+            <div className="max-h-40 overflow-y-auto">
+              {(p.gameHistory || []).length > 0 ? (p.gameHistory || []).map((h, i) => <p key={i}>{new Date(h.date).toLocaleDateString()}: {h.mapId} - Round {h.round} - {h.kills} kills</p>) : <p className="text-zinc-500 italic">No history</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
   const [thirdPersonMode, setThirdPersonMode] = useState(false);
@@ -646,8 +807,22 @@ const App: React.FC = () => {
     startingRound: 1,
     godMode: false,
     playerName: 'Player',
-    botNames: ['Bot 1', 'Bot 2', 'Bot 3', 'Bot 4'],
+    botNames: ['Bot 1', 'Bot 2', 'Bot 3', 'Bot 4', 'Bot 5', 'Bot 6', 'Bot 7', 'Bot 8'],
     gameMode: 'standard' as GameMode,
+    teamMode: false,
+    multiplayerMode: 'ffa' as 'ffa' | 'tdm',
+    playerTeam: 1,
+    botTeams: [1, 1, 1, 1, 1, 1, 1, 1],
+    scoreLimit: 35,
+    difficulty: 'normal' as 'easy' | 'normal' | 'hard',
+    loadout: {
+      primary: 'M1911',
+      secondary: 'M1911',
+      primaryAttachments: [] as string[],
+      secondaryAttachments: [] as string[],
+      primaryCamo: 'none',
+      secondaryCamo: 'none'
+    }
   });
   const [activeBots, setActiveBots] = useState(0);
   const [progression, setProgression] = useState<Progression>(() => {
@@ -669,6 +844,11 @@ const App: React.FC = () => {
     };
   });
   const [isCustomGameSession, setIsCustomGameSession] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   const getXpForLevel = useCallback((targetLevel: number) => {
     let totalXp = 0;
@@ -860,11 +1040,82 @@ const App: React.FC = () => {
   const [showControlsMenu, setShowControlsMenu] = useState(false);
   const [showProgressMenu, setShowProgressMenu] = useState(false);
   const [otherPlayers, setOtherPlayers] = useState<PlayerScore[]>([]);
+  const gravePos = useMemo(() => {
+    const mapId = stats.activeMapId;
+    if (mapId === 'bunker') return new THREE.Vector3(-59.1, 0, 0);
+    if (mapId === 'mukkatown') return new THREE.Vector3(-40, 0, 10);
+    if (mapId === 'king_robbos_farm') return new THREE.Vector3(-20, 0, 10);
+    return new THREE.Vector3(115, 0, 0);
+  }, [stats.activeMapId]);
+
   const [showScoreboard, setShowScoreboard] = useState(false);
-  const [loadoutCategory, setLoadoutCategory] = useState<'all' | 'pistol' | 'smg' | 'ar' | 'shotgun' | 'lmg' | 'sniper' | 'wonder' | 'melee' | 'special'>('all');
+  const [showPlayerProfile, setShowPlayerProfile] = useState<any>(null);
+  const [loadoutCategory, setLoadoutCategory] = useState<'all' | 'pistol' | 'smg' | 'ar' | 'shotgun' | 'lmg' | 'sniper' | 'wonder'>('all');
+  const [confirmModal, setConfirmModal] = useState<{ message: string, onConfirm: () => void } | null>(null);
 
   const [teleportToPlayerId, setTeleportToPlayerId] = useState<string | null>(null);
   const [teleportPlayerToMeId, setTeleportPlayerToMeId] = useState<string | null>(null);
+
+  const [hasAutosave, setHasAutosave] = useState(false);
+  useEffect(() => {
+    setHasAutosave(!!localStorage.getItem('ztown_autosave'));
+  }, [status]);
+
+  useEffect(() => {
+    if (status === GameStatus.PLAYING && !isOnline) {
+      const saveState = {
+        stats,
+        customGameConfig,
+        activeBots,
+        gameStartTime,
+        now,
+        heartPositions,
+        collectedHearts,
+        dragonActive,
+        dragonHealth,
+        bossDefeated,
+        openDoors,
+        otherPlayers,
+        isCustomGameSession
+      };
+      localStorage.setItem('ztown_autosave', JSON.stringify(saveState));
+    }
+  }, [stats.round, status]);
+
+  const loadAutosave = () => {
+    const saved = localStorage.getItem('ztown_autosave');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setStats(parsed.stats);
+        setCustomGameConfig({
+          ...parsed.customGameConfig,
+          playerTeam: parsed.customGameConfig.playerTeam || 1,
+          botTeams: parsed.customGameConfig.botTeams || [1, 1, 1, 1, 1, 1, 1, 1]
+        });
+        setActiveBots(parsed.activeBots);
+        setGameStartTime(parsed.gameStartTime);
+        setNow(parsed.now);
+        setHeartPositions(parsed.heartPositions.map((p: any) => new THREE.Vector3(p.x, p.y, p.z)));
+        setCollectedHearts(parsed.collectedHearts);
+        setDragonActive(parsed.dragonActive);
+        setDragonHealth(parsed.dragonHealth);
+        setBossDefeated(parsed.bossDefeated);
+        setOpenDoors(parsed.openDoors);
+        setOtherPlayers(parsed.otherPlayers);
+        setIsCustomGameSession(parsed.isCustomGameSession);
+        setGameKey(prev => prev + 1);
+        setStatus(GameStatus.PLAYING);
+      } catch (e) {
+        console.error("Failed to load autosave", e);
+      }
+    }
+  };
+
+  const [chatMessages, setChatMessages] = useState<{ id: string, sender: string, text: string, timestamp: number }[]>([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     console.log("Initializing socket connection...");
@@ -898,18 +1149,29 @@ const App: React.FC = () => {
       setTeleportTarget(new THREE.Vector3(pos.x, pos.y, pos.z));
     });
 
+    newSocket.on('chat_message', (msg) => {
+      setChatMessages(prev => [...prev, msg].slice(-50)); // Keep last 50 messages
+    });
+
     newSocket.on('room_created', (r) => {
       setRoom(r);
+      if (r.hudSettings) setHudSettings(r.hudSettings);
       setStatus(GameStatus.LOBBY);
     });
 
     newSocket.on('room_joined', (r) => {
       setRoom(r);
+      if (r.hudSettings) setHudSettings(r.hudSettings);
       setStatus(GameStatus.LOBBY);
     });
 
     newSocket.on('room_updated', (r) => {
       setRoom(r);
+      if (r.hudSettings && r.host !== newSocket.id) setHudSettings(r.hudSettings);
+    });
+
+    newSocket.on('hud_settings_updated', (settings) => {
+      setHudSettings(settings);
     });
 
     newSocket.on('game_started', (r) => {
@@ -977,7 +1239,7 @@ const App: React.FC = () => {
             ping: 20 // Mock ping
           }
         });
-      }, 100);
+      }, 300);
       return () => clearInterval(interval);
     }
   }, [socket, room, status, stats, isOnline, customGameConfig.playerName]);
@@ -1293,7 +1555,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('ztown_hud_settings', JSON.stringify(hudSettings));
-  }, [hudSettings]);
+    if (room && room.host === socket?.id) {
+      socket?.emit('sync_hud', { roomId: room.id, settings: hudSettings });
+    }
+  }, [hudSettings, room, socket]);
 
   // Leaderboard & Nickname State
   const [leaderboardMapId, setLeaderboardMapId] = useState<string>('town');
@@ -1302,7 +1567,6 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('ztown_leaderboard_v2');
     return saved ? JSON.parse(saved) : [];
   });
-
   const modMenuTimer = useRef<NodeJS.Timeout | null>(null);
   const modMenuTriggered = useRef(false);
 
@@ -1349,17 +1613,16 @@ const App: React.FC = () => {
 
   const filteredWeapons = useMemo(() => {
     return SORTED_WEAPONS.filter(([name]) => {
+      if (name === 'DEATH_MACHINE' || name === 'Bowie Knife') return false;
       if (loadoutCategory === 'all') return true;
       const upperName = name.toUpperCase();
       let category = 'ar';
       if (upperName.includes('RAY') || upperName.includes('VOLT') || upperName.includes('CYCLONE') || upperName.includes('BLAZE')) category = 'wonder';
-      else if (upperName.includes('KNIFE')) category = 'melee';
       else if (upperName.includes('DSR') || upperName.includes('SNIPER')) category = 'sniper';
       else if (upperName.includes('HAMR') || upperName.includes('RPD') || upperName.includes('BROWNING') || upperName.includes('LMG')) category = 'lmg';
       else if (upperName.includes('REMINGTON') || upperName.includes('STRIKER') || upperName.includes('OLYMPIA') || upperName.includes('SHOTGUN')) category = 'shotgun';
       else if (upperName.includes('MP5') || upperName.includes('PPSH') || upperName.includes('THOMPSON') || upperName.includes('MP40') || upperName.includes('VECTOR') || upperName.includes('TYPE 100') || upperName.includes('SMG')) category = 'smg';
       else if (upperName.includes('M1911') || upperName.includes('PYTHON') || upperName.includes('PISTOL')) category = 'pistol';
-      else if (upperName.includes('DEATH')) category = 'special';
       
       return category === loadoutCategory;
     });
@@ -1411,7 +1674,7 @@ const App: React.FC = () => {
         const filtered = leaderboard.filter(e => e.mapId === leaderboardMapId);
         maxIndex = 1 + MAPS.length + (filtered.length > 0 ? filtered.length : 0);
       }
-      else if (isSettings) maxIndex = 51; // 0:Back, 1:HUD, 2-11:Camos, 12:BtnScale, 13:HudScale, 14:MinimapScale, 15-48:Pos, 49:Toggle, 50:Reset, 51:Save
+      else if (isSettings) maxIndex = 56; // 0:Back, 1:HUD, 2-11:Camos, 12:BtnScale, 13:HudScale, 14:MinimapScale, 15:BossScale, 16-51:Pos, 52:Toggle, 53:Reset, 54:SaveDef, 55:SaveRet, 56:SaveAll
       else if (isControls) {
         const gamepadKeysCount = Object.keys(gamepadSettings).filter(k => !k.startsWith('sensitivity')).length;
         const keybindKeysCount = Object.keys(keybindSettings).length;
@@ -1515,7 +1778,7 @@ const App: React.FC = () => {
         } else if (isLeaderboard) {
           if (selectedMenuIndex === 0) setStatus(GameStatus.START);
           else if (selectedMenuIndex === 1) {
-            if(confirm('Clear leaderboard?')) { setLeaderboard([]); localStorage.removeItem('ztown_leaderboard_v2'); }
+            setConfirmModal({ message: 'Clear leaderboard?', onConfirm: () => { setLeaderboard([]); localStorage.removeItem('ztown_leaderboard_v2'); } });
           } else if (selectedMenuIndex >= 2 && selectedMenuIndex < 2 + MAPS.length) {
             setLeaderboardMapId(MAPS[selectedMenuIndex - 2].id);
           }
@@ -1660,12 +1923,16 @@ const App: React.FC = () => {
     downedTimer: stats.downedTimer,
     zombiesRemaining: stats.zombiesRemaining,
     hp: stats.hp,
+    team: stats.team,
+    multiplayerMode: stats.multiplayerMode,
+    kills: stats.kills,
     level: getLevelData(progression.xp).level,
     rankMastery: progression.rankMastery
   }), [stats, isReloading, instaKillExpiry, doublePointsExpiry, now, godMode, progression.xp, progression.rankMastery]);
 
   const [killAllZombies, setKillAllZombies] = useState(false);
   const [teleportZombiesToMe, setTeleportZombiesToMe] = useState(false);
+  const [teleportAllToMe, setTeleportAllToMe] = useState(false);
   const [spawnZombieType, setSpawnZombieType] = useState<ZombieType | null>(null);
   const [changeAllZombiesType, setChangeAllZombiesType] = useState<ZombieType | null>(null);
 
@@ -1740,10 +2007,14 @@ const App: React.FC = () => {
 
   const onGameOver = useCallback(() => {
     if (status === GameStatus.PLAYING && !endingSequence) {
-      setStatus(GameStatus.GAMEOVER);
-      setSelectedMenuIndex(0);
-      soundService.playGameOver();
-      saveScore(stats);
+      if (stats.multiplayerMode) {
+        setStats(prev => ({ ...prev, hp: prev.maxHp, isDowned: false, downedTimer: 0 }));
+      } else {
+        setStatus(GameStatus.GAMEOVER);
+        setSelectedMenuIndex(0);
+        soundService.playGameOver();
+        saveScore(stats);
+      }
     }
   }, [status, endingSequence, stats, saveScore]);
 
@@ -1834,8 +2105,8 @@ const App: React.FC = () => {
         const newXp = currentXp + (update.kills ? 100 : 0) + (update.headshots ? 50 : 0); // 100 XP per kill, +50 for headshot
         
         // Check for level up
-        const oldLevel = getWeaponLevel(currentXp);
-        const newLevel = getWeaponLevel(newXp);
+        const oldLevel = getWeaponLevelFromXp(currentXp);
+        const newLevel = getWeaponLevelFromXp(newXp);
         
         if (newLevel > oldLevel && newLevel % 5 === 0) {
            // Notify attachment unlock? Maybe a toast later.
@@ -1875,23 +2146,37 @@ const App: React.FC = () => {
         
         // Downed Logic for Player
         if (next.hp <= 0 && !next.isDowned && oldHp > 0) {
-           // Only allow downed state if there are teammates (bots) to revive
-           const hasTeammates = activeBots > 0;
-
-           if (hasTeammates) {
-             // Go down and wait for revive from bots
+           if (customGameConfig.gameMode === 'multiplayer') {
              next.isDowned = true;
-             next.downedTimer = 10; // 10 seconds to be revived
              next.hp = 0;
-             next.downs = (next.downs || 0) + 1;
              soundService.playHurt();
+             setTimeout(() => {
+               handleStatsUpdate({ isDowned: false, hp: 150 }, 'player');
+               const map = MAPS.find(m => m.id === stats.activeMapId);
+               if (map && map.spawnPoints) {
+                 const spawn = map.spawnPoints[Math.floor(Math.random() * map.spawnPoints.length)];
+                 setTeleportTarget(new THREE.Vector3(spawn.x, spawn.y, spawn.z));
+               }
+             }, 3000);
            } else {
-             // Instant death - no downed state in solo
-             next.hp = 0;
-             next.isDowned = false;
-             next.downs = (next.downs || 0) + 1;
-             soundService.playHurt();
-             // The useEffect watching stats.hp will trigger onGameOver
+             // Only allow downed state if there are teammates (bots) to revive
+             const hasTeammates = activeBots > 0;
+
+             if (hasTeammates) {
+               // Go down and wait for revive from bots
+               next.isDowned = true;
+               next.downedTimer = 10; // 10 seconds to be revived
+               next.hp = 0;
+               next.downs = (next.downs || 0) + 1;
+               soundService.playHurt();
+             } else {
+               // Instant death - no downed state in solo
+               next.hp = 0;
+               next.isDowned = false;
+               next.downs = (next.downs || 0) + 1;
+               soundService.playHurt();
+               // The useEffect watching stats.hp will trigger onGameOver
+             }
            }
         }
         
@@ -2219,16 +2504,25 @@ const App: React.FC = () => {
     if (interactPrompt.id === 'healthRefill' && stats.healthRefillsBought >= 3) return;
     if (stats.points < interactPrompt.cost) return;
 
+    if (deathMachineExpiry > Date.now()) {
+      if (interactPrompt.id === 'box' || interactPrompt.id === 'pap' || interactPrompt.type.startsWith('WALLBUY:')) {
+        return;
+      }
+    }
+
     if (interactPrompt.id.startsWith('revive_')) {
       const botId = interactPrompt.id.replace('revive_', '');
       handleStatsUpdate({ isDowned: false, hp: 150 }, botId);
       handleStatsUpdate({ revives: 1 }); // Player gets credit
     } else if (interactPrompt.id === 'bus_interact') {
       window.dispatchEvent(new CustomEvent('bus_interact'));
+    } else if (interactPrompt.id === 'bus_drive') {
+      setStats(prev => ({ ...prev, points: prev.points - interactPrompt.cost }));
+      window.dispatchEvent(new CustomEvent('bus_drive'));
     } else if (interactPrompt.id === 'box') {
       setIsBoxCycling(true);
       setStats(prev => ({ ...prev, points: prev.points - interactPrompt.cost }));
-      const weaponKeys = Object.keys(WEAPONS).filter(k => !Object.values(PAP_MAPPING).includes(k));
+      const weaponKeys = Object.keys(WEAPONS).filter(k => !Object.values(PAP_MAPPING).includes(k) && k !== 'DEATH_MACHINE' && k !== 'Bowie Knife');
       const boxItems = [...weaponKeys, 'KING ROBBOS'];
       const cycleInterval = setInterval(() => {
         setCyclingWeapon(boxItems[Math.floor(Math.random() * boxItems.length)]);
@@ -2238,12 +2532,10 @@ const App: React.FC = () => {
         clearInterval(cycleInterval);
         const rand = Math.random();
         let finalWeapon = 'MP5';
-        if (rand < 0.05) {
-          finalWeapon = 'RAY GUN';
-        } else if (rand < 0.15) {
+        if (rand < 0.15) {
           finalWeapon = 'KING ROBBOS';
         } else {
-          const normalWeapons = weaponKeys.filter(w => w !== 'RAY GUN' && w !== 'M1911');
+          const normalWeapons = weaponKeys.filter(w => w !== 'M1911');
           finalWeapon = normalWeapons[Math.floor(Math.random() * normalWeapons.length)];
         }
         
@@ -2333,20 +2625,37 @@ const App: React.FC = () => {
         soundService.playPerk();
       }, 3000);
     } else if (interactPrompt.id === 'pap') {
-      const papName = PAP_MAPPING[stats.weaponName];
-      if (!papName) return; 
+      const currentLevel = getWeaponLevel(stats.weaponName);
+      if (currentLevel >= 5) return; // Max level
+
+      const nextLevel = currentLevel + 1;
+      let newWeaponName = stats.weaponName;
+
+      if (currentLevel === 0) {
+        newWeaponName = PAP_MAPPING[stats.weaponName] || stats.weaponName + ' (PaP Lvl 1)';
+      } else {
+        // Remove old level suffix
+        newWeaponName = stats.weaponName.replace(/ \(PaP Lvl \d\)/, '') + ` (PaP Lvl ${nextLevel})`;
+      }
+
+      if (!newWeaponName) return; 
       
       soundService.playPerk();
       unlockAchievement('red9_pap');
+      
+      const baseWeapon = getBaseWeaponName(stats.weaponName);
+      const multiplier = PAP_LEVELS[nextLevel as keyof typeof PAP_LEVELS].multiplier;
+      const baseStats = WEAPONS[baseWeapon] || WEAPONS[stats.weaponName];
+
       setStats(prev => ({
         ...prev,
         points: prev.points - interactPrompt.cost,
-        weaponName: papName,
-        ammo: WEAPONS[papName].clip,
-        maxAmmo: WEAPONS[papName].max,
-        weaponTier: 2
+        weaponName: newWeaponName,
+        ammo: Math.floor(baseStats.clip * multiplier),
+        maxAmmo: Math.floor(baseStats.max * multiplier),
+        weaponTier: nextLevel + 1
       }));
-      setLastPerkGained("WEAPON PACKED!");
+      setLastPerkGained(`WEAPON UPGRADED TO LEVEL ${nextLevel}!`);
       setTimeout(() => setLastPerkGained(null), 3000);
     } else if (interactPrompt.id === 'buyableEnding') {
       soundService.playPerk();
@@ -2616,6 +2925,7 @@ const App: React.FC = () => {
 
   const switchWeapon = () => {
     if (isReloading || !stats.secondaryWeaponName || status !== GameStatus.PLAYING) return;
+    if (deathMachineExpiry > Date.now()) return;
     soundService.playReload(); 
     setStats(prev => {
       const hasTertiary = prev.perks.includes('mule') && prev.tertiaryWeaponName !== null;
@@ -2668,7 +2978,7 @@ const App: React.FC = () => {
       setTimeout(() => slideRequest.current = false, 100);
     } else {
       jumpRequest.current = true;
-      setTimeout(() => jumpRequest.current = false, 100);
+      setTimeout(() => jumpRequest.current = false, 50);
     }
   }, [status]);
 
@@ -2766,8 +3076,35 @@ const App: React.FC = () => {
     let keyboardMoving = false;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isBinding || e.repeat || (e.target as HTMLElement).tagName === 'INPUT') return;
+      if (isBinding || e.repeat) return;
+      
+      const isInput = (e.target as HTMLElement).tagName === 'INPUT';
       const key = e.key.toLowerCase();
+
+      if (isInput) {
+        if (key === 'escape') {
+          setIsChatOpen(false);
+          setChatInput('');
+          (e.target as HTMLElement).blur();
+        } else if (key === 'enter' && chatInput.trim()) {
+          const msg = { id: Math.random().toString(), sender: nickname || 'Player', text: chatInput.trim(), timestamp: Date.now() };
+          setChatMessages(prev => [...prev, msg].slice(-50));
+          if (socket && isOnline) {
+            socket.emit('chat_message', { roomId: room?.id, message: msg });
+          }
+          setChatInput('');
+          setIsChatOpen(false);
+          (e.target as HTMLElement).blur();
+        }
+        return;
+      }
+
+      if (key === 't' && status === GameStatus.PLAYING) {
+        e.preventDefault();
+        setIsChatOpen(true);
+        setTimeout(() => chatInputRef.current?.focus(), 10);
+        return;
+      }
       
       if (key === 'tab') {
         e.preventDefault();
@@ -3183,7 +3520,8 @@ const App: React.FC = () => {
       socket?.emit('create_room', {
         name: customGameConfig.playerName,
         mapId: customGameConfig.mapId,
-        isCustom: true
+        isCustom: true,
+        hudSettings: hudSettings
       });
       return;
     }
@@ -3194,7 +3532,18 @@ const App: React.FC = () => {
     
     // Initialize bots
     const bots: PlayerScore[] = [];
+    const totalPlayers = 1 + customGameConfig.bots;
+    const team1Size = Math.ceil(totalPlayers / 2);
+    const slotsForBotsOnTeam1 = team1Size - 1;
+
     for (let i = 0; i < customGameConfig.bots; i++) {
+      let team = undefined;
+      if (customGameConfig.gameMode === 'multiplayer') {
+        team = customGameConfig.botTeams[i];
+      } else if (customGameConfig.teamMode) {
+        team = i < slotsForBotsOnTeam1 ? 1 : 2;
+      }
+
       bots.push({
         id: `bot-${i}`,
         name: customGameConfig.botNames[i] || `Bot ${i+1}`,
@@ -3213,28 +3562,52 @@ const App: React.FC = () => {
         level: Math.floor(Math.random() * 55) + 1,
         rankMastery: Math.floor(Math.random() * 11),
         variant: Math.floor(Math.random() * 5),
-        isReviving: false
+        isReviving: false,
+        team: team
       });
     }
     setOtherPlayers(bots);
 
     setStats(prev => {
       const initial = getInitialStats(getLevelData(progression.xp).level, progression.rankMastery, customGameConfig.mapId, prev.selectedCamo, progression.weaponAttachments);
-      const startingWeapon = customGameConfig.gameMode === 'dead_ops' ? 'M1911' : customGameConfig.startingWeapon;
+      
+      let startingWeapon = customGameConfig.gameMode === 'dead_ops' ? 'M1911' : customGameConfig.startingWeapon;
+      let secondaryWeapon = null;
+      let primaryAttachments: WeaponAttachment[] = [];
+      let secondaryAttachments: WeaponAttachment[] = [];
+
+      if (customGameConfig.gameMode === 'multiplayer') {
+          startingWeapon = customGameConfig.loadout.primary;
+          secondaryWeapon = customGameConfig.loadout.secondary;
+          // In a real implementation, we would parse attachments from config
+          primaryAttachments = []; 
+          secondaryAttachments = [];
+      }
+
       return {
         ...initial,
         points: customGameConfig.startingPoints,
         totalPoints: customGameConfig.startingPoints,
         round: customGameConfig.startingRound,
         weaponName: startingWeapon,
-        attachments: getActiveAttachments(startingWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {}),
+        secondaryWeaponName: secondaryWeapon,
+        attachments: customGameConfig.gameMode === 'multiplayer' ? primaryAttachments : getActiveAttachments(startingWeapon, getLevelData(progression.xp).level, progression.weaponAttachments || {}),
+        secondaryAttachments: customGameConfig.gameMode === 'multiplayer' ? secondaryAttachments : [],
         ammo: WEAPONS[startingWeapon]?.clip || 8,
         maxAmmo: WEAPONS[startingWeapon]?.max || 80,
+        secondaryAmmo: secondaryWeapon ? (WEAPONS[secondaryWeapon]?.clip || 8) : 0,
+        secondaryMaxAmmo: secondaryWeapon ? (WEAPONS[secondaryWeapon]?.max || 80) : 0,
+        team: customGameConfig.gameMode === 'multiplayer' ? customGameConfig.playerTeam : (customGameConfig.teamMode ? 1 : undefined),
+        multiplayerMode: customGameConfig.gameMode === 'multiplayer' ? customGameConfig.multiplayerMode : undefined
       };
     });
     setGodMode(customGameConfig.godMode);
-    setBloodOverlay(0);
-    setFlashOverlay(0);
+    
+    // Initialize bots with teams
+    setActiveBots(customGameConfig.bots);
+    for (let i = 0; i < customGameConfig.bots; i++) {
+      const botTeam = customGameConfig.gameMode === 'multiplayer' ? customGameConfig.botTeams[i] : (customGameConfig.teamMode ? 2 : undefined);
+    }
     setInstaKillExpiry(0);
     setDoublePointsExpiry(0);
     setLastPerkGained(null);
@@ -3427,8 +3800,15 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-black select-none overflow-hidden touch-none font-sans" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onTouchCancel={handleTouchEnd}>
+      {showPlayerProfile && (
+        <PlayerProfileModal 
+          progression={showPlayerProfile === true ? progression : { ...progression, profile: showPlayerProfile }} 
+          onClose={() => setShowPlayerProfile(null)} 
+          onUpdateProfile={showPlayerProfile === true ? setProgression : undefined}
+        />
+      )}
       <div className="absolute inset-0 z-0">
-        <Canvas key={gameKey} shadows gl={{ antialias: true, alpha: false }} camera={{ fov: 75, near: 0.01, far: 150 }}>
+        <Canvas key={gameKey} shadows gl={{ antialias: false, alpha: false }} camera={{ fov: 75, near: 0.01, far: 1000 }}>
           <Suspense fallback={null}>
             <Scene 
               cyclingWeapon={isBoxCycling ? cyclingWeapon : null}
@@ -3487,6 +3867,8 @@ const App: React.FC = () => {
         onTeleportPlayerToMeComplete={() => setTeleportPlayerToMeId(null)}
         teleportZombiesToMe={teleportZombiesToMe}
               setTeleportZombiesToMe={setTeleportZombiesToMe}
+              teleportAllToMe={teleportAllToMe}
+              setTeleportAllToMe={setTeleportAllToMe}
               spawnZombieType={spawnZombieType}
               onSpawnZombieComplete={() => setSpawnZombieType(null)}
               changeAllZombiesType={changeAllZombiesType}
@@ -3496,6 +3878,7 @@ const App: React.FC = () => {
               onRed9Curse={handleRed9Curse}
               red9BlessingClaimed={red9BlessingClaimed}
               red9CurseActive={red9CurseActive}
+              easterEggTriggered={easterEggTriggered}
               onEasterEggTriggered={() => setEasterEggTriggered(true)}
               onUnlockAchievement={unlockAchievement}
               fireSaleActive={fireSaleExpiry > now}
@@ -3505,6 +3888,7 @@ const App: React.FC = () => {
               gameSettings={gameSettings}
               hudSettings={hudSettings}
               thirdPersonMode={thirdPersonMode}
+              difficulty={customGameConfig.difficulty}
             />
           </Suspense>
         </Canvas>
@@ -3550,7 +3934,15 @@ const App: React.FC = () => {
           )}
 
           {dragonActive && (
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-1/2 max-w-2xl flex flex-col items-center gap-2">
+            <div 
+              className="absolute z-50 pointer-events-none w-1/2 max-w-2xl flex flex-col items-center gap-2"
+              style={{ 
+                top: `${hudSettings.bossHealthPos?.y ?? 32}px`, 
+                left: `${hudSettings.bossHealthPos?.x ?? 50}%`, 
+                transform: `translateX(-50%) scale(${hudSettings.bossHealthScale ?? 1})`,
+                transformOrigin: 'top center'
+              }}
+            >
               <span className="text-red-600 font-black italic text-2xl tracking-widest drop-shadow-[0_0_10px_rgba(220,38,38,0.8)] uppercase">Zombie Dragon</span>
               <div className="w-full h-6 bg-black/80 border-2 border-red-900 rounded-sm overflow-hidden relative shadow-[0_0_20px_rgba(220,38,38,0.3)]">
                 <div 
@@ -3566,14 +3958,18 @@ const App: React.FC = () => {
               className="absolute z-20 space-y-3 pointer-events-none"
               style={{ top: hudSettings.statsPos.y, left: hudSettings.statsPos.x, transform: `scale(${hudSettings.hudScale})`, transformOrigin: 'top left' }}
             >
-              <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-red-700 backdrop-blur-md shadow-xl">
-                 <Skull className="text-red-600 w-8 h-8" />
-                 <span className="text-red-600 font-black text-4xl italic">{stats.round}</span>
-              </div>
-              <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-orange-600 backdrop-blur-md shadow-xl">
-                 <UserX className="text-orange-500 w-6 h-6" />
-                 <span className="text-orange-400 font-black text-2xl italic">{stats.zombiesRemaining}</span>
-              </div>
+              {customGameConfig.gameMode !== 'multiplayer' && (
+                <>
+                  <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-red-700 backdrop-blur-md shadow-xl">
+                     <Skull className="text-red-600 w-8 h-8" />
+                     <span className="text-red-600 font-black text-4xl italic">{stats.round}</span>
+                  </div>
+                  <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-orange-600 backdrop-blur-md shadow-xl">
+                     <UserX className="text-orange-500 w-6 h-6" />
+                     <span className="text-orange-400 font-black text-2xl italic">{stats.zombiesRemaining}</span>
+                  </div>
+                </>
+              )}
               <div className="flex flex-col gap-1 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-emerald-500 backdrop-blur-md shadow-xl">
                  <div className="flex items-center gap-4">
                    <Database className="text-emerald-500 w-6 h-6" />
@@ -3583,7 +3979,7 @@ const App: React.FC = () => {
                    Total: {stats.totalPoints}
                  </div>
               </div>
-              <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-yellow-500 backdrop-blur-md shadow-xl">
+                             <div className="flex items-center gap-4 bg-black/60 px-5 py-2 rounded-sm border-l-4 border-yellow-500 backdrop-blur-md shadow-xl cursor-pointer hover:bg-black/80 transition-colors" onClick={() => setShowPlayerProfile(progression as any)}>
                  {progression.rankMastery > 0 ? getRankMasteryIcon(progression.rankMastery, 24) : <Star className="text-yellow-500 w-6 h-6" />}
                  <div className="flex flex-col">
                     <div className="flex items-center gap-1">
@@ -3826,6 +4222,7 @@ const App: React.FC = () => {
               playerRot={playerRotRef}
               zombieRefs={zombieRefs}
               otherPlayers={otherPlayers}
+              gravePos={gravePos}
               mapConfig={MAPS.find(m => m.id === stats.activeMapId) || MAPS[0]}
               visible={hudSettings?.minimapVisible ?? true}
               position={hudSettings?.minimapPos || { x: 20, y: 20 }}
@@ -3833,7 +4230,7 @@ const App: React.FC = () => {
             />
           )}
 
-          {status === GameStatus.PLAYING && hudMode === 'all' && (
+          {isTouchDevice && status === GameStatus.PLAYING && hudMode === 'all' && (
             <>
               {/* Scoreboard removed from HUD */}
 
@@ -3868,7 +4265,7 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {customGameConfig.gameMode !== 'dead_ops' && (
+              {isTouchDevice && customGameConfig.gameMode !== 'dead_ops' && (
                 <>
                   <button 
                     onTouchStart={throwGrenade} 
@@ -3970,7 +4367,7 @@ const App: React.FC = () => {
                 </div>
               )}
               
-              {customGameConfig.gameMode !== 'dead_ops' && (
+              {isTouchDevice && customGameConfig.gameMode !== 'dead_ops' && (
                 <button 
                   onTouchStart={(e) => { e.stopPropagation(); handleJumpOrSlide(); }}
                   className="absolute z-40 pointer-events-auto w-20 h-20 bg-emerald-700/80 active:bg-emerald-500 rounded-full flex flex-col items-center justify-center border-4 border-white/40 shadow-xl active:scale-95 transition-all backdrop-blur-md"
@@ -3981,17 +4378,19 @@ const App: React.FC = () => {
                 </button>
               )}
 
-              <button 
-                onTouchStart={(e) => { e.stopPropagation(); switchWeapon(); }} 
-                disabled={!stats.secondaryWeaponName}
-                className={`absolute z-40 pointer-events-auto w-20 h-20 ${stats.secondaryWeaponName ? 'bg-indigo-700/80 active:bg-indigo-500' : 'bg-gray-800/40 opacity-50'} rounded-full flex flex-col items-center justify-center border-4 border-white/40 shadow-xl active:scale-95 transition-all backdrop-blur-md`}
-                style={{ bottom: hudSettings.switchPos.y, right: hudSettings.switchPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
-              >
-                <RefreshCw className="text-white w-8 h-8" />
-                <span className="text-[8px] font-black text-white mt-1 uppercase tracking-widest">Switch</span>
-              </button>
+              {isTouchDevice && (
+                <button 
+                  onTouchStart={(e) => { e.stopPropagation(); switchWeapon(); }} 
+                  disabled={!stats.secondaryWeaponName}
+                  className={`absolute z-40 pointer-events-auto w-20 h-20 ${stats.secondaryWeaponName ? 'bg-indigo-700/80 active:bg-indigo-500' : 'bg-gray-800/40 opacity-50'} rounded-full flex flex-col items-center justify-center border-4 border-white/40 shadow-xl active:scale-95 transition-all backdrop-blur-md`}
+                  style={{ bottom: hudSettings.switchPos.y, right: hudSettings.switchPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
+                >
+                  <RefreshCw className="text-white w-8 h-8" />
+                  <span className="text-[8px] font-black text-white mt-1 uppercase tracking-widest">Switch</span>
+                </button>
+              )}
 
-              {customGameConfig.gameMode !== 'dead_ops' && (
+              {isTouchDevice && customGameConfig.gameMode !== 'dead_ops' && (
                 <button 
                   onTouchStart={(e) => { e.stopPropagation(); knifeRequest.current = true; }} 
                   onTouchEnd={(e) => { e.stopPropagation(); knifeRequest.current = false; }} 
@@ -4002,16 +4401,18 @@ const App: React.FC = () => {
                 </button>
               )}
 
-              <button 
-                className={`fire-btn absolute z-40 pointer-events-auto w-28 h-28 ${customGameConfig.gameMode === 'dead_ops' ? 'hidden' : 'bg-red-700/80 active:bg-red-500'} rounded-full flex items-center justify-center border-4 border-white/40 shadow-[0_0_40px_rgba(185,28,28,0.4)] active:scale-95 transition-all backdrop-blur-md touch-none`}
-                style={{ bottom: hudSettings.shootPos.y, right: hudSettings.shootPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
-                onTouchStart={() => { phoneShootRequest.current = true; }}
-                onTouchEnd={() => { phoneShootRequest.current = false; }}
-              >
-                <Target className="text-white w-14 h-14 pointer-events-none" />
-              </button>
+              {isTouchDevice && (
+                <button 
+                  className={`fire-btn absolute z-40 pointer-events-auto w-28 h-28 ${customGameConfig.gameMode === 'dead_ops' ? 'hidden' : 'bg-red-700/80 active:bg-red-500'} rounded-full flex items-center justify-center border-4 border-white/40 shadow-[0_0_40px_rgba(185,28,28,0.4)] active:scale-95 transition-all backdrop-blur-md touch-none`}
+                  style={{ bottom: hudSettings.shootPos.y, right: hudSettings.shootPos.x, transform: `scale(${hudSettings.buttonScale * hudSettings.hudScale})`, transformOrigin: 'bottom right' }}
+                  onTouchStart={() => { phoneShootRequest.current = true; }}
+                  onTouchEnd={() => { phoneShootRequest.current = false; }}
+                >
+                  <Target className="text-white w-14 h-14 pointer-events-none" />
+                </button>
+              )}
 
-              {customGameConfig.gameMode === 'dead_ops' && (
+              {isTouchDevice && customGameConfig.gameMode === 'dead_ops' && (
                 <button 
                   onTouchStart={(e) => { e.stopPropagation(); slideRequest.current = true; setIsSprinting(true); }}
                   onTouchEnd={(e) => { e.stopPropagation(); slideRequest.current = false; setIsSprinting(false); }}
@@ -4348,6 +4749,34 @@ const App: React.FC = () => {
                             {bossDefeated ? 'DEFEATED' : 'NOT DEFEATED'}
                           </span>
                         </div>
+
+                        <div className="h-[1px] bg-white/10 w-full my-2" />
+                        <div className="text-white/40 text-[10px] uppercase font-black tracking-widest text-left mb-1">Map Challenges</div>
+                        {(MAP_CHALLENGES[stats.activeMapId] || []).map(challenge => {
+                          let progress = 0;
+                          switch (challenge.type) {
+                            case 'round': progress = Math.min(stats.round, challenge.target); break;
+                            case 'headshots': progress = Math.min(stats.headshots, challenge.target); break;
+                            case 'points': progress = Math.min(stats.totalPoints, challenge.target); break;
+                            case 'knife': progress = Math.min(stats.knifeKills, challenge.target); break;
+                            case 'revives': progress = Math.min(stats.revives, challenge.target); break;
+                            case 'kills': progress = Math.min(stats.kills, challenge.target); break;
+                          }
+                          const isDone = progress >= challenge.target;
+                          return (
+                            <div key={challenge.id} className="flex flex-col gap-1 bg-black/40 p-3 rounded-sm border border-white/5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-white/80 text-xs uppercase font-black tracking-widest">{challenge.desc}</span>
+                                <span className={`text-sm font-black italic ${isDone ? 'text-emerald-500' : 'text-yellow-500'}`}>
+                                  {progress} / {challenge.target}
+                                </span>
+                              </div>
+                              <div className="h-1 bg-black rounded-full overflow-hidden">
+                                <div className={`h-full ${isDone ? 'bg-emerald-500' : 'bg-yellow-500'}`} style={{ width: `${(progress / challenge.target) * 100}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -4481,6 +4910,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
+                    {customGameConfig.gameMode !== 'multiplayer' && (
                     <button 
                       id="menu-item-0"
                       onClick={(e) => { e.stopPropagation(); setGodMode(!godMode); }} 
@@ -4488,6 +4918,7 @@ const App: React.FC = () => {
                     >
                       <Shield size={24} /> God Mode: {godMode ? 'ON' : 'OFF'}
                     </button>
+                    )}
 
                     {modMenuType === 'full' && (
                       <div className="flex gap-2">
@@ -4543,38 +4974,52 @@ const App: React.FC = () => {
                       id="menu-item-5"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setTeleportAllToMe(true);
+                        setTeleportTarget(null); // Explicitly clear any pending teleport
+                        setShowModMenu(false);
+                        if (status === GameStatus.PAUSED) setStatus(GameStatus.PLAYING);
+                      }} 
+                      className={`w-full py-4 bg-blue-900/40 text-blue-500 font-black text-lg rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-blue-900/50 flex items-center justify-center gap-2 ${selectedMenuIndex === 5 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                    >
+                      <Users size={20} /> TP All
+                    </button>
+
+                    <button 
+                      id="menu-item-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setDragonActive(true);
                         setDragonHealth(250000);
                         setShowModMenu(false);
                         if (status === GameStatus.PAUSED) setStatus(GameStatus.PLAYING);
                       }} 
-                      className={`w-full py-4 bg-red-900/40 text-red-500 font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-red-900/50 flex items-center justify-center gap-3 ${selectedMenuIndex === 5 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                      className={`w-full py-4 bg-red-900/40 text-red-500 font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-red-900/50 flex items-center justify-center gap-3 ${selectedMenuIndex === 6 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                     >
                       <Skull size={24} /> Start Boss Fight
                     </button>
 
                     {modMenuType === 'full' && (
                       <button 
-                        id="menu-item-6"
+                        id="menu-item-7"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDragonDefeated();
                           setShowModMenu(false);
                           if (status === GameStatus.PAUSED) setStatus(GameStatus.PLAYING);
                         }} 
-                        className={`w-full py-4 bg-orange-900/40 text-orange-500 font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-orange-900/50 flex items-center justify-center gap-3 ${selectedMenuIndex === 6 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                        className={`w-full py-4 bg-orange-900/40 text-orange-500 font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-orange-900/50 flex items-center justify-center gap-3 ${selectedMenuIndex === 7 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                       >
                         <Flame size={24} /> Kill Boss
                       </button>
                     )}
 
                     <button 
-                      id="menu-item-7"
+                      id="menu-item-8"
                       onClick={(e) => {
                         e.stopPropagation();
                         setStats(prev => ({ ...prev, hasBowie: true }));
                       }} 
-                      className={`w-full py-4 bg-blue-900/40 text-blue-500 font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-blue-900/50 flex items-center justify-center gap-3 ${selectedMenuIndex === 7 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                      className={`w-full py-4 bg-blue-900/40 text-blue-500 font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-blue-900/50 flex items-center justify-center gap-3 ${selectedMenuIndex === 8 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                     >
                       <Swords size={24} /> Give Bowie Knife
                     </button>
@@ -4584,16 +5029,16 @@ const App: React.FC = () => {
                         <h3 className="text-sm font-black text-white/40 uppercase tracking-widest mb-3 text-left">Level Manager</h3>
                         <div className="flex gap-2 mb-4">
                           <button 
-                            id="menu-item-8"
+                            id="menu-item-9"
                             onClick={(e) => { e.stopPropagation(); handleLevelDown(); }}
-                            className={`flex-1 py-3 bg-white/10 text-white font-black text-lg rounded-sm border border-white/20 flex items-center justify-center gap-2 active:scale-95 transition-all ${selectedMenuIndex === 8 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                            className={`flex-1 py-3 bg-white/10 text-white font-black text-lg rounded-sm border border-white/20 flex items-center justify-center gap-2 active:scale-95 transition-all ${selectedMenuIndex === 9 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                           >
                             <ChevronDown size={20} /> Level Down
                           </button>
                           <button 
-                            id="menu-item-9"
+                            id="menu-item-10"
                             onClick={(e) => { e.stopPropagation(); handleLevelUp(); }}
-                            className={`flex-1 py-3 bg-emerald-600/20 text-emerald-500 font-black text-lg rounded-sm border border-emerald-500/30 flex items-center justify-center gap-2 active:scale-95 transition-all ${selectedMenuIndex === 9 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                            className={`flex-1 py-3 bg-emerald-600/20 text-emerald-500 font-black text-lg rounded-sm border border-emerald-500/30 flex items-center justify-center gap-2 active:scale-95 transition-all ${selectedMenuIndex === 10 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                           >
                             <ChevronUp size={20} /> Level Up
                           </button>
@@ -4657,11 +5102,19 @@ const App: React.FC = () => {
                           id="menu-item-20"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
-                              const newP = { xp: 0, rankMastery: 0, stars: 0, achievements: [] };
-                              setProgression(newP);
-                              localStorage.setItem('ztown_progression', JSON.stringify(newP));
-                            }
+                            setConfirmModal({
+                              message: "Are you sure you want to reset ALL progress? This will reset your level, gun levels, achievements, and leaderboard. This cannot be undone!",
+                              onConfirm: () => {
+                                localStorage.removeItem('ztown_progression');
+                                localStorage.removeItem('ztown_leaderboard_v2');
+                                localStorage.removeItem('ztown_autosave');
+                                setProgression({ xp: 0, rankMastery: 0, stars: 0, achievements: [] });
+                                setLeaderboard([]);
+                                setHasAutosave(false);
+                                setShowModMenu(false);
+                                setStatus(GameStatus.START);
+                              }
+                            });
                           }}
                           className={`w-full py-3 bg-red-950/50 text-red-500 font-black text-sm rounded-sm border border-red-900/50 hover:bg-red-900/50 transition-all uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 ${selectedMenuIndex === 20 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                         >
@@ -5421,7 +5874,7 @@ const App: React.FC = () => {
             <div className="flex items-center justify-between flex-shrink-0">
               <button id="menu-item-0" onClick={() => setStatus(GameStatus.START)} className={`p-3 bg-white/5 rounded-full text-white/60 active:scale-90 transition-all border border-white/10 ${selectedMenuIndex === 0 ? 'ring-2 ring-white bg-white/20' : ''}`}><ChevronLeft size={24} /></button>
               <h2 className="text-3xl sm:text-5xl font-black text-white italic tracking-tighter uppercase flex items-center gap-2 sm:gap-4"><Trophy className="text-yellow-500 w-6 h-6 sm:w-10 sm:h-10" /> Hall of Fame</h2>
-              <button id="menu-item-1" onClick={() => { if(confirm('Clear leaderboard?')) { setLeaderboard([]); localStorage.removeItem('ztown_leaderboard_v2'); } }} className={`p-3 bg-red-900/20 rounded-full text-red-500/60 active:scale-90 transition-all border border-red-900/20 ${selectedMenuIndex === 1 ? 'ring-2 ring-red-500 bg-red-900/40' : ''}`} style={{ display: 'none' }}><Trash2 size={24} /></button>
+              <button id="menu-item-1" onClick={() => { setConfirmModal({ message: 'Clear leaderboard?', onConfirm: () => { setLeaderboard([]); localStorage.removeItem('ztown_leaderboard_v2'); } }); }} className={`p-3 bg-red-900/20 rounded-full text-red-500/60 active:scale-90 transition-all border border-red-900/20 ${selectedMenuIndex === 1 ? 'ring-2 ring-red-500 bg-red-900/40' : ''}`} style={{ display: 'none' }}><Trash2 size={24} /></button>
             </div>
 
             {/* Leaderboard Tabs */}
@@ -5516,9 +5969,10 @@ const App: React.FC = () => {
                     <div 
                       key={idx} 
                       id={`menu-item-${idx + 2 + MAPS.length}`} 
-                      className={`grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px] gap-4 p-4 items-center border-b border-white/5 transition-all ${
+                      className={`grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px] gap-4 p-4 items-center border-b border-white/5 transition-all cursor-pointer ${
                         selectedMenuIndex === idx + 2 + MAPS.length ? 'bg-white/10' : 'hover:bg-white/5'
                       }`}
+                      onClick={() => setShowPlayerProfile({ nickname: entry.nickname, level: entry.level || 1, totalKills: entry.kills, bossKills: entry.bossDefeated ? 1 : 0, mostPlayedMode: 'standard', mostUsedGuns: {}, mostUsedPerks: {}, killsPerZombieType: { normal: 0, runner: 0, tank: 0, inferno: 0, parasite: 0, crawler: 0, brute: 0 }, achievements: [], gameHistory: [entry], clanTag: '', xp: 0, totalRevives: 0, totalDowns: 0, totalHeadshots: entry.headshots, totalKnifeKills: entry.knifeKills, totalEquipmentKills: entry.equipmentKills, totalGems: entry.gems || 0, customization: { avatarVariant: 0, bodyColor: '#ffffff', clothesColor: '#333333', headAccessory: 'none' } })}
                     >
                       <span className={`text-xl font-black italic ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-white/20'}`}>#{idx + 1}</span>
                       <div className="flex flex-col min-w-0">
@@ -5766,6 +6220,20 @@ const App: React.FC = () => {
                       />
                     </div>
 
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-white/60">
+                        <span>Boss Health Scale</span>
+                        <span>{(hudSettings.bossHealthScale || 1).toFixed(2)}x</span>
+                      </div>
+                      <input 
+                        id="menu-item-15"
+                        type="range" min="0.5" max="3" step="0.1" 
+                        value={hudSettings.bossHealthScale || 1} 
+                        onChange={(e) => setHudSettings(prev => ({ ...prev, bossHealthScale: parseFloat(e.target.value) }))}
+                        className={`w-full accent-red-600 ${selectedMenuIndex === 15 ? 'ring-2 ring-white rounded-sm' : ''}`}
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-6">
                       {[
                         { key: 'statsPos', label: 'Stats (Top/Left)' },
@@ -5785,12 +6253,13 @@ const App: React.FC = () => {
                         { key: 'minimapPos', label: 'Minimap (Top/Left)' },
                         { key: 'gemPos', label: 'Gem Counter (Top/Center)' },
                         { key: 'slidePos', label: 'Slide (Bottom/Right)' },
+                        { key: 'bossHealthPos', label: 'Boss Health (Top/Center)' },
                       ].map(({ key, label }, idx) => (
                         <div key={key} className="space-y-2">
                           <span className="text-[10px] font-bold uppercase text-white/40 tracking-widest">{label}</span>
                           <div className="flex gap-2">
-                            <input id={`menu-item-${15 + idx * 2}`} type="number" value={(hudSettings as any)[key]?.x || 0} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], x: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 15 + idx * 2 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="X" />
-                            <input id={`menu-item-${15 + idx * 2 + 1}`} type="number" value={(hudSettings as any)[key]?.y || 0} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], y: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 15 + idx * 2 + 1 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="Y" />
+                            <input id={`menu-item-${16 + idx * 2}`} type="number" value={(hudSettings as any)[key]?.x || 0} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], x: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 16 + idx * 2 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="X" />
+                            <input id={`menu-item-${16 + idx * 2 + 1}`} type="number" value={(hudSettings as any)[key]?.y || 0} onChange={(e) => setHudSettings(prev => ({ ...prev, [key]: { ...(prev as any)[key], y: parseInt(e.target.value) || 0 } }))} className={`w-full bg-white/5 border border-white/10 rounded p-2 text-white text-sm ${selectedMenuIndex === 16 + idx * 2 + 1 ? 'ring-2 ring-white bg-white/20' : ''}`} placeholder="Y" />
                           </div>
                         </div>
                       ))}
@@ -5799,23 +6268,36 @@ const App: React.FC = () => {
                     <div className="flex items-center justify-between bg-white/5 p-3 rounded-sm border border-white/10">
                       <span className="text-white font-bold uppercase text-xs tracking-widest">Show Minimap</span>
                       <button 
-                        id="menu-item-49"
+                        id="menu-item-52"
                         onClick={() => setHudSettings(prev => ({ ...prev, minimapVisible: !(prev.minimapVisible ?? true) }))}
                         className={`px-4 py-1 rounded-sm border-2 font-black italic uppercase transition-all text-xs ${
                           (hudSettings.minimapVisible ?? true) ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-red-600 border-red-400 text-white/50'
-                        } ${selectedMenuIndex === 49 ? 'ring-2 ring-white' : ''}`}
+                        } ${selectedMenuIndex === 52 ? 'ring-2 ring-white' : ''}`}
                       >
                         {(hudSettings.minimapVisible ?? true) ? 'ON' : 'OFF'}
                       </button>
                     </div>
 
-                    <button 
-                      id="menu-item-50"
-                      onClick={() => setHudSettings(INITIAL_HUD_SETTINGS)}
-                      className={`w-full py-2 bg-white/5 border border-white/10 text-white/60 text-xs font-bold uppercase tracking-widest rounded hover:bg-white/10 transition-all ${selectedMenuIndex === 50 ? 'ring-2 ring-white bg-white/20' : ''}`}
-                    >
-                      Reset to Default
-                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button 
+                        id="menu-item-53"
+                        onClick={() => setHudSettings(INITIAL_HUD_SETTINGS)}
+                        className={`w-full py-2 bg-white/5 border border-white/10 text-white/60 text-xs font-bold uppercase tracking-widest rounded hover:bg-white/10 transition-all ${selectedMenuIndex === 53 ? 'ring-2 ring-white bg-white/20' : ''}`}
+                      >
+                        Reset
+                      </button>
+                      <button 
+                        id="menu-item-54"
+                        onClick={() => {
+                          localStorage.setItem('ztown_hud_settings_default', JSON.stringify(hudSettings));
+                          setLastPerkGained("HUD SETTINGS SAVED AS DEFAULT!");
+                          setTimeout(() => setLastPerkGained(null), 3000);
+                        }}
+                        className={`w-full py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-widest rounded hover:bg-blue-600/40 transition-all ${selectedMenuIndex === 54 ? 'ring-2 ring-white bg-blue-600/40' : ''}`}
+                      >
+                        Save Default
+                      </button>
+                    </div>
                   </div>
                </div>
 
@@ -5987,9 +6469,29 @@ const App: React.FC = () => {
 
                <div className="h-[1px] bg-white/10 w-full" />
 
-            <button id="menu-item-51" onClick={() => status === GameStatus.PAUSED ? setShowPauseSettings(false) : setStatus(GameStatus.START)} className={`w-full py-5 bg-red-800 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-red-950 ${selectedMenuIndex === 51 ? 'ring-4 ring-white scale-105' : ''}`}>
-               Save and Return
-            </button>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                id="menu-item-55" 
+                onClick={() => status === GameStatus.PAUSED ? setShowPauseSettings(false) : setStatus(GameStatus.START)} 
+                className={`w-full py-5 bg-red-800 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-red-950 ${selectedMenuIndex === 55 ? 'ring-4 ring-white scale-105' : ''}`}
+              >
+                Save & Return
+              </button>
+              <button 
+                id="menu-item-56" 
+                onClick={() => {
+                  localStorage.setItem('ztown_game_settings', JSON.stringify(gameSettings));
+                  localStorage.setItem('ztown_keybind_settings', JSON.stringify(keybindSettings));
+                  localStorage.setItem('ztown_gamepad_settings', JSON.stringify(gamepadSettings));
+                  localStorage.setItem('ztown_hud_settings', JSON.stringify(hudSettings));
+                  setLastPerkGained("ALL SETTINGS SAVED!");
+                  setTimeout(() => setLastPerkGained(null), 3000);
+                }}
+                className={`w-full py-5 bg-blue-800 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-blue-950 ${selectedMenuIndex === 56 ? 'ring-4 ring-white scale-105' : ''}`}
+              >
+                Save All
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -6052,7 +6554,7 @@ const App: React.FC = () => {
 
             <div className="bg-black/50 border border-white/10 p-4 rounded-sm flex flex-col items-center gap-2">
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 cursor-pointer hover:opacity-80" onClick={() => setShowPlayerProfile(true)}>
                   <span className="text-white font-black italic text-xl">Level {getLevelData(progression.xp).level}</span>
                   {Array.from({ length: progression.stars || 0 }).map((_, i) => (
                     <Star key={i} className="text-yellow-400 w-4 h-4 fill-yellow-400" />
@@ -6078,27 +6580,33 @@ const App: React.FC = () => {
                 <button 
                   onClick={() => {
                     if (progression.rankMastery < 10) {
-                      if (confirm('Are you sure you want to enter Rank Mastery? This will reset your level to 1.')) {
-                        setProgression(p => {
-                          const newP = { ...p, xp: 0, rankMastery: p.rankMastery + 1 };
-                          if (newP.rankMastery === 10) unlockAchievement('rank_mastery_10');
-                          localStorage.setItem('ztown_progression', JSON.stringify(newP));
-                          setRankMasteryNotif({ rankMastery: newP.rankMastery, show: true });
-                          soundService.playPowerUpPickup();
-                          setTimeout(() => setRankMasteryNotif(prev => ({ ...prev, show: false })), 6000);
-                          return newP;
-                        });
-                      }
+                      setConfirmModal({
+                        message: 'Are you sure you want to enter Rank Mastery? This will reset your level to 1.',
+                        onConfirm: () => {
+                          setProgression(p => {
+                            const newP = { ...p, xp: 0, rankMastery: p.rankMastery + 1 };
+                            if (newP.rankMastery === 10) unlockAchievement('rank_mastery_10');
+                            localStorage.setItem('ztown_progression', JSON.stringify(newP));
+                            setRankMasteryNotif({ rankMastery: newP.rankMastery, show: true });
+                            soundService.playPowerUpPickup();
+                            setTimeout(() => setRankMasteryNotif(prev => ({ ...prev, show: false })), 6000);
+                            return newP;
+                          });
+                        }
+                      });
                     } else {
-                      if (confirm('Are you sure you want to reset to Level 1? You will gain a Rank Mastery Star!')) {
-                        setProgression(p => {
-                          const newP = { ...p, xp: 0, stars: (p.stars || 0) + 1 };
-                          if (newP.stars === 1) unlockAchievement('star_collector');
-                          localStorage.setItem('ztown_progression', JSON.stringify(newP));
-                          soundService.playPowerUpPickup();
-                          return newP;
-                        });
-                      }
+                      setConfirmModal({
+                        message: 'Are you sure you want to reset to Level 1? You will gain a Rank Mastery Star!',
+                        onConfirm: () => {
+                          setProgression(p => {
+                            const newP = { ...p, xp: 0, stars: (p.stars || 0) + 1 };
+                            if (newP.stars === 1) unlockAchievement('star_collector');
+                            localStorage.setItem('ztown_progression', JSON.stringify(newP));
+                            soundService.playPowerUpPickup();
+                            return newP;
+                          });
+                        }
+                      });
                     }
                   }}
                   className="mt-2 w-full py-2 bg-yellow-600/20 text-yellow-500 border border-yellow-600/50 font-black uppercase italic tracking-widest rounded-sm hover:bg-yellow-600/40 transition-all"
@@ -6194,7 +6702,8 @@ const App: React.FC = () => {
                         roomId: myRoomId,
                         name: nickname,
                         mapId: stats.activeMapId,
-                        isCustom: false
+                        isCustom: false,
+                        hudSettings: hudSettings
                       });
                     } else {
                       startGame(false);
@@ -6250,6 +6759,14 @@ const App: React.FC = () => {
                 >
                   <Wrench size={24} className="text-purple-400" /> Custom Game
                 </button>
+                {hasAutosave && (
+                  <button 
+                    onClick={loadAutosave} 
+                    className={`col-span-2 py-5 bg-emerald-900/50 border border-emerald-500/30 text-white font-black text-2xl rounded-sm active:scale-95 flex items-center justify-center gap-3 uppercase italic transition-all hover:bg-emerald-800/50`}
+                  >
+                    <Activity size={24} className="text-emerald-400" /> Resume Autosave
+                  </button>
+                )}
               </div>
             </div>
 
@@ -6288,8 +6805,6 @@ const App: React.FC = () => {
                 { id: 'lmg', label: 'LMGs' },
                 { id: 'sniper', label: 'Snipers' },
                 { id: 'wonder', label: 'Wonder Weapons' },
-                { id: 'melee', label: 'Melee' },
-                { id: 'special', label: 'Special' },
               ].map((cat, i) => (
                 <button
                   key={cat.id}
@@ -6350,7 +6865,7 @@ const App: React.FC = () => {
                                     <div className="flex justify-between items-center">
                                         <h3 className="text-xl font-black text-white uppercase italic tracking-tight truncate">{weaponName}</h3>
                                         <div className="flex flex-col items-end">
-                                            <span className="text-[10px] font-black text-orange-500 uppercase italic">LVL {getWeaponLevel(progression.weaponXp?.[weaponName] || 0)}</span>
+                                            <span className="text-[10px] font-black text-orange-500 uppercase italic">LVL {getWeaponLevelFromXp(progression.weaponXp?.[weaponName] || 0)}</span>
                                             <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">MAX 30</span>
                                         </div>
                                     </div>
@@ -6365,7 +6880,7 @@ const App: React.FC = () => {
                                         </div>
                                         <div className="flex justify-between text-[7px] font-bold text-white/20 uppercase tracking-widest">
                                             <span>XP: {progression.weaponXp?.[weaponName] || 0}</span>
-                                            <span>{getWeaponLevel(progression.weaponXp?.[weaponName] || 0) >= 30 ? 'MAXED' : `${(progression.weaponXp?.[weaponName] || 0) % 500} / 500`}</span>
+                                            <span>{getWeaponLevelFromXp(progression.weaponXp?.[weaponName] || 0) >= 30 ? 'MAXED' : `${(progression.weaponXp?.[weaponName] || 0) % 500} / 500`}</span>
                                         </div>
                                     </div>
 
@@ -6428,7 +6943,7 @@ const App: React.FC = () => {
                             <div className="flex flex-wrap gap-2">
                                 {validAttachments.map((att) => {
                                     const isEquipped = attachments.includes(att);
-                                    const weaponLevel = getWeaponLevel(progression.weaponXp?.[weaponName] || 0);
+                                    const weaponLevel = getWeaponLevelFromXp(progression.weaponXp?.[weaponName] || 0);
                                     const isUnlocked = isAttachmentUnlocked(weaponLevel, att);
                                     
                                     return (
@@ -6604,12 +7119,21 @@ const App: React.FC = () => {
                 <h3 className="text-xl font-black text-white uppercase italic">Game Settings</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="col-span-full flex items-center justify-between bg-white/5 p-4 rounded-sm border border-white/10">
+                    <span className="text-white font-black italic uppercase">Online Mode</span>
+                    <button 
+                      onClick={() => setIsOnline(!isOnline)}
+                      className={`w-16 h-8 rounded-full transition-colors relative ${isOnline ? 'bg-emerald-500' : 'bg-white/20'}`}
+                    >
+                      <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-transform ${isOnline ? 'left-9' : 'left-1'}`} />
+                    </button>
+                  </div>
                   <div className="col-span-full">
                     <label className="block text-white/60 font-bold uppercase text-xs mb-2">Game Mode</label>
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       <button
-                        onClick={() => setCustomGameConfig(prev => ({ ...prev, gameMode: 'standard' }))}
-                        className={`flex-1 p-4 rounded-sm font-black italic border-2 transition-all flex flex-col items-center gap-2 ${
+                        onClick={() => setCustomGameConfig(prev => ({ ...prev, gameMode: 'standard', bots: Math.min(prev.bots, 4) }))}
+                        className={`p-4 rounded-sm font-black italic border-2 transition-all flex flex-col items-center gap-2 ${
                           customGameConfig.gameMode === 'standard'
                             ? 'bg-purple-900/40 border-purple-500 text-white'
                             : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
@@ -6619,18 +7143,78 @@ const App: React.FC = () => {
                         <span className="text-[10px] font-normal opacity-60">Classic Zombies Experience</span>
                       </button>
                       <button
-                        onClick={() => setCustomGameConfig(prev => ({ ...prev, gameMode: 'dead_ops' }))}
-                        className={`flex-1 p-4 rounded-sm font-black italic border-2 transition-all flex flex-col items-center gap-2 ${
+                        onClick={() => setCustomGameConfig(prev => ({ ...prev, gameMode: 'story', bots: Math.min(prev.bots, 4) }))}
+                        className={`p-4 rounded-sm font-black italic border-2 transition-all flex flex-col items-center gap-2 ${
+                          customGameConfig.gameMode === 'story'
+                            ? 'bg-yellow-900/40 border-yellow-500 text-white'
+                            : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="text-lg uppercase">Story Mode</span>
+                        <span className="text-[10px] font-normal opacity-60">Guided Quests & Boss Fight</span>
+                      </button>
+                      <button
+                        onClick={() => setCustomGameConfig(prev => ({ ...prev, gameMode: 'dead_ops', bots: Math.min(prev.bots, 4) }))}
+                        className={`p-4 rounded-sm font-black italic border-2 transition-all flex flex-col items-center gap-2 ${
                           customGameConfig.gameMode === 'dead_ops'
                             ? 'bg-emerald-900/40 border-emerald-500 text-white'
                             : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
                         }`}
                       >
-                        <span className="text-lg uppercase">Z-Town Arcade Top View Mode</span>
+                        <span className="text-lg uppercase">Arcade Mode</span>
                         <span className="text-[10px] font-normal opacity-60">Top-Down Twin Stick Shooter</span>
+                      </button>
+                      <button
+                        onClick={() => setCustomGameConfig(prev => ({ ...prev, gameMode: 'multiplayer' }))}
+                        className={`p-4 rounded-sm font-black italic border-2 transition-all flex flex-col items-center gap-2 ${
+                          customGameConfig.gameMode === 'multiplayer'
+                            ? 'bg-red-900/40 border-red-500 text-white'
+                            : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="text-lg uppercase">Multiplayer</span>
+                        <span className="text-[10px] font-normal opacity-60">PvP Combat</span>
                       </button>
                     </div>
                   </div>
+
+                  {customGameConfig.gameMode === 'story' && (
+                    <div className="col-span-full">
+                      <label className="block text-white/60 font-bold uppercase text-xs mb-2">Difficulty</label>
+                      <div className="grid grid-cols-3 gap-4">
+                        <button
+                          onClick={() => setCustomGameConfig(prev => ({ ...prev, difficulty: 'easy' }))}
+                          className={`p-3 rounded-sm font-black italic border-2 transition-all ${
+                            customGameConfig.difficulty === 'easy'
+                              ? 'bg-green-900/40 border-green-500 text-white'
+                              : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
+                          }`}
+                        >
+                          EASY
+                        </button>
+                        <button
+                          onClick={() => setCustomGameConfig(prev => ({ ...prev, difficulty: 'normal' }))}
+                          className={`p-3 rounded-sm font-black italic border-2 transition-all ${
+                            customGameConfig.difficulty === 'normal'
+                              ? 'bg-yellow-900/40 border-yellow-500 text-white'
+                              : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
+                          }`}
+                        >
+                          NORMAL
+                        </button>
+                        <button
+                          onClick={() => setCustomGameConfig(prev => ({ ...prev, difficulty: 'hard' }))}
+                          className={`p-3 rounded-sm font-black italic border-2 transition-all ${
+                            customGameConfig.difficulty === 'hard'
+                              ? 'bg-red-900/40 border-red-500 text-white'
+                              : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
+                          }`}
+                        >
+                          HARD
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-white/60 font-bold uppercase text-xs mb-2">Starting Points</label>
@@ -6645,6 +7229,7 @@ const App: React.FC = () => {
                     />
                   </div>
 
+                  {customGameConfig.gameMode !== 'multiplayer' && (
                   <div>
                     <label className="block text-white/60 font-bold uppercase text-xs mb-2">Starting Round</label>
                     <input 
@@ -6657,27 +7242,216 @@ const App: React.FC = () => {
                       max="100"
                     />
                   </div>
+                  )}
 
                   <div>
                     <label className="block text-white/60 font-bold uppercase text-xs mb-2">Bots</label>
-                    <div className="flex gap-2">
-                       {[0, 1, 2, 3, 4].map((count, i) => (
+                    <div className="flex flex-wrap gap-2">
+                       {[...Array((customGameConfig.gameMode === 'multiplayer' ? 8 : 4) + 1)].map((_, i) => (
                           <button
-                             key={count}
+                             key={i}
                              id={`menu-item-${5 + i}`}
-                             onClick={() => setCustomGameConfig(prev => ({ ...prev, bots: count }))}
-                             className={`flex-1 p-3 rounded-sm font-black italic border transition-all ${
-                                customGameConfig.bots === count
+                             onClick={() => setCustomGameConfig(prev => ({ ...prev, bots: i }))}
+                             className={`w-10 h-10 p-0 flex items-center justify-center rounded-sm font-black italic border transition-all ${
+                                customGameConfig.bots === i
                                    ? 'bg-purple-500 border-purple-400 text-white'
                                    : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
                              } ${selectedMenuIndex === 5 + i ? 'ring-2 ring-white' : ''}`}
                           >
-                             {count}
+                             {i}
                           </button>
                        ))}
                     </div>
                   </div>
 
+                  {customGameConfig.gameMode === 'multiplayer' && (
+                    <>
+                    <div>
+                      <label className="block text-white/60 font-bold uppercase text-xs mb-2">Game Type</label>
+                      <button
+                        onClick={() => setCustomGameConfig(prev => ({ 
+                            ...prev, 
+                            multiplayerMode: prev.multiplayerMode === 'ffa' ? 'tdm' : 'ffa',
+                            teamMode: prev.multiplayerMode === 'ffa' // If switching to TDM, enable teamMode
+                        }))}
+                        className={`w-full p-3 rounded-sm font-black italic uppercase transition-colors border ${
+                          customGameConfig.multiplayerMode === 'tdm'
+                            ? 'bg-purple-500 border-purple-400 text-white' 
+                            : 'bg-black/50 border-white/10 text-white/40 hover:bg-white/5'
+                        }`}
+                      >
+                        {customGameConfig.multiplayerMode === 'tdm' ? 'Team Deathmatch' : 'Free For All'}
+                      </button>
+                    </div>
+                    {customGameConfig.gameMode === 'multiplayer' && customGameConfig.multiplayerMode === 'tdm' && (
+                      <>
+                        <div>
+                          <label className="block text-white/60 font-bold uppercase text-xs mb-2">Your Team</label>
+                          <select 
+                            value={customGameConfig.playerTeam}
+                            onChange={(e) => setCustomGameConfig(prev => ({ ...prev, playerTeam: parseInt(e.target.value) }))}
+                            className="w-full bg-black/50 border border-white/10 text-white p-3 rounded-sm font-black italic outline-none focus:border-purple-500 transition-colors"
+                          >
+                            <option value={1}>Team 1</option>
+                            <option value={2}>Team 2</option>
+                          </select>
+                        </div>
+                        {customGameConfig.bots > 0 && (
+                          <div className="col-span-full">
+                            <label className="block text-white/60 font-bold uppercase text-xs mb-2">Bot Teams</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {Array.from({ length: customGameConfig.bots }).map((_, i) => (
+                                <select
+                                  key={i}
+                                  value={customGameConfig.botTeams[i]}
+                                  onChange={(e) => {
+                                    const newBotTeams = [...customGameConfig.botTeams];
+                                    newBotTeams[i] = parseInt(e.target.value);
+                                    setCustomGameConfig(prev => ({ ...prev, botTeams: newBotTeams }));
+                                  }}
+                                  className="bg-black/50 border border-white/10 text-white p-2 rounded-sm font-bold text-xs outline-none focus:border-purple-500"
+                                >
+                                  <option value={1}>Bot {i+1}: Team 1</option>
+                                  <option value={2}>Bot {i+1}: Team 2</option>
+                                </select>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div>
+                        <label className="block text-white/60 font-bold uppercase text-xs mb-2">Score Limit (Kills)</label>
+                        <input 
+                          type="number" 
+                          value={customGameConfig.scoreLimit}
+                          onChange={(e) => setCustomGameConfig(prev => ({ ...prev, scoreLimit: parseInt(e.target.value) || 35 }))}
+                          className="w-full bg-black/50 border border-white/10 text-white p-3 rounded-sm font-black italic outline-none focus:border-purple-500 transition-colors"
+                          min="1"
+                          max="1000"
+                        />
+                    </div>
+                    <div className="col-span-full border-t border-white/10 pt-4 mt-2">
+                        <label className="block text-white/60 font-bold uppercase text-xs mb-4">Loadout</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-white/40 font-bold uppercase text-[10px] mb-1">Primary Weapon</label>
+                                <select 
+                                    value={customGameConfig.loadout.primary}
+                                    onChange={(e) => setCustomGameConfig(prev => ({ ...prev, loadout: { ...prev.loadout, primary: e.target.value } }))}
+                                    className="w-full bg-black/50 border border-white/10 text-white p-2 rounded-sm font-bold text-sm outline-none focus:border-purple-500 mb-2"
+                                >
+                                    {SORTED_WEAPONS.map(([name]) => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={customGameConfig.loadout.primaryCamo}
+                                        onChange={(e) => setCustomGameConfig(prev => ({ ...prev, loadout: { ...prev.loadout, primaryCamo: e.target.value } }))}
+                                        className="flex-1 bg-black/50 border border-white/10 text-white/60 p-1 rounded-sm text-[10px] outline-none focus:border-purple-500"
+                                    >
+                                        <option value="none">No Camo</option>
+                                        <option value="gilded">Gilded</option>
+                                        <option value="crystal">Crystal</option>
+                                        <option value="void_matter">Void Matter</option>
+                                        <option value="sakura">Sakura</option>
+                                        <option value="wyvern">Wyvern</option>
+                                        <option value="frost">Frost</option>
+                                        <option value="lava">Lava</option>
+                                        <option value="galaxy">Galaxy</option>
+                                        <option value="crimson_hex">Crimson Hex</option>
+                                        <option value="abyss">Abyss</option>
+                                        <option value="stellar">Stellar</option>
+                                        <option value="prism">Prism</option>
+                                    </select>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['red_dot', 'acog', 'foregrip', 'extended_mag', 'laser_sight', 'suppressor'].map(att => (
+                                            <label key={att} className="flex items-center gap-1 text-[10px] text-white/60">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={customGameConfig.loadout.primaryAttachments.includes(att as WeaponAttachment)}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        setCustomGameConfig(prev => ({ 
+                                                            ...prev, 
+                                                            loadout: { 
+                                                                ...prev.loadout, 
+                                                                primaryAttachments: checked 
+                                                                    ? [...prev.loadout.primaryAttachments, att as WeaponAttachment]
+                                                                    : prev.loadout.primaryAttachments.filter(a => a !== att)
+                                                            } 
+                                                        }));
+                                                    }}
+                                                />
+                                                {att.replace('_', ' ')}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-white/40 font-bold uppercase text-[10px] mb-1">Secondary Weapon</label>
+                                <select 
+                                    value={customGameConfig.loadout.secondary}
+                                    onChange={(e) => setCustomGameConfig(prev => ({ ...prev, loadout: { ...prev.loadout, secondary: e.target.value } }))}
+                                    className="w-full bg-black/50 border border-white/10 text-white p-2 rounded-sm font-bold text-sm outline-none focus:border-purple-500 mb-2"
+                                >
+                                    {SORTED_WEAPONS.map(([name]) => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={customGameConfig.loadout.secondaryCamo}
+                                        onChange={(e) => setCustomGameConfig(prev => ({ ...prev, loadout: { ...prev.loadout, secondaryCamo: e.target.value } }))}
+                                        className="flex-1 bg-black/50 border border-white/10 text-white/60 p-1 rounded-sm text-[10px] outline-none focus:border-purple-500"
+                                    >
+                                        <option value="none">No Camo</option>
+                                        <option value="gilded">Gilded</option>
+                                        <option value="crystal">Crystal</option>
+                                        <option value="void_matter">Void Matter</option>
+                                        <option value="sakura">Sakura</option>
+                                        <option value="wyvern">Wyvern</option>
+                                        <option value="frost">Frost</option>
+                                        <option value="lava">Lava</option>
+                                        <option value="galaxy">Galaxy</option>
+                                        <option value="crimson_hex">Crimson Hex</option>
+                                        <option value="abyss">Abyss</option>
+                                        <option value="stellar">Stellar</option>
+                                        <option value="prism">Prism</option>
+                                    </select>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['red_dot', 'acog', 'foregrip', 'extended_mag', 'laser_sight', 'suppressor'].map(att => (
+                                            <label key={att} className="flex items-center gap-1 text-[10px] text-white/60">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={customGameConfig.loadout.secondaryAttachments.includes(att as WeaponAttachment)}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        setCustomGameConfig(prev => ({ 
+                                                            ...prev, 
+                                                            loadout: { 
+                                                                ...prev.loadout, 
+                                                                secondaryAttachments: checked 
+                                                                    ? [...prev.loadout.secondaryAttachments, att as WeaponAttachment]
+                                                                    : prev.loadout.secondaryAttachments.filter(a => a !== att)
+                                                            } 
+                                                        }));
+                                                    }}
+                                                />
+                                                {att.replace('_', ' ')}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </>
+                  )}
+
+                  {customGameConfig.gameMode === 'standard' && (
                   <div>
                     <label className="block text-white/60 font-bold uppercase text-xs mb-2">God Mode</label>
                     <button
@@ -6692,6 +7466,7 @@ const App: React.FC = () => {
                       {customGameConfig.godMode ? 'Enabled' : 'Disabled'}
                     </button>
                   </div>
+                  )}
 
                   <div>
                     <label className="block text-white/60 font-bold uppercase text-xs mb-2">Player Name</label>
@@ -6729,6 +7504,7 @@ const App: React.FC = () => {
                   )}
                 </div>
 
+                {customGameConfig.gameMode !== 'multiplayer' && (
                 <div>
                   <label className="block text-white/60 font-bold uppercase text-xs mb-2">Starting Weapon</label>
                   {customGameConfig.gameMode === 'dead_ops' ? (
@@ -6778,6 +7554,7 @@ const App: React.FC = () => {
                   </div>
                   )}
                 </div>
+                )}
               </div>
 
               <button 
@@ -7551,6 +8328,79 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Chat UI */}
+      {(status === GameStatus.PLAYING || status === GameStatus.PAUSED) && (
+        <div className="absolute bottom-4 left-4 z-[100] w-80 flex flex-col gap-2 pointer-events-none">
+          <div className="flex flex-col gap-1 overflow-y-auto max-h-48 pointer-events-auto" style={{ textShadow: '1px 1px 2px black' }}>
+            {chatMessages.map(msg => (
+              <div key={msg.id} className="text-sm">
+                <span className="font-bold text-blue-400">{msg.sender}: </span>
+                <span className="text-white">{msg.text}</span>
+              </div>
+            ))}
+          </div>
+          {isChatOpen && (
+            <div className="pointer-events-auto bg-black/50 p-2 rounded-sm border border-white/20 backdrop-blur-sm">
+              <input
+                ref={chatInputRef}
+                type="text"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                placeholder="Type a message... (Enter to send, Esc to cancel)"
+                className="w-full bg-transparent text-white outline-none text-sm placeholder:text-white/40"
+                maxLength={100}
+              />
+            </div>
+          )}
+          {!isChatOpen && (
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <div className="text-[10px] text-white/40 uppercase font-bold tracking-widest hidden sm:block">
+                Press 'T' to chat
+              </div>
+              <button 
+                className="bg-black/50 p-2 rounded-sm border border-white/20 backdrop-blur-sm sm:hidden text-white flex items-center gap-2"
+                onClick={() => {
+                  setIsChatOpen(true);
+                  setTimeout(() => chatInputRef.current?.focus(), 100);
+                }}
+              >
+                <MessageSquare size={16} /> <span className="text-xs font-bold uppercase">Chat</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {confirmModal && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-white/20 p-6 rounded-sm max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
+            <div className="flex items-center gap-4 mb-4 text-red-500">
+              <AlertCircle size={32} />
+              <h3 className="text-xl font-black uppercase italic tracking-widest">Confirm Action</h3>
+            </div>
+            <p className="text-white/80 mb-8 font-medium">{confirmModal.message}</p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 py-3 bg-white/10 text-white font-black uppercase tracking-widest rounded-sm hover:bg-white/20 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(null);
+                }}
+                className="flex-1 py-3 bg-red-600 text-white font-black uppercase tracking-widest rounded-sm hover:bg-red-500 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

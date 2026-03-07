@@ -14,7 +14,10 @@ export enum GameStatus {
   LOADOUT = 'LOADOUT'
 }
 
-export type GameMode = 'standard' | 'dead_ops';
+export type GameMode = 'standard' | 'dead_ops' | 'multiplayer' | 'story' | 'multiplayer_ffa' | 'multiplayer_tdm';
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
+export type MultiplayerMode = 'ffa' | 'tdm';
 
 export type PowerUpType = 'MAX_AMMO' | 'INSTA_KILL' | 'DOUBLE_POINTS' | 'NUKE' | 'DEATH_MACHINE' | 'FIRE_SALE' | 'ZOMBIE_BLOOD' | 'SKIP_ROUND' | 'GEM' | 'GRENADE' | 'FLASHBANG' | 'KING_ROBBO' | 'MONKEY_BOMB';
 
@@ -85,6 +88,8 @@ export interface PlayerStats {
   revives: number;
   isReviving: boolean;
   variant: number;
+  team?: number;
+  multiplayerMode?: MultiplayerMode;
 }
 
 export type ZombieType = 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute';
@@ -119,6 +124,8 @@ export interface HUDSettings {
   minimapScale?: number;
   gemPos?: { x: number; y: number };
   slidePos?: { x: number; y: number };
+  bossHealthPos?: { x: number; y: number };
+  bossHealthScale?: number;
 }
 
 export interface GamepadSettings {
@@ -214,6 +221,8 @@ export interface MapConfig {
   objects: MapObject[];
   interactables: InteractableConfig[];
   spawnPoints: [number, number, number][];
+  side1SpawnPoints?: [number, number, number][];
+  side2SpawnPoints?: [number, number, number][];
   craftingTablePos: [number, number, number];
 }
 
@@ -231,6 +240,7 @@ export interface ZombieData {
   turnDirection?: number;
   turnTimer?: number;
   timeNotClose?: number;
+  isAlly?: boolean;
 }
 
 export interface Achievement {
@@ -263,6 +273,34 @@ export interface PlayerScore {
   rankMastery?: number;
   variant?: number;
   isReviving?: boolean;
+  team?: number;
+}
+
+export interface PlayerProfile {
+  nickname: string;
+  clanTag: string; // Up to 5 characters
+  level: number;
+  xp: number;
+  totalKills: number;
+  totalRevives: number;
+  totalDowns: number;
+  totalHeadshots: number;
+  totalKnifeKills: number;
+  totalEquipmentKills: number;
+  totalGems: number;
+  mostPlayedMode: GameMode;
+  mostUsedGuns: Record<string, number>; // Gun name -> kill count
+  mostUsedPerks: Record<string, number>; // Perk name -> use count
+  killsPerZombieType: Record<ZombieType, number>;
+  bossKills: number;
+  achievements: string[]; // IDs
+  gameHistory: ScoreEntry[];
+  customization: {
+    avatarVariant: number;
+    bodyColor?: string;
+    clothesColor?: string;
+    headAccessory?: string;
+  };
 }
 
 export interface Progression {
@@ -274,4 +312,32 @@ export interface Progression {
   weaponXp?: Record<string, number>;
   totalKills?: number;
   totalRevives?: number;
+  profile?: PlayerProfile;
 }
+
+export const DEFAULT_PROFILE: PlayerProfile = {
+  nickname: 'Player',
+  clanTag: '',
+  level: 1,
+  xp: 0,
+  totalKills: 0,
+  totalRevives: 0,
+  totalDowns: 0,
+  totalHeadshots: 0,
+  totalKnifeKills: 0,
+  totalEquipmentKills: 0,
+  totalGems: 0,
+  mostPlayedMode: 'standard',
+  mostUsedGuns: {},
+  mostUsedPerks: {},
+  killsPerZombieType: { normal: 0, runner: 0, tank: 0, inferno: 0, parasite: 0, crawler: 0, brute: 0 },
+  bossKills: 0,
+  achievements: [],
+  gameHistory: [],
+  customization: {
+    avatarVariant: 0,
+    bodyColor: '#ffffff',
+    clothesColor: '#333333',
+    headAccessory: 'none',
+  },
+};

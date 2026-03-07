@@ -35,6 +35,7 @@ async function startServer() {
     status: 'waiting' | 'playing';
     mapId: string;
     isCustom: boolean;
+    hudSettings?: any;
   }> = {};
 
   const leaderboards = {
@@ -55,13 +56,15 @@ async function startServer() {
           players: [],
           status: 'waiting',
           mapId: data.mapId || 'town',
-          isCustom: !!data.isCustom
+          isCustom: !!data.isCustom,
+          hudSettings: data.hudSettings
         };
       } else {
         rooms[roomId].host = socket.id;
         rooms[roomId].mapId = data.mapId || 'town';
         rooms[roomId].status = 'waiting';
         rooms[roomId].isCustom = !!data.isCustom;
+        if (data.hudSettings) rooms[roomId].hudSettings = data.hudSettings;
       }
       
       if (!rooms[roomId].players.find((p: any) => p.id === socket.id)) {
@@ -123,10 +126,24 @@ async function startServer() {
       socket.to(data.roomId).emit("game_event", data);
     });
 
+    socket.on("chat_message", (data) => {
+      // data: { roomId, message }
+      socket.to(data.roomId).emit("chat_message", data.message);
+    });
+
     socket.on("admin_teleport", (data) => {
       // data: { targetId, position }
       // Send force_teleport to the specific target
       io.to(data.targetId).emit("force_teleport", data.position);
+    });
+
+    socket.on("sync_hud", (data) => {
+      // data: { roomId, settings }
+      const room = rooms[data.roomId];
+      if (room && room.host === socket.id) {
+        room.hudSettings = data.settings;
+        socket.to(data.roomId).emit("hud_settings_updated", data.settings);
+      }
     });
 
     socket.on("leave_room", (roomId) => {

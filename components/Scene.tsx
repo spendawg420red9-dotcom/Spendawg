@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Sky, Stars, Plane, Box, Sphere, Cylinder, Grid, Float, useTexture, Sparkles, Text, Torus, Html } from '@react-three/drei';
 import { User } from 'lucide-react';
 import * as THREE from 'three';
-import { GameStatus, PowerUpType, MapConfig, WeaponCamo, PlayerScore, WeaponAttachment, Progression, ZombieType, GameSettings, HUDSettings, ZombieData } from '../types';
+import { GameStatus, PowerUpType, MapConfig, WeaponCamo, PlayerScore, WeaponAttachment, Progression, ZombieType, GameSettings, HUDSettings, ZombieData, MultiplayerMode } from '../types';
 import { soundService } from '../services/soundService';
 
 interface SceneProps {
@@ -12,7 +12,7 @@ interface SceneProps {
   mapConfig: MapConfig;
   botCount?: number;
   otherPlayers?: PlayerScore[];
-  onGameOver: () => void;
+  onGameOver: (isWin?: boolean) => void;
   moveInput: React.RefObject<{ x: number; y: number }>;
   lookInput: React.RefObject<{ x: number; y: number }>;
   keyboardLookInput: React.RefObject<{ x: number; y: number }>;
@@ -65,6 +65,9 @@ interface SceneProps {
     downedTimer: number;
     zombiesRemaining: number;
     hp: number;
+    team?: number;
+    kills: number;
+    multiplayerMode?: MultiplayerMode;
   };
   heartPositions: THREE.Vector3[];
   collectedHearts: boolean[];
@@ -76,6 +79,8 @@ interface SceneProps {
   setKillAllZombies: (val: boolean) => void;
   teleportZombiesToMe: boolean;
   setTeleportZombiesToMe: (val: boolean) => void;
+  teleportAllToMe: boolean;
+  setTeleportAllToMe: (val: boolean) => void;
   spawnZombieType: ZombieType | null;
   onSpawnZombieComplete: () => void;
   changeAllZombiesType: ZombieType | null;
@@ -84,6 +89,7 @@ interface SceneProps {
   onRed9Curse: () => void;
   red9BlessingClaimed: boolean;
   red9CurseActive: boolean;
+  easterEggTriggered: boolean;
   onEasterEggTriggered: () => void;
   onUnlockAchievement: (id: string) => void;
   fireSaleActive: boolean;
@@ -94,8 +100,10 @@ interface SceneProps {
   progression: Progression;
   gameSettings: GameSettings;
   hudSettings?: HUDSettings;
-  gameMode: 'standard' | 'dead_ops';
+  gameMode: 'standard' | 'dead_ops' | 'multiplayer' | 'story' | 'multiplayer_ffa' | 'multiplayer_tdm';
+  difficulty?: 'easy' | 'normal' | 'hard';
   cyclingWeapon?: string | null;
+  scoreLimit?: number;
 }
 
 interface BotData {
@@ -110,8 +118,10 @@ interface BotData {
   isDowned: boolean;
   downedTimer: number;
   points: number;
+  kills: number;
   variant: number;
   isReviving: boolean;
+  team?: number;
 }
 
 interface Projectile {
@@ -205,7 +215,7 @@ const CAMO_PROPS: Record<string, { color?: string, emissive?: string, emissiveIn
   'stellar': { color: '#1a237e', metalness: 0.8, roughness: 0.2, emissive: '#00bcd4', emissiveIntensity: 1.5, texture: 'https://picsum.photos/seed/cosmic/256/256' },
 };
 
-const checkAABB = (pos: THREE.Vector3, boxPos: THREE.Vector3, size: THREE.Vector3, buffer: number = 0.4) => {
+const checkAABB = (pos: THREE.Vector3, boxPos: THREE.Vector3, size: THREE.Vector3, buffer: number = 0.5) => {
   return (
     pos.x > boxPos.x - size.x / 2 - buffer &&
     pos.x < boxPos.x + size.x / 2 + buffer &&
@@ -278,6 +288,7 @@ const StreetLight: React.FC<{ pos: [number, number, number]; color?: string }> =
 });
 
 const EnterableBuilding: React.FC<{ pos: THREE.Vector3; size: THREE.Vector3; color: string; label: string; lightColor: string; isOpen?: boolean }> = React.memo(({ pos, size, color, label, lightColor, isOpen }) => {
+  console.log('Rendering building:', label, pos);
   const thickness = 0.5;
   const doorWidth = 4;
   const wallTextureOriginal = useTexture('https://picsum.photos/seed/brickwall/512/512');
@@ -1228,6 +1239,23 @@ const Gravestone: React.FC<{ position: THREE.Vector3, rotation?: [number, number
   );
 };
 
+const PAP_LEVELS = {
+  1: { multiplier: 2, effect: 'none' },
+  2: { multiplier: 3, effect: 'electric' },
+  3: { multiplier: 4, effect: 'brainrot' },
+  4: { multiplier: 5, effect: 'fire' },
+  5: { multiplier: 6, effect: 'ice' },
+};
+
+const getWeaponLevel = (name: string) => {
+  if (name.includes(' (PaP Lvl 5)')) return 5;
+  if (name.includes(' (PaP Lvl 4)')) return 4;
+  if (name.includes(' (PaP Lvl 3)')) return 3;
+  if (name.includes(' (PaP Lvl 2)')) return 2;
+  if (name.includes(' (PaP Lvl 1)')) return 1;
+  return 0;
+};
+
 const TexturedObject: React.FC<{ type: 'box' | 'wall' | 'cylinder', args: any, pos: any, rotation?: any, color: string, texture: string }> = ({ type, args, pos, rotation, color, texture }) => {
   const tex = useTexture(texture);
   if (type === 'cylinder') {
@@ -1348,57 +1376,205 @@ const Rain = ({ playerPosRef, opacity }: { playerPosRef: React.RefObject<THREE.V
   );
 };
 
-const Bus = ({ position, rotation }: { position: THREE.Vector3, rotation?: THREE.Euler }) => {
+const Tedd = () => (
+  <group position={[0, 4, 12]}>
+    {/* Head */}
+    <Box args={[1, 1, 1]}>
+      <meshStandardMaterial color="#555" />
+    </Box>
+    {/* Eyes */}
+    <Box args={[0.2, 0.2, 0.1]} position={[-0.25, 0.2, 0.5]}>
+      <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} />
+    </Box>
+    <Box args={[0.2, 0.2, 0.1]} position={[0.25, 0.2, 0.5]}>
+      <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} />
+    </Box>
+    {/* Body */}
+    <Box args={[1.5, 2, 1]} position={[0, -1.5, 0]}>
+      <meshStandardMaterial color="#333" />
+    </Box>
+  </group>
+);
+
+const Bus = ({ posRef, rotRef, busState }: { posRef: React.MutableRefObject<THREE.Vector3>, rotRef: React.MutableRefObject<THREE.Euler>, busState: React.MutableRefObject<string> }) => {
   const busTexture = useTexture('https://picsum.photos/seed/bus_texture/512/512');
   const rustTexture = useTexture('https://picsum.photos/seed/rust/512/512');
   const teddFaceTexture = useTexture('https://picsum.photos/seed/robot_face/256/256');
 
+  const groupRef = useRef<THREE.Group>(null);
+  const rigidBodyRef = useRef<any>(null);
+  const teddHeadRef = useRef<THREE.Group>(null);
+  const teddLeftArmRef = useRef<THREE.Mesh>(null);
+  const teddRightArmRef = useRef<THREE.Mesh>(null);
+  const steeringWheelRef = useRef<THREE.Mesh>(null);
+  const wheelRefs = useRef<THREE.Group[]>([]);
+
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.position.copy(posRef.current);
+      groupRef.current.rotation.copy(rotRef.current);
+    }
+
+    const time = state.clock.getElapsedTime();
+    const isDriving = busState.current === 'driving';
+
+    if (isDriving) {
+      // Animate wheels
+      wheelRefs.current.forEach(wheel => {
+        if (wheel) wheel.rotation.x -= delta * 10;
+      });
+
+      // Animate Tedd driving
+      if (teddHeadRef.current) {
+        teddHeadRef.current.rotation.y = Math.sin(time * 2) * 0.2;
+        teddHeadRef.current.rotation.z = Math.cos(time * 3) * 0.05;
+      }
+      if (teddLeftArmRef.current) {
+        teddLeftArmRef.current.rotation.x = Math.PI / 4 + Math.sin(time * 5) * 0.1;
+      }
+      if (teddRightArmRef.current) {
+        teddRightArmRef.current.rotation.x = Math.PI / 4 + Math.cos(time * 5) * 0.1;
+      }
+      if (steeringWheelRef.current) {
+        steeringWheelRef.current.rotation.z = Math.sin(time * 5) * 0.2;
+      }
+    } else {
+      // Idle animation
+      if (teddHeadRef.current) {
+        teddHeadRef.current.rotation.y = Math.sin(time * 0.5) * 0.3;
+        teddHeadRef.current.rotation.z = 0;
+      }
+      if (teddLeftArmRef.current) {
+        teddLeftArmRef.current.rotation.x = Math.PI / 4;
+      }
+      if (teddRightArmRef.current) {
+        teddRightArmRef.current.rotation.x = Math.PI / 4;
+      }
+      if (steeringWheelRef.current) {
+        steeringWheelRef.current.rotation.z = 0;
+      }
+    }
+  });
+
   return (
-    <group position={position} rotation={rotation || [0, 0, 0]}>
-      {/* Bus Body */}
-      <Box args={[10, 7, 30]} position={[0, 3.5, 0]}>
-        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.6} roughness={0.7} />
+    <group ref={groupRef}>
+      {/* Bus Body Base (Floor) */}
+      <Box args={[10, 0.5, 30]} position={[0, 1.75, 0]}>
+        <meshStandardMaterial color="#2d3748" metalness={0.8} roughness={0.6} />
+      </Box>
+      <Box args={[10, 1.5, 30]} position={[0, 0.75, 0]}>
+        <meshStandardMaterial color="#1a202c" metalness={0.8} roughness={0.6} />
       </Box>
       
-      {/* Rust Details */}
-      <Box args={[10.2, 2, 30.2]} position={[0, 1.5, 0]}>
-        <meshStandardMaterial color="#8b4513" map={rustTexture} metalness={0.2} roughness={0.9} transparent opacity={0.8} />
+      {/* Left Wall (Bottom, Top, Pillars) */}
+      <Box args={[0.5, 2, 30]} position={[-4.75, 3, 0]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[0.5, 1.5, 30]} position={[-4.75, 7.25, 0]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[0.5, 2.5, 5]} position={[-4.75, 5.25, 12.5]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[0.5, 2.5, 5]} position={[-4.75, 5.25, -12.5]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
       </Box>
 
-      {/* Windows */}
-      <Box args={[10.1, 3, 20]} position={[0, 5, 0]}>
+      {/* Right Wall (Bottom, Top, Pillars) */}
+      <Box args={[0.5, 2, 30]} position={[4.75, 3, 0]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[0.5, 1.5, 30]} position={[4.75, 7.25, 0]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[0.5, 2.5, 5]} position={[4.75, 5.25, 12.5]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[0.5, 2.5, 5]} position={[4.75, 5.25, -12.5]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      {/* Front Wall (Bottom) */}
+      <Box args={[9, 2, 0.5]} position={[0, 3, 14.75]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      {/* Front Wall (Top) */}
+      <Box args={[9, 1.5, 0.5]} position={[0, 7.25, 14.75]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      {/* Back Wall (with door) */}
+      <Box args={[3, 6, 0.5]} position={[-3.5, 5, -14.75]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[3, 6, 0.5]} position={[3.5, 5, -14.75]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+      <Box args={[4, 2, 0.5]} position={[0, 7, -14.75]}>
+        <meshStandardMaterial color="#4a5568" map={busTexture} metalness={0.5} roughness={0.7} />
+      </Box>
+
+      {/* Bus Roof */}
+      <Box args={[10.2, 0.5, 30.2]} position={[0, 8.25, 0]}>
+        <meshStandardMaterial color="#a0aec0" metalness={0.3} roughness={0.8} />
+      </Box>
+      
+
+
+      {/* Side Windows */}
+      <Box args={[0.1, 2.5, 20]} position={[-4.75, 5.25, 0]}>
+        <meshStandardMaterial color="#1e3a8a" transparent opacity={0.4} envMapIntensity={1} roughness={0.1} metalness={0.8} />
+      </Box>
+      <Box args={[0.1, 2.5, 20]} position={[4.75, 5.25, 0]}>
         <meshStandardMaterial color="#1e3a8a" transparent opacity={0.4} envMapIntensity={1} roughness={0.1} metalness={0.8} />
       </Box>
       
       {/* Front Window */}
-      <Box args={[9, 3, 0.1]} position={[0, 5, 15.05]}>
+      <Box args={[9, 2.5, 0.1]} position={[0, 5.25, 14.75]}>
         <meshStandardMaterial color="#1e3a8a" transparent opacity={0.3} roughness={0.1} metalness={0.8} />
       </Box>
 
+      {/* Seats */}
+      {[-10, -5, 0, 5].map((z, i) => (
+        <group key={`seat-${i}`} position={[0, 2.5, z]}>
+          {/* Left Seat */}
+          <Box args={[3, 1, 1]} position={[-2.5, -0.5, 0]}>
+            <meshStandardMaterial color="#2d3748" roughness={0.8} />
+          </Box>
+          <Box args={[3, 2, 0.5]} position={[-2.5, 1, -0.25]}>
+            <meshStandardMaterial color="#2d3748" roughness={0.8} />
+          </Box>
+          {/* Right Seat */}
+          <Box args={[3, 1, 1]} position={[2.5, -0.5, 0]}>
+            <meshStandardMaterial color="#2d3748" roughness={0.8} />
+          </Box>
+          <Box args={[3, 2, 0.5]} position={[2.5, 1, -0.25]}>
+            <meshStandardMaterial color="#2d3748" roughness={0.8} />
+          </Box>
+        </group>
+      ))}
+
       {/* Wheels */}
-      <mesh position={[-5, 1.5, -10]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
-        <meshStandardMaterial color="#111" roughness={0.9} />
-      </mesh>
-      <mesh position={[5, 1.5, -10]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
-        <meshStandardMaterial color="#111" roughness={0.9} />
-      </mesh>
-      <mesh position={[-5, 1.5, 10]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
-        <meshStandardMaterial color="#111" roughness={0.9} />
-      </mesh>
-      <mesh position={[5, 1.5, 10]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[1.5, 1.5, 1, 32]} />
-        <meshStandardMaterial color="#111" roughness={0.9} />
-      </mesh>
+      {[-5, 5].map((x, i) => 
+        [-10, 10].map((z, j) => (
+          <group key={`${i}-${j}`} position={[x, 1.5, z]} ref={el => { if (el) wheelRefs.current[i * 2 + j] = el; }}>
+            <mesh rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[1.8, 1.8, 1.2, 32]} />
+              <meshStandardMaterial color="#111" roughness={0.9} />
+            </mesh>
+            {/* Hubcaps */}
+            <mesh position={[Math.sign(x) * 0.65, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[1, 1, 0.1, 16]} />
+              <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.2} />
+            </mesh>
+          </group>
+        ))
+      )}
       
       {/* Headlights */}
       <group position={[0, 2.5, 15.1]}>
-        <Cylinder args={[0.5, 0.5, 0.2]} position={[-3, 0, 0]} rotation={[Math.PI/2, 0, 0]}>
+        <Cylinder args={[0.6, 0.6, 0.2]} position={[-3, 0, 0]} rotation={[Math.PI/2, 0, 0]}>
           <meshStandardMaterial color="#ffffee" emissive="#ffffee" emissiveIntensity={2} />
         </Cylinder>
-        <Cylinder args={[0.5, 0.5, 0.2]} position={[3, 0, 0]} rotation={[Math.PI/2, 0, 0]}>
+        <Cylinder args={[0.6, 0.6, 0.2]} position={[3, 0, 0]} rotation={[Math.PI/2, 0, 0]}>
           <meshStandardMaterial color="#ffffee" emissive="#ffffee" emissiveIntensity={2} />
         </Cylinder>
         <pointLight position={[-3, 0, 1]} intensity={20} distance={50} color="#ffffee" />
@@ -1406,31 +1582,59 @@ const Bus = ({ position, rotation }: { position: THREE.Vector3, rotation?: THREE
       </group>
 
       {/* Tedd (Driver) */}
-      <group position={[-2, 4, 13]}>
+      <group position={[-2.5, 3.0, 11]}>
+        {/* Chair */}
+        <Box args={[2, 2, 2]} position={[0, -0.5, 0]}>
+          <meshStandardMaterial color="#1a202c" />
+        </Box>
+        <Box args={[2, 3, 0.5]} position={[0, 2, -0.75]}>
+          <meshStandardMaterial color="#1a202c" />
+        </Box>
+
         {/* Body */}
-        <Box args={[1.5, 2, 1.5]}>
+        <Box args={[1.5, 2.5, 1.2]} position={[0, 1.5, 0]}>
            <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.4} />
         </Box>
-        {/* Head */}
-        <Box args={[1, 1, 1]} position={[0, 1.5, 0]}>
-           <meshStandardMaterial color="#94a3b8" map={teddFaceTexture} metalness={0.7} roughness={0.3} />
-        </Box>
-        {/* Hat */}
-        <Cylinder args={[0.6, 0.8, 0.2]} position={[0, 2.1, 0]}>
-          <meshStandardMaterial color="#1e293b" />
-        </Cylinder>
-        <Box args={[1.2, 0.1, 1.2]} position={[0, 2.0, 0.2]}>
+        
+        {/* Arms */}
+        <mesh ref={teddLeftArmRef as any} position={[-1, 1.5, 0.5]} rotation={[Math.PI/4, 0, 0]}>
+           <boxGeometry args={[0.5, 2, 0.5]} />
+           <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.4} />
+        </mesh>
+        <mesh ref={teddRightArmRef as any} position={[1, 1.5, 0.5]} rotation={[Math.PI/4, 0, 0]}>
+           <boxGeometry args={[0.5, 2, 0.5]} />
+           <meshStandardMaterial color="#475569" metalness={0.8} roughness={0.4} />
+        </mesh>
+
+        {/* Steering Wheel */}
+        <mesh ref={steeringWheelRef as any} position={[0, 2, 1.5]} rotation={[Math.PI/4, 0, 0]}>
+          <torusGeometry args={[0.8, 0.1, 16, 32]} />
           <meshStandardMaterial color="#111" />
-        </Box>
-        {/* Eyes (Glowing) */}
-        <Box args={[0.2, 0.1, 0.1]} position={[-0.2, 1.6, 0.51]}>
-          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={2} />
-        </Box>
-        <Box args={[0.2, 0.1, 0.1]} position={[0.2, 1.6, 0.51]}>
-          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={2} />
-        </Box>
+        </mesh>
+
+        {/* Head Group */}
+        <group ref={teddHeadRef} position={[0, 3.2, 0]}>
+          {/* Head */}
+          <Box args={[1.2, 1.2, 1.2]}>
+             <meshStandardMaterial color="#94a3b8" map={teddFaceTexture} metalness={0.7} roughness={0.3} />
+          </Box>
+          {/* Hat */}
+          <Cylinder args={[0.7, 0.9, 0.3]} position={[0, 0.7, 0]}>
+            <meshStandardMaterial color="#1e293b" />
+          </Cylinder>
+          <Box args={[1.4, 0.1, 1.4]} position={[0, 0.6, 0.2]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+          {/* Eyes (Glowing) */}
+          <Box args={[0.25, 0.15, 0.1]} position={[-0.25, 0.1, 0.61]}>
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={3} />
+          </Box>
+          <Box args={[0.25, 0.15, 0.1]} position={[0.25, 0.1, 0.61]}>
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={3} />
+          </Box>
+        </group>
       </group>
-      <Html position={[-2, 6.5, 13]} center>
+      <Html position={[-2.5, 8, 11]} center>
          <div className="text-white font-bold bg-black/80 px-2 py-1 rounded text-xs border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]">T.E.D.D.</div>
       </Html>
     </group>
@@ -1440,7 +1644,7 @@ const Bus = ({ position, rotation }: { position: THREE.Vector3, rotation?: THREE
 export const Scene: React.FC<SceneProps> = ({ 
   status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, kingRobboRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, playerRotRef: externalPlayerRotRef, zombieRefsRef: externalZombieRefsRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
   spawnZombieType, onSpawnZombieComplete, changeAllZombiesType, onChangeAllZombiesComplete,
-  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard', cyclingWeapon
+  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, easterEggTriggered, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard', cyclingWeapon, scoreLimit = 35, teleportAllToMe, setTeleportAllToMe, difficulty = 'normal'
 }) => {
   const { camera, scene } = useThree();
 
@@ -1454,7 +1658,21 @@ export const Scene: React.FC<SceneProps> = ({
   const internalZombieRefs = useRef<ZombieData[]>([]);
   const zombieRefs = externalZombieRefsRef || internalZombieRefs;
 
+  const [teamSide, setTeamSide] = useState(1);
+  const [currentScoreLimit, setCurrentScoreLimit] = useState(scoreLimit || 35);
   const [weather, setWeather] = useState<'clear' | 'rain' | 'fog'>(gameSettings.weatherType as 'clear' | 'rain' | 'fog');
+
+  const teleportPlayer = () => {
+    const spawnPoints = (gameMode === 'multiplayer' && teamSide === 1) ? (mapConfig.side1SpawnPoints || mapConfig.spawnPoints) : (gameMode === 'multiplayer' && teamSide === 2) ? (mapConfig.side2SpawnPoints || mapConfig.spawnPoints) : mapConfig.spawnPoints;
+    const spawn = spawnPoints ? spawnPoints[Math.floor(Math.random() * spawnPoints.length)] : [0, 0, 0];
+    playerPos.current.set(spawn[0], spawn[1], spawn[2]);
+  };
+
+  useEffect(() => {
+    if (gameMode === 'multiplayer') {
+      teleportPlayer();
+    }
+  }, [teamSide]);
   const ambientLightRef = useRef<THREE.AmbientLight>(null);
   const hemiLightRef = useRef<THREE.HemisphereLight>(null);
   const pointLight1Ref = useRef<THREE.PointLight>(null);
@@ -1474,11 +1692,25 @@ export const Scene: React.FC<SceneProps> = ({
   const isPlayerOnBus = useRef(false);
   const lavaCooldown = useRef(0);
   const BUS_PATH = useMemo(() => [
-    new THREE.Vector3(0, 0, -25), // Depot
-    new THREE.Vector3(-150, 0, -20), // Diner
-    new THREE.Vector3(-100, 0, 120), // Farm
-    new THREE.Vector3(100, 0, 120), // Power
-    new THREE.Vector3(0, 0, -180) // Town
+    new THREE.Vector3(0, 0, -8), // Depot stop
+    new THREE.Vector3(0, 0, 0), // Depot intersection
+    new THREE.Vector3(-150, 0, 0), // Diner intersection
+    new THREE.Vector3(-150, 0, -5), // Diner stop
+    new THREE.Vector3(-150, 0, 0), // Diner intersection
+    new THREE.Vector3(-100, 0, 0), // Farm intersection
+    new THREE.Vector3(-100, 0, 100), // Farm intersection 2
+    new THREE.Vector3(-100, 0, 105), // Farm stop
+    new THREE.Vector3(-100, 0, 100), // Farm intersection 2
+    new THREE.Vector3(0, 0, 100), // Center intersection
+    new THREE.Vector3(100, 0, 100), // Power intersection
+    new THREE.Vector3(100, 0, 105), // Power stop
+    new THREE.Vector3(100, 0, 100), // Power intersection
+    new THREE.Vector3(100, 0, 0), // East intersection
+    new THREE.Vector3(0, 0, 0), // Center intersection
+    new THREE.Vector3(0, 0, -100), // Town intersection
+    new THREE.Vector3(0, 0, -160), // Town stop
+    new THREE.Vector3(0, 0, -100), // Town intersection
+    new THREE.Vector3(0, 0, 0), // Center intersection
   ], []);
 
   useEffect(() => {
@@ -1489,19 +1721,33 @@ export const Scene: React.FC<SceneProps> = ({
     const handleBusInteract = () => {
       isPlayerOnBus.current = !isPlayerOnBus.current;
       if (isPlayerOnBus.current) {
-         playerPos.current.copy(busPos.current.clone().add(new THREE.Vector3(0, 1, 0)));
+         const offset = new THREE.Vector3(0, 3.2, -12);
+         offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), busRot.current.y);
+         playerPos.current.copy(busPos.current.clone().add(offset));
       } else {
-         playerPos.current.copy(busPos.current.clone().add(new THREE.Vector3(15, 0, 0)));
+         const offset = new THREE.Vector3(0, 1.2, -18);
+         offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), busRot.current.y);
+         playerPos.current.copy(busPos.current.clone().add(offset));
       }
     };
     window.addEventListener('bus_interact', handleBusInteract);
-    return () => window.removeEventListener('bus_interact', handleBusInteract);
+    const handleBusDrive = () => {
+      busState.current = 'driving';
+      busStopTimer.current = 0;
+    };
+    window.addEventListener('bus_drive', handleBusDrive);
+    return () => {
+      window.removeEventListener('bus_interact', handleBusInteract);
+      window.removeEventListener('bus_drive', handleBusDrive);
+    };
   }, []);
 
   useFrame((state, delta) => {
-    const targetFog = weather === 'fog' ? 0.02 : weather === 'rain' ? 0.01 : 0.005;
-    const targetAmbient = weather === 'clear' ? 2.5 : weather === 'rain' ? 0.8 : 0.5;
-    const targetPoint = weather === 'clear' ? 100 : weather === 'rain' ? 20 : 10;
+    const isNight = gameState.round % 5 === 0;
+    const nightMultiplier = isNight ? 0.3 : 1.0;
+    const targetFog = (weather === 'fog' ? 0.02 : weather === 'rain' ? 0.01 : 0.005) * (isNight ? 2 : 1);
+    const targetAmbient = (weather === 'clear' ? 2.5 : weather === 'rain' ? 0.8 : 0.5) * nightMultiplier;
+    const targetPoint = (weather === 'clear' ? 100 : weather === 'rain' ? 20 : 10) * nightMultiplier;
     const targetRain = weather === 'rain' ? 0.4 : 0;
 
     fogDensity.current += (targetFog - fogDensity.current) * delta * 0.5;
@@ -1518,6 +1764,9 @@ export const Scene: React.FC<SceneProps> = ({
         const target = BUS_PATH[busTargetIndex.current];
         const direction = target.clone().sub(busPos.current).normalize();
         
+        const prevBusPos = busPos.current.clone();
+        const prevBusRot = busRot.current.clone();
+
         // Update bus rotation to face target
         const angle = Math.atan2(direction.x, direction.z);
         busRot.current.set(0, angle, 0);
@@ -1527,7 +1776,10 @@ export const Scene: React.FC<SceneProps> = ({
 
         // Move player if on bus
         if (isPlayerOnBus.current) {
-           currentPos.add(move);
+           const localPos = currentPos.clone().sub(prevBusPos);
+           localPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -prevBusRot.y);
+           localPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), busRot.current.y);
+           currentPos.copy(busPos.current.clone().add(localPos));
         }
 
         if (busPos.current.distanceTo(target) < 2) {
@@ -1540,6 +1792,37 @@ export const Scene: React.FC<SceneProps> = ({
           busTargetIndex.current = (busTargetIndex.current + 1) % BUS_PATH.length;
           busState.current = 'driving';
         }
+      }
+
+      // Check if player fell off the bus or clamp them inside
+      if (isPlayerOnBus.current) {
+         const currentLocalPos = currentPos.clone().sub(busPos.current);
+         currentLocalPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -busRot.current.y);
+         
+         // Bus interior bounds: x: [-4.0, 4.0], z: [-14.0, 14.0]
+         // Door is at back: z < -14.0 and x between [-1.5, 1.5]
+         
+         let clamped = false;
+         
+         if (currentLocalPos.z > 14.0) { currentLocalPos.z = 14.0; clamped = true; } // Front wall
+         if (currentLocalPos.x > 4.0) { currentLocalPos.x = 4.0; clamped = true; } // Right wall
+         if (currentLocalPos.x < -4.0) { currentLocalPos.x = -4.0; clamped = true; } // Left wall
+         
+         // Back wall with door
+         if (currentLocalPos.z < -14.0) {
+             if (currentLocalPos.x < -1.5 || currentLocalPos.x > 1.5) {
+                 currentLocalPos.z = -14.0;
+                 clamped = true;
+             } else if (currentLocalPos.z < -16) {
+                 // Walked out the door
+                 isPlayerOnBus.current = false;
+             }
+         }
+
+         if (clamped && isPlayerOnBus.current) {
+             currentLocalPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), busRot.current.y);
+             currentPos.copy(busPos.current.clone().add(currentLocalPos));
+         }
       }
     }
 
@@ -1670,6 +1953,7 @@ export const Scene: React.FC<SceneProps> = ({
             isDowned: false,
             downedTimer: 0,
             points: 500,
+            kills: 0,
             variant: otherPlayers.find(p => p.id === `bot-${i}`)?.variant || Math.floor(Math.random() * 1000),
             isReviving: false
           });
@@ -1709,6 +1993,7 @@ export const Scene: React.FC<SceneProps> = ({
             isDowned: player.isDowned,
             downedTimer: 0,
             points: player.points,
+            kills: player.kills || 0,
             variant: player.variant || Math.floor(Math.random() * 1000),
             isReviving: player.isReviving || false
           });
@@ -1724,7 +2009,7 @@ export const Scene: React.FC<SceneProps> = ({
   
   const easterEggTimer = useRef(0);
   const easterEggBullets = useRef(0);
-  const easterEggTriggered = useRef(false);
+  const easterEggTriggeredRef = useRef(false);
   const winterCooldown = useRef(0);
   const verticalVelocity = useRef(0);
   const isGrounded = useRef(true);
@@ -1804,6 +2089,11 @@ export const Scene: React.FC<SceneProps> = ({
     }
   }, [dragonActive, status]);
 
+  // Story Mode Objectives
+  const [objectivesCompleted, setObjectivesCompleted] = useState(false);
+  const [bossDefeated, setBossDefeated] = useState(false);
+  const [currentObjective, setCurrentObjective] = useState<string>('');
+
   const interactables = useMemo(() => {
     const items = mapConfig.interactables.map(i => ({
       ...i,
@@ -1826,31 +2116,86 @@ export const Scene: React.FC<SceneProps> = ({
 
     // Dragon Hearts and Summoning (Disabled in Dead Ops)
     if (gameMode !== 'dead_ops') {
-      heartPositions.forEach((pos, i) => {
-        if (!collectedHearts[i]) {
-          items.push({
-            id: `heart_${i}`,
-            type: `Dragon Heart ${i + 1}`,
-            cost: 0,
-            pos: pos,
-            color: '#ff0000'
-          });
-        }
-      });
+      const canSeeHearts = gameMode !== 'story' || (gameState.perks.length > 0 && gameState.weaponTier > 0);
+      
+      if (canSeeHearts) {
+        heartPositions.forEach((pos, i) => {
+          if (!collectedHearts[i]) {
+            items.push({
+              id: `heart_${i}`,
+              type: `Dragon Heart ${i + 1}`,
+              cost: 0,
+              pos: pos,
+              color: '#ff0000'
+            });
+          }
+        });
+      }
 
       if (collectedHearts.every(h => h) && !dragonActive && mapConfig.craftingTablePos) {
-        items.push({
-          id: 'summon_dragon',
-          type: 'Summon Dragon',
-          cost: 0,
-          pos: new THREE.Vector3(...mapConfig.craftingTablePos),
-          color: '#ffaa00'
-        });
+        // In Story Mode, prevent boss summon until objectives are met
+        if (gameMode !== 'story' || (gameMode === 'story' && objectivesCompleted)) {
+          items.push({
+            id: 'summon_dragon',
+            type: 'Summon Dragon',
+            cost: 0,
+            pos: new THREE.Vector3(...mapConfig.craftingTablePos),
+            color: '#ffaa00'
+          });
+        }
       }
     }
 
+    // Buyable Ending (Locked in Story Mode until Boss Defeated)
+    if (mapConfig.id === 'z-town' && (!gameMode || gameMode !== 'story' || (gameMode === 'story' && bossDefeated))) {
+       items.push({
+          id: 'buyable_ending',
+          type: 'Buyable Ending',
+          cost: 50000,
+          pos: new THREE.Vector3(0, 0, -45),
+          color: '#ffd700'
+       });
+    }
+
     return items;
-  }, [mapConfig, openDoors, heartPositions, collectedHearts, dragonActive]);
+  }, [mapConfig, openDoors, heartPositions, collectedHearts, dragonActive, gameMode, objectivesCompleted, bossDefeated, gameState.perks.length, gameState.weaponTier]);
+
+  useEffect(() => {
+    if (gameMode === 'story') {
+      if (gameState.perks.length === 0) {
+        setCurrentObjective('Buy a Perk');
+      } else if (gameState.weaponTier === 0) {
+        setCurrentObjective('Pack-a-Punch a Weapon');
+      } else if (!objectivesCompleted) {
+        if (!collectedHearts.every(h => h)) {
+          setCurrentObjective(`Find all Dragon Hearts (${collectedHearts.filter(h => h).length}/${collectedHearts.length})`);
+        } else {
+          setCurrentObjective('Summon the Dragon at the Crafting Table');
+          setObjectivesCompleted(true);
+        }
+      } else if (dragonActive) {
+        setCurrentObjective('Defeat the Zombie Dragon');
+      } else if (bossDefeated) {
+        setCurrentObjective('Purchase the Buyable Ending');
+      } else if (objectivesCompleted && !dragonActive && !bossDefeated) {
+         // Boss was defeated or hasn't started yet, check if it was just defeated
+         // This state might need better tracking, but for now:
+         if (currentObjective === 'Defeat the Zombie Dragon') {
+            setBossDefeated(true);
+            setCurrentObjective('Purchase the Buyable Ending');
+         } else {
+            setCurrentObjective('Summon the Dragon at the Crafting Table');
+         }
+      }
+    }
+  }, [gameMode, collectedHearts, dragonActive, objectivesCompleted, bossDefeated, currentObjective, gameState.perks.length, gameState.weaponTier]);
+
+  // Hook into onDragonDefeated to update story state
+  useEffect(() => {
+     if (gameMode === 'story' && !dragonActive && wasDragonActive.current) {
+        setBossDefeated(true);
+     }
+  }, [dragonActive, gameMode]);
 
   const collisionWalls = useMemo(() => {
     const walls: Wall[] = [];
@@ -1858,7 +2203,7 @@ export const Scene: React.FC<SceneProps> = ({
     
     mapConfig.objects.forEach(obj => {
       if (obj.type === 'building') {
-        const t = 0.5;
+        const t = 3.0;
         const size = new THREE.Vector3(...obj.args);
         const pos = new THREE.Vector3(...obj.pos);
         walls.push({ pos: new THREE.Vector3(pos.x, pos.y, pos.z - size.z/2), size: new THREE.Vector3(size.x, size.y, t) });
@@ -1886,8 +2231,9 @@ export const Scene: React.FC<SceneProps> = ({
   useEffect(() => {
     zombieRefs.current = [];
     setZombieIds([]);
-    if (mapConfig.spawnPoints && mapConfig.spawnPoints.length > 0) {
-      const randomSpawnArr = mapConfig.spawnPoints[Math.floor(Math.random() * mapConfig.spawnPoints.length)];
+    const spawnPoints = (gameMode === 'multiplayer' && teamSide === 1) ? (mapConfig.side1SpawnPoints || mapConfig.spawnPoints) : (gameMode === 'multiplayer' && teamSide === 2) ? (mapConfig.side2SpawnPoints || mapConfig.spawnPoints) : mapConfig.spawnPoints;
+    if (spawnPoints && spawnPoints.length > 0) {
+      const randomSpawnArr = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
       const randomSpawn = new THREE.Vector3(...randomSpawnArr);
       playerPos.current.copy(randomSpawn);
     }
@@ -1900,7 +2246,8 @@ export const Scene: React.FC<SceneProps> = ({
     if (botCount && botCount > 0) {
       const newBots: BotData[] = [];
       for (let i = 0; i < botCount; i++) {
-        const spawn = mapConfig.spawnPoints ? mapConfig.spawnPoints[Math.floor(Math.random() * mapConfig.spawnPoints.length)] : [0, 0, 0];
+        const spawnPoints = (gameMode === 'multiplayer' && teamSide === 1) ? (mapConfig.side1SpawnPoints || mapConfig.spawnPoints) : (gameMode === 'multiplayer' && teamSide === 2) ? (mapConfig.side2SpawnPoints || mapConfig.spawnPoints) : mapConfig.spawnPoints;
+        const spawn = spawnPoints ? spawnPoints[Math.floor(Math.random() * spawnPoints.length)] : [0, 0, 0];
         newBots.push({
           id: `bot-${i}`,
           name: botNames?.[i] || `Bot ${i+1}`,
@@ -1913,6 +2260,7 @@ export const Scene: React.FC<SceneProps> = ({
           isDowned: false,
           downedTimer: 0,
           points: 500,
+          kills: 0,
           variant: Math.floor(Math.random() * 5),
           isReviving: false
         });
@@ -2040,18 +2388,35 @@ export const Scene: React.FC<SceneProps> = ({
     return false;
   };
 
+  const isInsideBuilding = (pos: THREE.Vector3) => {
+    for (const obj of mapConfig.objects) {
+      if (obj.type === 'building') {
+        const size = new THREE.Vector3(...obj.args);
+        const bpos = new THREE.Vector3(...obj.pos);
+        const hw = size.x / 2;
+        const hz = size.z / 2;
+        if (pos.x > bpos.x - hw && pos.x < bpos.x + hw &&
+            pos.z > bpos.z - hz && pos.z < bpos.z + hz) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   const getValidZombieSpawnPos = (targetPos: THREE.Vector3, minRadius: number, maxRadius: number) => {
     for (let i = 0; i < 20; i++) {
       const angle = Math.random() * Math.PI * 2;
       const radius = minRadius + Math.random() * (maxRadius - minRadius);
       const pos = new THREE.Vector3(targetPos.x + Math.cos(angle) * radius, 0, targetPos.z + Math.sin(angle) * radius);
-      if (!checkCollision(pos, 1.0)) {
+      if (!checkCollision(pos, 1.0) && !isInsideBuilding(pos)) {
         return pos;
       }
     }
     // Fallback to a map spawn point if we can't find a valid random spot
-    if (mapConfig.spawnPoints && mapConfig.spawnPoints.length > 0) {
-       const sp = mapConfig.spawnPoints[Math.floor(Math.random() * mapConfig.spawnPoints.length)];
+    const spawnPoints = (gameMode === 'multiplayer' && teamSide === 1) ? (mapConfig.side1SpawnPoints || mapConfig.spawnPoints) : (gameMode === 'multiplayer' && teamSide === 2) ? (mapConfig.side2SpawnPoints || mapConfig.spawnPoints) : mapConfig.spawnPoints;
+    if (spawnPoints && spawnPoints.length > 0) {
+       const sp = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
        return new THREE.Vector3(sp[0], 0, sp[2]);
     }
     return new THREE.Vector3(targetPos.x, 0, targetPos.z + minRadius); // Final fallback
@@ -2072,6 +2437,20 @@ export const Scene: React.FC<SceneProps> = ({
       } else {
          if (onTeleportToPlayerComplete) onTeleportToPlayerComplete();
       }
+    }
+
+    // Teleport all to me
+    if (teleportAllToMe) {
+      botsRef.current.forEach(bot => {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 2; // Teleport them slightly around the player
+        bot.position.set(
+          playerPos.current.x + Math.cos(angle) * radius,
+          playerPos.current.y,
+          playerPos.current.z + Math.sin(angle) * radius
+        );
+      });
+      if (setTeleportAllToMe) setTeleportAllToMe(false);
     }
 
     // Teleport player/bot to me
@@ -2117,12 +2496,16 @@ export const Scene: React.FC<SceneProps> = ({
 
     if (spawnZombieType) {
       const spawnPos = getValidZombieSpawnPos(playerPos.current, 10, 20);
+      let speedMultiplier = 1;
+      if (difficulty === 'easy') speedMultiplier = 0.8;
+      if (difficulty === 'hard') speedMultiplier = 1.3;
+
       const newZombie: ZombieData = {
         id: Math.random().toString(36).substr(2, 9),
         position: spawnPos.clone(),
         hp: 100 * Math.pow(1.1, gameState.round - 1),
         maxHp: 100 * Math.pow(1.1, gameState.round - 1),
-        speed: (1.5 + Math.random() * 0.5) * (gameState.round > 5 ? 1.2 : 1),
+        speed: (1.5 + Math.random() * 0.5) * (gameState.round > 5 ? 1.2 : 1) * speedMultiplier,
         type: spawnZombieType,
         variant: Math.floor(Math.random() * 4),
         lastAttack: 0,
@@ -2264,7 +2647,7 @@ export const Scene: React.FC<SceneProps> = ({
 
     // Jumping Logic
     if (jumpRequest.current && isGrounded.current && gameMode !== 'dead_ops') {
-      verticalVelocity.current = 20;
+      verticalVelocity.current = 8;
       isGrounded.current = false;
       soundService.playThrow(); // Using throw sound as a placeholder for jump grunt/thud
       
@@ -2287,14 +2670,18 @@ export const Scene: React.FC<SceneProps> = ({
     }
 
     // Gravity
+    const groundY = isPlayerOnBus.current ? 3.2 : 1.2;
     if (!isGrounded.current) {
-      verticalVelocity.current -= 18 * delta;
+      verticalVelocity.current -= 25 * delta;
       playerPos.current.y += verticalVelocity.current * delta;
-      if (playerPos.current.y <= 1.2) {
-        playerPos.current.y = 1.2;
+      if (playerPos.current.y <= groundY) {
+        playerPos.current.y = groundY;
         verticalVelocity.current = 0;
         isGrounded.current = true;
       }
+    } else if (playerPos.current.y > groundY + 0.1) {
+      // Walked off an edge (e.g. bus)
+      isGrounded.current = false;
     }
 
     // Improved Sliding Logic: Increased duration, speed, and reduced friction for more distance
@@ -2465,6 +2852,13 @@ export const Scene: React.FC<SceneProps> = ({
         break;
       }
     }
+    if (!collidedX && !isPlayerOnBus.current && mapConfig.id === 'z-town') {
+       const busLocalNextPos = nextPos.clone().sub(busPos.current);
+       busLocalNextPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -busRot.current.y);
+       if (Math.abs(busLocalNextPos.x) < 5.5 && Math.abs(busLocalNextPos.z) < 15.5) {
+           collidedX = true;
+       }
+    }
     if (!collidedX) {
       playerPos.current.x = nextPos.x;
     }
@@ -2478,13 +2872,23 @@ export const Scene: React.FC<SceneProps> = ({
         break;
       }
     }
+    if (!collidedZ && !isPlayerOnBus.current && mapConfig.id === 'z-town') {
+       const busLocalNextPos = nextPos.clone().sub(busPos.current);
+       busLocalNextPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -busRot.current.y);
+       if (Math.abs(busLocalNextPos.x) < 5.5 && Math.abs(busLocalNextPos.z) < 15.5) {
+           collidedZ = true;
+       }
+    }
     if (!collidedZ) {
       playerPos.current.z = nextPos.z;
     }
 
     // Camera height adjustment for sliding/crouching/downed
-    const targetCamHeight = gameState.isDowned ? 0.2 : (isSliding.current ? 0.6 : 1.2);
-    playerPos.current.y = THREE.MathUtils.lerp(playerPos.current.y, targetCamHeight, 0.2);
+    if (isGrounded.current) {
+      let baseHeight = isPlayerOnBus.current ? 3.2 : 1.2;
+      const targetCamHeight = gameState.isDowned ? (baseHeight - 1.0) : (isSliding.current ? (baseHeight - 0.6) : baseHeight);
+      playerPos.current.y = THREE.MathUtils.lerp(playerPos.current.y, targetCamHeight, 0.2);
+    }
 
     // Stronghold Logic
     const isMoving = Math.abs(moveInput.current.x) > 0.1 || Math.abs(moveInput.current.y) > 0.1;
@@ -2758,7 +3162,7 @@ export const Scene: React.FC<SceneProps> = ({
         const boxPos = box ? box.pos : new THREE.Vector3(0, 0, 0);
         const distToBox = playerPos.current.distanceTo(new THREE.Vector3(boxPos.x, 0.75, boxPos.z));
         const isLookingUp = camera.rotation.x > 1.3;
-        if (distToBox < 4 && isLookingUp && !easterEggTriggered.current) {
+        if (distToBox < 4 && isLookingUp && !easterEggTriggeredRef.current) {
           easterEggBullets.current++;
           if (easterEggBullets.current >= 10) {
             onUnlockAchievement('red9_blessing');
@@ -2836,7 +3240,7 @@ export const Scene: React.FC<SceneProps> = ({
           }
         }
         
-        let closestHit = { dist: 100, zombie: null as ZombieData | null, isHeadshot: false, hitPos: new THREE.Vector3(), isDragon: false };
+        let closestHit = { dist: 100, zombie: null as ZombieData | null, isHeadshot: false, hitPos: new THREE.Vector3(), isDragon: false, bot: null as BotData | null };
         
         zombieRefs.current.forEach(z => {
           tempVec1.current.copy(z.position).add(new THREE.Vector3(0, 2, 0));
@@ -2849,12 +3253,31 @@ export const Scene: React.FC<SceneProps> = ({
           
           if (headIntersection) {
             const d = headIntersection.distanceTo(rayOrigin);
-            if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: true, hitPos: headIntersection.clone(), isDragon: false };
+            if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: true, hitPos: headIntersection.clone(), isDragon: false, bot: null };
           } else if (bodyIntersection) {
             const d = bodyIntersection.distanceTo(rayOrigin);
-            if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: false, hitPos: bodyIntersection.clone(), isDragon: false };
+            if (d < closestHit.dist) closestHit = { dist: d, zombie: z, isHeadshot: false, hitPos: bodyIntersection.clone(), isDragon: false, bot: null };
           }
         });
+
+        if (gameMode === 'multiplayer') {
+            botsRef.current.forEach(bot => {
+                if (bot.isDowned) return;
+                const myTeam = gameState.team;
+                if (gameState.multiplayerMode === 'tdm' && myTeam && bot.team === myTeam) return;
+
+                tempVec1.current.copy(bot.position).add(new THREE.Vector3(0, 0.9, 0));
+                tempBox.current.setFromCenterAndSize(tempVec1.current, new THREE.Vector3(0.6, 1.8, 0.6));
+                const intersection = ray.ray.intersectBox(tempBox.current, new THREE.Vector3());
+                
+                if (intersection) {
+                    const d = intersection.distanceTo(rayOrigin);
+                    if (d < closestHit.dist) {
+                        closestHit = { dist: d, zombie: null, isHeadshot: false, hitPos: intersection.clone(), isDragon: false, bot: bot };
+                    }
+                }
+            });
+        }
 
         if (dragonActive) {
           const dragonBox = new THREE.Box3().setFromCenterAndSize(dragonPos.current, new THREE.Vector3(10, 10, 10));
@@ -2862,13 +3285,13 @@ export const Scene: React.FC<SceneProps> = ({
           if (dragonIntersection) {
             const d = dragonIntersection.distanceTo(rayOrigin);
             if (d < closestHit.dist) {
-              closestHit = { dist: d, zombie: null, isHeadshot: false, hitPos: dragonIntersection.clone(), isDragon: true };
+              closestHit = { dist: d, zombie: null, isHeadshot: false, hitPos: dragonIntersection.clone(), isDragon: true, bot: null };
             }
           }
         }
         
         let floorHitPos = null;
-        if (!closestHit.zombie && !closestHit.isDragon) {
+        if (!closestHit.zombie && !closestHit.isDragon && !closestHit.bot) {
           if (direction.y < 0) {
             const distanceToFloor = -camera.position.y / direction.y;
             if (distanceToFloor > 0 && distanceToFloor < 50) {
@@ -2877,7 +3300,7 @@ export const Scene: React.FC<SceneProps> = ({
           }
         }
         
-        const tracerEnd = (closestHit.zombie || closestHit.isDragon) ? direction.clone().multiplyScalar(closestHit.dist).add(camera.position) : (floorHitPos || direction.clone().multiplyScalar(50).add(camera.position));
+        const tracerEnd = (closestHit.zombie || closestHit.isDragon || closestHit.bot) ? direction.clone().multiplyScalar(closestHit.dist).add(camera.position) : (floorHitPos || direction.clone().multiplyScalar(50).add(camera.position));
         effects.current.push({
           id: Math.random().toString(),
           type: 'tracer',
@@ -2891,10 +3314,33 @@ export const Scene: React.FC<SceneProps> = ({
           const multiplier = closestHit.isHeadshot ? (gameState.perks.includes('deadshot') ? 6.0 : 4.0) : 1.0;
           const rankMasteryMultiplier = 1 + ((gameState as any).rankMastery || 0) * 0.1;
           const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
-          let damage = gameState.instaKill ? 999999 : (weapon.damage * multiplier * (gameState.perks.includes('double') ? 2 : 1) * rankMasteryMultiplier * levelMultiplier);
+          const papLevel = getWeaponLevel(gameState.weaponName);
+          const papMultiplier = papLevel > 0 ? PAP_LEVELS[papLevel as keyof typeof PAP_LEVELS].multiplier : 1;
+          const papEffect = papLevel > 0 ? PAP_LEVELS[papLevel as keyof typeof PAP_LEVELS].effect : 'none';
+
+          let damage = gameState.instaKill ? 999999 : (weapon.damage * multiplier * (gameState.perks.includes('double') ? 2 : 1) * rankMasteryMultiplier * levelMultiplier * papMultiplier);
           
           if (gameState.perks.includes('stronghold') && timeSinceLastMove.current > 2.0) {
             damage *= 1.5;
+          }
+
+          // Apply PaP effects
+          if (papEffect !== 'none') {
+            if (papEffect === 'electric') {
+              zombieRefs.current.forEach(z => {
+                if (z.position.distanceTo(closestHit.zombie!.position) < 5) z.stunTimer = 1.5;
+              });
+              effects.current.push({ id: Math.random().toString(), type: 'flash', pos: closestHit.hitPos, life: 0.3, color: '#06b2d2', scale: 1.0 });
+            } else if (papEffect === 'brainrot') {
+              closestHit.zombie.isAlly = true;
+              effects.current.push({ id: Math.random().toString(), type: 'flash', pos: closestHit.hitPos, life: 0.3, color: '#00ff00', scale: 0.8 });
+            } else if (papEffect === 'fire') {
+              damage += 200;
+              effects.current.push({ id: Math.random().toString(), type: 'explosion', pos: closestHit.hitPos, life: 0.3, color: '#ff4400', scale: 0.5 });
+            } else if (papEffect === 'ice') {
+              closestHit.zombie.stunTimer = 3.0;
+              effects.current.push({ id: Math.random().toString(), type: 'flash', pos: closestHit.hitPos, life: 0.3, color: '#a5f3fc', scale: 0.5 });
+            }
           }
 
           if (gameState.perks.includes('elemental') && Math.random() < 0.2) {
@@ -2939,6 +3385,25 @@ export const Scene: React.FC<SceneProps> = ({
               onStatsUpdate({ points: 50 });
             }
           }
+        } else if (closestHit.bot) {
+            const damage = weapon.damage;
+            closestHit.bot.hp -= damage;
+            onStatsUpdate({ points: 10, hit: true });
+            
+            effects.current.push({
+                id: Math.random().toString(),
+                type: 'blood',
+                pos: closestHit.hitPos,
+                life: 0.3,
+                color: '#990000',
+                scale: 1.0
+            });
+
+            if (closestHit.bot.hp <= 0) {
+                closestHit.bot.isDowned = true;
+                closestHit.bot.downedTimer = 30;
+                onStatsUpdate({ points: 100, kills: 1 }, undefined, gameState.weaponName);
+            }
         } else if (closestHit.isDragon) {
           const rankMasteryMultiplier = 1 + ((gameState as any).rankMastery || 0) * 0.1;
           const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
@@ -3131,14 +3596,44 @@ export const Scene: React.FC<SceneProps> = ({
 
       // 2. Normal combat logic
       let closestZombie: ZombieData | null = null;
+      let closestEnemyBot: BotData | null = null;
+      let targetIsPlayer = false;
       let minDist = Infinity;
-      zombieRefs.current.forEach(z => {
-        const dist = z.position.distanceTo(bot.position);
-        if (dist < minDist) {
-          minDist = dist;
-          closestZombie = z;
-        }
-      });
+
+      if (gameMode === 'multiplayer') {
+          // Target enemy bots or player
+          const myTeam = bot.team;
+          
+          // Check player
+          const playerTeam = gameState.team;
+          if (playerTeam && playerTeam !== myTeam && !gameState.isDowned) {
+              const dist = playerPos.current.distanceTo(bot.position);
+              if (dist < minDist) {
+                  minDist = dist;
+                  targetIsPlayer = true;
+              }
+          }
+          
+          // Check other bots
+          botsRef.current.forEach(otherBot => {
+              if (otherBot.id !== bot.id && (gameState.multiplayerMode === 'ffa' || otherBot.team !== myTeam) && !otherBot.isDowned) {
+                  const dist = otherBot.position.distanceTo(bot.position);
+                  if (dist < minDist) {
+                      minDist = dist;
+                      closestEnemyBot = otherBot;
+                      targetIsPlayer = false;
+                  }
+              }
+          });
+      } else {
+          zombieRefs.current.forEach(z => {
+            const dist = z.position.distanceTo(bot.position);
+            if (dist < minDist) {
+              minDist = dist;
+              closestZombie = z;
+            }
+          });
+      }
 
       // 3. Opportunistic Interaction
       if (Math.random() < 0.05) {
@@ -3153,20 +3648,22 @@ export const Scene: React.FC<SceneProps> = ({
         }
       }
 
-      if (closestZombie && minDist < 30) {
-        bot.targetId = closestZombie.id;
+      const target = closestZombie || closestEnemyBot || (targetIsPlayer ? { position: playerPos.current, id: 'player' } : null);
+
+      if (target && minDist < 30) {
+        bot.targetId = (target as any).id || 'player';
         
-        // Move towards zombie if too far, back away if too close
-        const toZombie = closestZombie.position.clone().sub(bot.position);
-        toZombie.y = 0;
-        toZombie.normalize();
+        // Move towards target
+        const toTarget = (target as any).position ? (target as any).position.clone().sub(bot.position) : playerPos.current.clone().sub(bot.position);
+        toTarget.y = 0;
+        toTarget.normalize();
         
         if (minDist > 10) {
-          const moveVec = toZombie.clone().multiplyScalar(4 * delta);
+          const moveVec = toTarget.clone().multiplyScalar(4 * delta);
           resolveCollision(bot.position, moveVec, 0.5);
           bot.position.add(moveVec);
         } else if (minDist < 5) {
-          const moveVec = toZombie.clone().multiplyScalar(-4 * delta);
+          const moveVec = toTarget.clone().multiplyScalar(-4 * delta);
           resolveCollision(bot.position, moveVec, 0.5);
           bot.position.add(moveVec);
         }
@@ -3177,7 +3674,7 @@ export const Scene: React.FC<SceneProps> = ({
           soundService.playShoot('M1911'); // Default bot sound
           
           // Visual flash
-          const muzzlePos = bot.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(toZombie.clone().multiplyScalar(0.5));
+          const muzzlePos = bot.position.clone().add(new THREE.Vector3(0, 1.5, 0)).add(toTarget.clone().multiplyScalar(0.5));
           effects.current.push({
             id: Math.random().toString(),
             type: 'flash',
@@ -3187,21 +3684,50 @@ export const Scene: React.FC<SceneProps> = ({
             scale: 0.2
           });
 
-          // Damage zombie
-          closestZombie.hp -= 30; // Bot damage
-          closestZombie.hitFlash = 1.0;
-          
-          effects.current.push({
-            id: Math.random().toString(),
-            type: 'blood',
-            pos: closestZombie.position.clone().add(new THREE.Vector3(0, 1.5, 0)),
-            life: 0.3,
-            color: '#990000',
-            scale: 1.0
-          });
+          if (closestZombie) {
+              // Damage zombie
+              closestZombie.hp -= 30; // Bot damage
+              closestZombie.hitFlash = 1.0;
+              
+              effects.current.push({
+                id: Math.random().toString(),
+                type: 'blood',
+                pos: closestZombie.position.clone().add(new THREE.Vector3(0, 1.5, 0)),
+                life: 0.3,
+                color: '#990000',
+                scale: 1.0
+              });
 
-          if (closestZombie.hp <= 0) {
-            onStatsUpdate({ points: 100, kills: 1 }, bot.id); // Give bot full points and kill
+              if (closestZombie.hp <= 0) {
+                onStatsUpdate({ points: 100, kills: 1 }, bot.id); // Give bot full points and kill
+              }
+          } else if (closestEnemyBot) {
+              closestEnemyBot.hp -= 30;
+              effects.current.push({
+                id: Math.random().toString(),
+                type: 'blood',
+                pos: closestEnemyBot.position.clone().add(new THREE.Vector3(0, 1.5, 0)),
+                life: 0.3,
+                color: '#990000',
+                scale: 1.0
+              });
+              if (closestEnemyBot.hp <= 0) {
+                  closestEnemyBot.isDowned = true;
+                  closestEnemyBot.downedTimer = 30;
+                  onStatsUpdate({ points: 100, kills: 1 }, bot.id);
+              }
+          } else if (targetIsPlayer) {
+              if (!gameState.godMode) {
+                  onStatsUpdate({ hp: gameState.hp - 30 }); // Damage player
+                  effects.current.push({
+                    id: Math.random().toString(),
+                    type: 'blood',
+                    pos: playerPos.current.clone().add(new THREE.Vector3(0, 1.5, 0)),
+                    life: 0.3,
+                    color: '#ff0000',
+                    scale: 1.0
+                  });
+              }
           }
         }
       } else {
@@ -3250,6 +3776,30 @@ export const Scene: React.FC<SceneProps> = ({
         }
       }
     });
+
+    // Check Score Limit for Multiplayer
+    if (gameMode === 'multiplayer' && currentScoreLimit) {
+        // Check player kills
+        if (gameState.kills >= currentScoreLimit) {
+            // Swap sides logic
+            if (gameState.kills === 35 && gameState.multiplayerMode === 'tdm' && currentScoreLimit === 35) {
+                // Swap sides
+                setTeamSide(prev => prev === 1 ? 2 : 1);
+                setCurrentScoreLimit(70);
+            } else {
+                onGameOver(true);
+                return;
+            }
+        }
+        
+        // Check bot kills
+        botsRef.current.forEach(bot => {
+            if (bot.kills && bot.kills >= currentScoreLimit) {
+                onGameOver(false); // Bot won
+                return;
+            }
+        });
+    }
 
     // Zombie AI and Movement
     if (!isHost && syncedZombies) {
@@ -3354,8 +3904,9 @@ export const Scene: React.FC<SceneProps> = ({
         // Separation Force (Optimized & Throttled)
         if ((frameCount.current + i) % 2 === 0) {
           const zPos = z.position;
-          for (let j = 0; j < zombieRefs.current.length; j++) {
-            const other = zombieRefs.current[j];
+          const checkLimit = Math.min(zombieRefs.current.length, 5);
+          for (let j = 0; j < checkLimit; j++) {
+            const other = zombieRefs.current[Math.floor(Math.random() * zombieRefs.current.length)];
             if (other.id === z.id) continue;
             
             const oPos = other.position;
@@ -3465,10 +4016,17 @@ export const Scene: React.FC<SceneProps> = ({
           if (targetBot) {
             targetBot.hp -= damage;
             if (targetBot.hp <= 0 && !targetBot.isDowned) {
-              targetBot.isDowned = true;
-              targetBot.downedTimer = 10;
-              targetBot.hp = 0;
-              onStatsUpdate({ isDowned: true, downedTimer: 10, hp: 0, downs: 1 }, targetBot.id);
+              if (gameState.multiplayerMode === 'ffa' || gameState.multiplayerMode === 'tdm') {
+                targetBot.hp = 150;
+                targetBot.isDowned = false;
+                targetBot.position.set(Math.random() * 20 - 10, 0, Math.random() * 20 - 10);
+                onStatsUpdate({ hp: 150, isDowned: false }, targetBot.id);
+              } else {
+                targetBot.isDowned = true;
+                targetBot.downedTimer = 10;
+                targetBot.hp = 0;
+                onStatsUpdate({ isDowned: true, downedTimer: 10, hp: 0, downs: 1 }, targetBot.id);
+              }
             }
           }
         }
@@ -3493,7 +4051,17 @@ export const Scene: React.FC<SceneProps> = ({
     }
   }
 
-    if (roundStarted.current && zombiesToSpawnThisRound.current > 0 && zombieRefs.current.length < 15 && now - lastSpawnTime.current > 1200) {
+    let maxZombies = 15;
+    let spawnDelay = 1200;
+    if (difficulty === 'easy') {
+      maxZombies = 10;
+      spawnDelay = 1800;
+    } else if (difficulty === 'hard') {
+      maxZombies = 25;
+      spawnDelay = 800;
+    }
+
+    if (roundStarted.current && zombiesToSpawnThisRound.current > 0 && zombieRefs.current.length < maxZombies && now - lastSpawnTime.current > spawnDelay && gameMode !== 'multiplayer') {
       lastSpawnTime.current = now;
       zombiesToSpawnThisRound.current--;
       
@@ -3503,6 +4071,15 @@ export const Scene: React.FC<SceneProps> = ({
       let type: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute' = 'normal';
       let hp = 120 + gameState.round * 50;
       let speed = 2.2 + (gameState.round * 0.1);
+
+      // Difficulty Scaling
+      if (difficulty === 'easy') {
+        hp *= 0.8;
+        speed *= 0.8;
+      } else if (difficulty === 'hard') {
+        hp *= 1.2;
+        speed *= 1.2;
+      }
 
       if (gameState.round >= 20 && rand > 0.95) {
         type = 'brute';
@@ -3659,9 +4236,30 @@ export const Scene: React.FC<SceneProps> = ({
     if (mapConfig.id === 'z-town' && busState.current === 'stopped') {
         const dx = Math.abs(playerPos.current.x - busPos.current.x);
         const dz = Math.abs(playerPos.current.z - busPos.current.z);
-        if (dx < 10 && dz < 20) {
-           onInteractAvailable({ type: isPlayerOnBus.current ? 'Disembark Bus' : 'Board Bus', cost: 0, id: 'bus_interact' });
-           interactableFound = true;
+        
+        if (isPlayerOnBus.current) {
+            const localPos = playerPos.current.clone().sub(busPos.current);
+            localPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -busRot.current.y);
+            if (localPos.z < -10) {
+                if (!interactableFound) {
+                    onInteractAvailable({ type: 'Disembark Bus', cost: 0, id: 'bus_interact' });
+                    interactableFound = true;
+                }
+            } else if (localPos.z > 10) {
+                if (!interactableFound) {
+                    onInteractAvailable({ type: 'Drive Bus (500 pts)', cost: 500, id: 'bus_drive' });
+                    interactableFound = true;
+                }
+            }
+        } else {
+            const localPos = playerPos.current.clone().sub(busPos.current);
+            localPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), -busRot.current.y);
+            if (localPos.z < -10 && localPos.z > -25 && Math.abs(localPos.x) < 10) {
+               if (!interactableFound) {
+                   onInteractAvailable({ type: 'Board Bus', cost: 0, id: 'bus_interact' });
+                   interactableFound = true;
+               }
+            }
         }
     }
 
@@ -3676,13 +4274,13 @@ export const Scene: React.FC<SceneProps> = ({
     const isLookingUp = camera.rotation.x > 1.3; // Looking almost straight up
     
     // Easter Egg logic (Disabled in Dead Ops)
-    if (gameMode !== 'dead_ops' && distToBox < 4 && isLookingUp && !easterEggTriggered.current && status === GameStatus.PLAYING) {
+    if (gameMode !== 'dead_ops' && distToBox < 4 && isLookingUp && !easterEggTriggeredRef.current && status === GameStatus.PLAYING) {
       easterEggTimer.current += delta;
       
       // Check for Ultimate Easter Egg (5s + 8 bullets)
       if (easterEggTimer.current >= 5.0) {
         if (easterEggBullets.current >= 8) {
-          easterEggTriggered.current = true;
+          easterEggTriggeredRef.current = true;
           onEasterEggTriggered();
           soundService.playPowerUpPickup();
           onStatsUpdate({ points: 5000, addAllPerks: true });
@@ -3697,7 +4295,7 @@ export const Scene: React.FC<SceneProps> = ({
           });
         } else if (easterEggBullets.current >= 5) {
           // Better Easter Egg (5s + 5 bullets)
-          easterEggTriggered.current = true;
+          easterEggTriggeredRef.current = true;
           onEasterEggTriggered();
           soundService.playPowerUpPickup();
           
@@ -3723,7 +4321,7 @@ export const Scene: React.FC<SceneProps> = ({
           });
         } else {
           // Just reached 5s but not enough bullets, trigger basic
-          easterEggTriggered.current = true;
+          easterEggTriggeredRef.current = true;
           onEasterEggTriggered();
           soundService.playPowerUpPickup();
           
@@ -3749,8 +4347,8 @@ export const Scene: React.FC<SceneProps> = ({
       }
     } else {
       // If they were looking up for at least 3.5s but less than 5s and stopped, trigger basic
-      if (gameMode !== 'dead_ops' && easterEggTimer.current >= 3.5 && !easterEggTriggered.current && status === GameStatus.PLAYING) {
-        easterEggTriggered.current = true;
+      if (gameMode !== 'dead_ops' && easterEggTimer.current >= 3.5 && !easterEggTriggeredRef.current && status === GameStatus.PLAYING) {
+        easterEggTriggeredRef.current = true;
         onEasterEggTriggered();
         soundService.playPowerUpPickup();
         
@@ -3808,7 +4406,7 @@ export const Scene: React.FC<SceneProps> = ({
       <Debris count={50} range={200} />
       <Grid args={[400, 400]} cellColor="#006600" sectionColor="#00aa00" fadeDistance={150} position={[0, -0.04, 0]} />
       
-      {mapConfig.id === 'z-town' && <Bus position={busPos.current} rotation={busRot.current} />}
+      {mapConfig.id === 'z-town' && <Bus posRef={busPos} rotRef={busRot} busState={busState} />}
 
       {mapConfig.objects.map((obj, i) => {
         // Skip static bus if Tranzit
@@ -3824,6 +4422,13 @@ export const Scene: React.FC<SceneProps> = ({
             lightColor={obj.lightColor || '#fff'} 
             isOpen={obj.doorId ? openDoors.includes(obj.doorId) : true}
           />;
+        }
+        if (obj.label === 'road') {
+          return (
+            <Box key={i} args={obj.args} position={obj.pos} rotation={obj.rotation}>
+              <meshStandardMaterial color={obj.color} />
+            </Box>
+          );
         }
         if (obj.type === 'box' || obj.type === 'wall' || obj.type === 'cylinder') {
           if (obj.texture) {
@@ -3914,6 +4519,7 @@ export const Scene: React.FC<SceneProps> = ({
           isShooting={Date.now() - b.lastShot < 100}
           variant={b.variant}
           isReviving={b.isReviving}
+          team={b.team}
         />
       ))}
       {zombieRefs.current.map(z => (
@@ -4061,6 +4667,26 @@ export const Scene: React.FC<SceneProps> = ({
       </group>
       
       <Gravestone position={currentGravePos} rotation={currentGraveRot} />
+      
+      {/* Story Mode Objectives UI */}
+      {gameMode === 'story' && (
+        <Html position={[0, 0, 0]} fullscreen style={{ pointerEvents: 'none' }}>
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+            <div className="bg-black/60 backdrop-blur-md px-6 py-3 rounded-sm border-l-4 border-yellow-500 shadow-xl flex flex-col items-center animate-in slide-in-from-top duration-500">
+              <span className="text-yellow-500 text-xs font-black uppercase tracking-widest mb-1">Current Objective</span>
+              <span className="text-white font-bold italic text-lg text-center shadow-black drop-shadow-md">{currentObjective}</span>
+            </div>
+            {objectivesCompleted && !dragonActive && !bossDefeated && (
+              <div className="animate-bounce mt-2">
+                <div className="bg-red-600/80 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/20">
+                  BOSS FIGHT READY
+                </div>
+              </div>
+            )}
+          </div>
+        </Html>
+      )}
+
       {(thirdPersonMode || gameMode === 'dead_ops') && (
         <LocalPlayerModel 
           playerPos={playerPos.current}
@@ -4071,6 +4697,8 @@ export const Scene: React.FC<SceneProps> = ({
           isShooting={isShooting.current}
           variant={progression.xp % 100} // Use XP as a seed for player variant
           scale={gameMode === 'dead_ops' ? 0.5 : 1}
+          isJumping={!isGrounded.current}
+          team={gameState.team}
         />
       )}
     </>
@@ -4119,7 +4747,9 @@ const LocalPlayerModel: React.FC<{
   isShooting: boolean;
   variant: number;
   scale?: number;
-}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1 }) => {
+  isJumping: boolean;
+  team?: number;
+}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1, isJumping, team }) => {
   const mesh = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Mesh>(null);
   const rightLeg = useRef<THREE.Mesh>(null);
@@ -4165,7 +4795,7 @@ const LocalPlayerModel: React.FC<{
         if (rightArm.current) rightArm.current.rotation.x = 0;
       } else {
         mesh.current.rotation.copy(playerRot);
-        mesh.current.rotation.x = 0; // Keep upright
+        mesh.current.rotation.x = isJumping ? -0.2 : 0; // Tilt forward when jumping
         mesh.current.rotation.z = 0;
 
         // Calculate movement speed for animation
@@ -4323,6 +4953,15 @@ const LocalPlayerModel: React.FC<{
           <meshStandardMaterial color="#000" />
         </Box>
       </group>
+      <group position={[0, 2.8, 0]}>
+         <Html center zIndexRange={[100, 0]}>
+            <div className="flex flex-col items-center pointer-events-none select-none">
+               <div style={{ backgroundColor: team === 1 ? "#3b82f6" : "#ef4444", boxShadow: `0 0 10px ${team === 1 ? "#3b82f6" : "#ef4444"}` }} className="text-white p-1 rounded-full border border-white/50 mb-1">
+                  <User size={12} />
+               </div>
+            </div>
+         </Html>
+      </group>
     </group>
   );
 };
@@ -4340,7 +4979,8 @@ const BotInstance: React.FC<{
   isShooting: boolean;
   variant: number;
   isReviving: boolean;
-}> = ({ position, id, name, targetId, zombieRefs, isDowned, downedTimer, playerPos, isPlayerDowned, isShooting, variant, isReviving }) => {
+  team?: number;
+}> = ({ position, id, name, targetId, zombieRefs, isDowned, downedTimer, playerPos, isPlayerDowned, isShooting, variant, isReviving, team }) => {
   const mesh = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Mesh>(null);
   const rightLeg = useRef<THREE.Mesh>(null);
@@ -4349,6 +4989,12 @@ const BotInstance: React.FC<{
   const weaponGroup = useRef<THREE.Group>(null);
   const lastPos = useRef(new THREE.Vector3());
   const walkTime = useRef(0);
+
+  const teamColor = useMemo(() => {
+    if (team === 1) return "#3b82f6"; // blue-500
+    if (team === 2) return "#ef4444"; // red-500
+    return "#60a5fa"; // default blue-400
+  }, [team]);
 
   const clothingColor = useMemo(() => {
     const colors = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea"];
@@ -4559,7 +5205,7 @@ const BotInstance: React.FC<{
       <group position={[0, 2.8, 0]}>
          <Html center zIndexRange={[100, 0]}>
             <div className="flex flex-col items-center pointer-events-none select-none">
-               <div className="bg-blue-600/80 text-white p-1 rounded-full border border-white/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] mb-1">
+               <div style={{ backgroundColor: teamColor, boxShadow: `0 0 10px ${teamColor}` }} className="text-white p-1 rounded-full border border-white/50 mb-1">
                   <User size={12} />
                </div>
             </div>

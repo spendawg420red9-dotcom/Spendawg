@@ -11,10 +11,12 @@ export const MAPS: MapConfig[] = [
     skyColor: '#1a1a1a',
     fogColor: '#111',
     fogNear: 20,
-    fogFar: 200,
+    fogFar: 1000,
     spawnPoints: [
       [0, 1.2, 15], [25, 1.2, -10], [-25, 1.2, 10], [0, 1.2, -35], [15, 1.2, 40], [-15, 1.2, -40]
     ],
+    side1SpawnPoints: [[0, 1.2, 15], [25, 1.2, -10], [-25, 1.2, 10]],
+    side2SpawnPoints: [[0, 1.2, -35], [15, 1.2, 40], [-15, 1.2, -40]],
     craftingTablePos: [0, 1.5, -110],
     interactables: [
       { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [-25, 0, -15], color: '#ff0000' },
@@ -90,11 +92,13 @@ export const MAPS: MapConfig[] = [
     skyColor: '#000',
     fogColor: '#000',
     fogNear: 5,
-    fogFar: 40,
+    fogFar: 1000,
     spawnPoints: [
       [15, 1.2, 15], [-15, 1.2, 15], [15, 1.2, -15], [-15, 1.2, -15],
       [30, 1.2, 0], [-30, 1.2, 0], [0, 1.2, 30], [0, 1.2, -30]
     ],
+    side1SpawnPoints: [[15, 1.2, 15], [-15, 1.2, 15], [30, 1.2, 0], [0, 1.2, 30]],
+    side2SpawnPoints: [[15, 1.2, -15], [-15, 1.2, -15], [-30, 1.2, 0], [0, 1.2, -30]],
     craftingTablePos: [0, 1.5, -50],
     interactables: [
       { id: 'jugg', type: 'PERK: Toughness Brew', cost: 2500, pos: [-10, 0, -10], color: '#ff0000' },
@@ -148,10 +152,12 @@ export const MAPS: MapConfig[] = [
     skyColor: '#ffcc88',
     fogColor: '#aa7755',
     fogNear: 20,
-    fogFar: 300,
+    fogFar: 1000,
     spawnPoints: [
       [0, 1.2, 0], [10, 1.2, 10], [-10, 1.2, -10], [10, 1.2, -10], [-10, 1.2, 10]
     ],
+    side1SpawnPoints: [[0, 1.2, 0], [10, 1.2, 10], [10, 1.2, -10]],
+    side2SpawnPoints: [[-10, 1.2, -10], [-10, 1.2, 10]],
     craftingTablePos: [0, 1.5, -60],
     interactables: [
       // Yellow House Perks (West)
@@ -209,7 +215,7 @@ export const MAPS: MapConfig[] = [
       // Vehicles & Obstacles - Scaled Up
       { type: 'box', pos: [0, 3.5, -30], args: [9, 7, 27], color: '#475569', texture: 'https://picsum.photos/seed/bus/512/512' }, // Bus
       { type: 'box', pos: [0, 4, 30], args: [9, 9, 27], color: '#f97316', texture: 'https://picsum.photos/seed/movingtruck/512/512' }, // Moving Truck
-      { type: 'box', pos: [0, 3, 0], args: [6, 6, 0.8], color: '#ffffff', texture: 'https://dummyimage.com/512x512/fff/000.png&text=NUKETOWN' }, // Sign
+      { type: 'box', pos: [0, 3, -15], args: [6, 6, 0.8], color: '#ffffff', texture: 'https://dummyimage.com/512x512/fff/000.png&text=MUKKATOWN' }, // Sign
       
       // Fences (Boundaries) - Expanded to +/- 100 X, +/- 120 Z
       { type: 'box', pos: [100, 7.5, 0], args: [1, 15, 240], color: '#4a4a4a', texture: 'https://picsum.photos/seed/fence/512/512' },
@@ -234,10 +240,12 @@ export const MAPS: MapConfig[] = [
     skyColor: '#1a1a2e',
     fogColor: '#0f172a',
     fogNear: 15,
-    fogFar: 250,
+    fogFar: 1000,
     spawnPoints: [
       [0, 1.2, 20], [10, 1.2, 20], [-10, 1.2, 20], [0, 1.2, 30], [0, 1.2, 10]
     ],
+    side1SpawnPoints: [[0, 1.2, 20], [10, 1.2, 20]],
+    side2SpawnPoints: [[-10, 1.2, 20], [0, 1.2, 30], [0, 1.2, 10]],
     craftingTablePos: [0, 1.5, 0],
     interactables: [
       // Barn Perks (North)
@@ -319,13 +327,15 @@ export const MAPS: MapConfig[] = [
     skyColor: '#331100',
     fogColor: '#220a00',
     fogNear: 10,
-    fogFar: 150,
+    fogFar: 1000,
     spawnPoints: [
-      [0, 1.2, -25], // Bus Depot (Inside)
-      [0, 1.2, -180], // Town Bank
-      [-100, 1.2, 120], // Farm House
-      [100, 1.2, 120] // Power Station
+      [0, 1.2, 0], // Bus Depot (Outside)
+      [0, 1.2, -150], // Town Street
+      [-100, 1.2, 80], // Farm Yard
+      [100, 1.2, 80] // Power Station Yard
     ],
+    side1SpawnPoints: [[0, 1.2, 0], [-100, 1.2, 80]],
+    side2SpawnPoints: [[0, 1.2, -150], [100, 1.2, 80]],
     craftingTablePos: [0, 1.5, -10],
     interactables: [
       // Bus Depot Area (Start) - Building at (0, 0, -25)
@@ -386,19 +396,28 @@ export const MAPS: MapConfig[] = [
       { type: 'building', pos: [-150, 5, -20], args: [25, 10, 20], color: "#440000", label: "DINER", lightColor: "#ff0000", doorCost: 750, doorId: "diner_door_tranzit" },
       { type: 'building', pos: [-125, 6, -10], args: [15, 12, 15], color: "#333", label: "GARAGE", lightColor: "#fff", doorCost: 750, doorId: "diner_garage_door" },
 
-      // Roads/Fog (Visual Guides - Streetlights)
-      { type: 'streetlight', pos: [0, 0, 25], color: '#ffaa00' },
-      { type: 'streetlight', pos: [0, 0, 50], color: '#ffaa00' },
-      { type: 'streetlight', pos: [0, 0, 75], color: '#ffaa00' },
-      { type: 'streetlight', pos: [25, 0, 0], color: '#ffaa00' },
-      { type: 'streetlight', pos: [50, 0, 0], color: '#ffaa00' },
-      { type: 'streetlight', pos: [75, 0, 0], color: '#ffaa00' },
+      // Roads (Asphalt with markings)
+      { type: 'box', pos: [0, 0.1, 0], args: [400, 0.1, 20], color: '#222', texture: 'https://picsum.photos/seed/asphalt/512/512', label: 'road' },
+      { type: 'box', pos: [0, 0.1, 100], args: [400, 0.1, 20], color: '#222', texture: 'https://picsum.photos/seed/asphalt/512/512', label: 'road' },
+      { type: 'box', pos: [100, 0.1, 0], args: [20, 0.1, 400], color: '#222', texture: 'https://picsum.photos/seed/asphalt/512/512', label: 'road' },
+      { type: 'box', pos: [-100, 0.1, 0], args: [20, 0.1, 400], color: '#222', texture: 'https://picsum.photos/seed/asphalt/512/512', label: 'road' },
       
-      // Boundaries (Massive Box Walls)
-      { type: 'box', pos: [200, 10, 0], args: [1, 20, 400], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
-      { type: 'box', pos: [-200, 10, 0], args: [1, 20, 400], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
-      { type: 'box', pos: [0, 10, 200], args: [400, 20, 1], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
-      { type: 'box', pos: [0, 10, -200], args: [400, 20, 1], color: '#111', texture: 'https://picsum.photos/seed/fogwall/512/512' },
+      // Road Markings (Yellow lines)
+      { type: 'box', pos: [0, 0.15, 0], args: [400, 0.1, 0.5], color: '#eab308' },
+      { type: 'box', pos: [0, 0.15, 100], args: [400, 0.1, 0.5], color: '#eab308' },
+      { type: 'box', pos: [100, 0.15, 0], args: [0.5, 0.1, 400], color: '#eab308' },
+      { type: 'box', pos: [-100, 0.15, 0], args: [0.5, 0.1, 400], color: '#eab308' },
+
+      // Additional Roads for Bus Path
+      { type: 'box', pos: [0, 0.1, -100], args: [20, 0.1, 200], color: '#222', texture: 'https://picsum.photos/seed/asphalt/512/512', label: 'road' },
+      { type: 'box', pos: [0, 0.15, -100], args: [0.5, 0.1, 200], color: '#eab308' },
+      { type: 'box', pos: [-150, 0.1, 0], args: [100, 0.1, 20], color: '#222', texture: 'https://picsum.photos/seed/asphalt/512/512', label: 'road' },
+      { type: 'box', pos: [-150, 0.15, 0], args: [100, 0.1, 0.5], color: '#eab308' },
+
+      // Add more doors
+      { type: 'building', pos: [50, 5, 50], args: [20, 10, 20], color: "#555", label: "SHED", lightColor: "#fff", doorCost: 500, doorId: "shed_door_tranzit" },
+      { type: 'building', pos: [-50, 5, 50], args: [20, 10, 20], color: "#555", label: "SHED2", lightColor: "#fff", doorCost: 500, doorId: "shed2_door_tranzit" },
+
     ]
   }
 ];

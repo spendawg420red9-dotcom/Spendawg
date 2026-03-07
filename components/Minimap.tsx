@@ -8,6 +8,7 @@ interface MinimapProps {
   playerRot: React.MutableRefObject<THREE.Euler>;
   zombieRefs: React.MutableRefObject<ZombieData[]>;
   otherPlayers: PlayerScore[];
+  gravePos: THREE.Vector3 | null;
   mapConfig: MapConfig;
   visible: boolean;
   position: { x: number; y: number };
@@ -19,6 +20,7 @@ export const Minimap: React.FC<MinimapProps> = ({
   playerRot,
   zombieRefs,
   otherPlayers,
+  gravePos,
   mapConfig,
   visible,
   position,
@@ -143,6 +145,16 @@ export const Minimap: React.FC<MinimapProps> = ({
         }
       });
 
+      // Draw Grave Stone
+      if (gravePos) {
+        const relX = (gravePos.x - playerPos.current!.x) * zoom;
+        const relZ = (gravePos.z - playerPos.current!.z) * zoom;
+        if (Math.abs(relX) < size/2 && Math.abs(relZ) < size/2) {
+            ctx.fillStyle = '#ffffff'; // White for grave
+            ctx.fillRect(centerX + relX - 3, centerY + relZ - 3, 6, 6);
+        }
+      }
+
       // Draw Other Players / Bots
       otherPlayers?.forEach(p => {
         if (!p || !p.position || p.hp <= 0) return;
@@ -150,7 +162,7 @@ export const Minimap: React.FC<MinimapProps> = ({
         const relZ = (p.position.z - playerPos.current!.z) * zoom;
 
         if (Math.abs(relX) < size/2 && Math.abs(relZ) < size/2) {
-            ctx.fillStyle = '#00ffff';
+            ctx.fillStyle = p.isBot ? '#00ffff' : '#0000ff'; // Cyan for bots, Blue for players
             ctx.beginPath();
             ctx.arc(centerX + relX, centerY + relZ, 4, 0, Math.PI * 2);
             ctx.fill();

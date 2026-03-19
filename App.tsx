@@ -2,16 +2,19 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { GameStatus, PlayerStats, PowerUpType, ScoreEntry, HUDSettings, KeybindSettings, GamepadSettings, GameSettings, WeaponCamo, Achievement, Progression, PlayerScore, WeaponAttachment, ZombieType, GameMode, ZombieData, DEFAULT_PROFILE } from './types';
+import { GameStatus, PlayerStats, PowerUpType, ScoreEntry, HUDSettings, KeybindSettings, GamepadSettings, GameSettings, WeaponCamo, Achievement, Progression, PlayerScore, WeaponAttachment, ZombieType, GameMode, ZombieData, DEFAULT_PROFILE, EmblemLayer, MAX_LEVEL } from './types';
+import { CALLING_CARDS, isCallingCardUnlocked } from './callingCards';
 import { Joystick } from './components/Joystick';
 import { Scene } from './components/Scene';
 import { Minimap } from './components/Minimap';
-import { useTexture } from '@react-three/drei';
+import ShopItemPreview from './components/ShopItemPreview';
+import { Player3DViewer as Player3DViewerComponent } from './components/Player3DViewer';
+import { useTexture, OrbitControls, PerspectiveCamera, Box, Sphere, Float, Stage } from '@react-three/drei';
 import { getRoundLore } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { MAPS } from './maps';
 import { io, Socket } from 'socket.io-client';
-import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, UserPlus, Users, MessageSquare } from 'lucide-react';
+import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, Unlock, UserPlus, Users, MessageSquare, MousePointer2, Move } from 'lucide-react';
 
 const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate: number, color: string, speed: number, reload: number, description?: string, unlockLevel?: number }> = {
   'M1911': { clip: 8, max: 80, damage: 65, rate: 200, color: '#999', speed: 0.1, reload: 1500, unlockLevel: 1 },
@@ -66,6 +69,95 @@ const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate:
   '1001 SAMURAIS': { clip: 60, max: 360, damage: 90, rate: 110, color: '#554433', speed: 0.1, reload: 1800 },
   'Bowie Knife': { clip: 0, max: 0, damage: 2000, rate: 0, color: '#ffffff', speed: 0.1, reload: 0 },
   'DEATH_MACHINE': { clip: 999, max: 999, damage: 150, rate: 50, color: '#333333', speed: 0.05, reload: 0 },
+};
+
+const SHOP_ITEMS: Record<string, { id: string, name: string, cost: number }[]> = {
+  callingCards: [
+    { id: 'default', name: 'Default', cost: 0 },
+    { id: 'zombie_slayer', name: 'Zombie Slayer', cost: 100 },
+    { id: 'boss_killer', name: 'Boss Killer', cost: 250 },
+    { id: 'gem_collector', name: 'Gem Collector', cost: 500 },
+    { id: 'shadow_stalker', name: 'Shadow Stalker', cost: 750 },
+    { id: 'blood_moon', name: 'Blood Moon', cost: 1000 },
+    { id: 'neon_nightmare', name: 'Neon Nightmare', cost: 1500 },
+  ],
+  camos: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'gilded', name: 'Gilded', cost: 500 },
+    { id: 'crystal', name: 'Crystal', cost: 1000 },
+    { id: 'void_matter', name: 'Void Matter', cost: 1500 },
+    { id: 'sakura', name: 'Sakura', cost: 2000 },
+    { id: 'wyvern', name: 'Wyvern', cost: 2500 },
+    { id: 'frost', name: 'Frost', cost: 3000 },
+    { id: 'lava', name: 'Lava', cost: 3500 },
+    { id: 'galaxy', name: 'Galaxy', cost: 4000 },
+    { id: 'crimson_hex', name: 'Crimson Hex', cost: 4500 },
+    { id: 'abyss', name: 'Abyss', cost: 5000 },
+    { id: 'stellar', name: 'Stellar', cost: 5500 },
+    { id: 'prism', name: 'Prism', cost: 6000 },
+  ],
+  clothes: [
+    { id: 'default', name: 'Default', cost: 0 },
+    { id: 'tactical_gear', name: 'Tactical Gear', cost: 500 },
+    { id: 'hazmat_suit', name: 'Hazmat Suit', cost: 1000 },
+    { id: 'ghillie_suit', name: 'Ghillie Suit', cost: 1500 },
+    { id: 'cyber_ninja', name: 'Cyber Ninja', cost: 2000 },
+  ],
+  finisherMoves: [
+    { id: 'Tactical Takedown', name: 'Tactical Takedown', cost: 0 },
+    { id: 'Zombie Finisher', name: 'Zombie Finisher', cost: 500 },
+    { id: 'Boss Execution', name: 'Boss Execution', cost: 1000 },
+    { id: 'Roundhouse Kick', name: 'Roundhouse Kick', cost: 1500 },
+    { id: 'Suplex', name: 'Suplex', cost: 2000 },
+    { id: 'Moonwalk', name: 'Moonwalk', cost: 2500 },
+    { id: 'Floss', name: 'Floss', cost: 2500 },
+    { id: 'Orange Justice', name: 'Orange Justice', cost: 2500 },
+    { id: 'Carlton Dance', name: 'Carlton Dance', cost: 2500 },
+  ],
+  hats: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'baseball_cap', name: 'Baseball Cap', cost: 200 },
+    { id: 'beanie', name: 'Beanie', cost: 200 },
+    { id: 'cowboy_hat', name: 'Cowboy Hat', cost: 500 },
+    { id: 'top_hat', name: 'Top Hat', cost: 1000 },
+  ],
+  glasses: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'aviators', name: 'Aviators', cost: 300 },
+    { id: 'tactical_goggles', name: 'Tactical Goggles', cost: 500 },
+    { id: 'cyber_shades', name: 'Cyber Shades', cost: 800 },
+  ],
+  masks: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'bandana', name: 'Bandana', cost: 250 },
+    { id: 'gas_mask', name: 'Gas Mask', cost: 600 },
+    { id: 'skull_mask', name: 'Skull Mask', cost: 1200 },
+    { id: 'oni_mask', name: 'Oni Mask', cost: 2000 },
+  ],
+  helmets: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'combat_helmet', name: 'Combat Helmet', cost: 800 },
+    { id: 'swat_helmet', name: 'SWAT Helmet', cost: 1500 },
+    { id: 'space_helmet', name: 'Space Helmet', cost: 3000 },
+  ],
+  chest: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'plate_carrier', name: 'Plate Carrier', cost: 1000 },
+    { id: 'heavy_armor', name: 'Heavy Armor', cost: 2500 },
+    { id: 'exo_suit', name: 'Exo Suit', cost: 5000 },
+  ],
+  boots: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'combat_boots', name: 'Combat Boots', cost: 500 },
+    { id: 'jump_boots', name: 'Jump Boots', cost: 1200 },
+    { id: 'hover_boots', name: 'Hover Boots', cost: 3000 },
+  ],
+  gloves: [
+    { id: 'none', name: 'None', cost: 0 },
+    { id: 'tactical_gloves', name: 'Tactical Gloves', cost: 400 },
+    { id: 'armored_gloves', name: 'Armored Gloves', cost: 900 },
+    { id: 'power_gauntlets', name: 'Power Gauntlets', cost: 2500 },
+  ],
 };
 
 const PAP_MAPPING: Record<string, string> = {
@@ -544,7 +636,7 @@ const ZombieModel = ({ variant }: { variant: 'normal' | 'runner' | 'tank' | 'inf
   );
 };
 
-const DragonModel = () => {
+const DragonModel = React.memo(() => {
   return (
     <div className="w-full h-full flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
       <div className="relative w-32 h-24">
@@ -569,9 +661,436 @@ const DragonModel = () => {
       </div>
     </div>
   );
+});
+
+const ElephantModel = React.memo(() => {
+  return (
+    <div className="w-full h-full flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+      <div className="relative w-32 h-24">
+        {/* Body */}
+        <div className="absolute top-4 left-4 w-24 h-16 bg-slate-700 rounded-2xl" />
+        {/* Head */}
+        <div className="absolute top-2 left-20 w-12 h-12 bg-slate-600 rounded-xl" />
+        {/* Trunk */}
+        <div className="absolute top-8 left-28 w-4 h-12 bg-slate-600 rounded-full transform rotate-12" />
+        {/* Tusks */}
+        <div className="absolute top-10 left-26 w-2 h-8 bg-white rounded-full transform -rotate-12" />
+        <div className="absolute top-12 left-26 w-2 h-8 bg-white rounded-full transform rotate-12" />
+        {/* Eyes */}
+        <div className="absolute top-4 left-24 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_5px_red]" />
+        <div className="absolute top-4 left-28 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_5px_red]" />
+      </div>
+    </div>
+  );
+});
+
+const OgreModel = React.memo(() => {
+  return (
+    <div className="w-full h-full flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+      <div className="relative w-32 h-24">
+        {/* Body */}
+        <div className="absolute top-4 left-8 w-16 h-20 bg-emerald-900 rounded-xl" />
+        {/* Head */}
+        <div className="absolute top-0 left-10 w-12 h-10 bg-emerald-800 rounded-full" />
+        {/* Arms */}
+        <div className="absolute top-6 left-2 w-8 h-12 bg-emerald-800 rounded-full transform -rotate-45" />
+        <div className="absolute top-6 left-22 w-8 h-12 bg-emerald-800 rounded-full transform rotate-45" />
+        {/* Eye */}
+        <div className="absolute top-3 left-15 w-3 h-3 bg-red-600 rounded-full shadow-[0_0_5px_red]" />
+        {/* Club */}
+        <div className="absolute top-0 left-24 w-4 h-16 bg-stone-700 rounded-full transform rotate-12" />
+      </div>
+    </div>
+  );
+});
+
+const WormModel = React.memo(() => {
+  return (
+    <div className="w-full h-full flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
+      <div className="relative w-32 h-24">
+        {/* Body segments */}
+        <div className="absolute top-12 left-4 w-10 h-10 bg-orange-900 rounded-full" />
+        <div className="absolute top-8 left-10 w-12 h-12 bg-orange-800 rounded-full" />
+        <div className="absolute top-4 left-18 w-14 h-14 bg-orange-700 rounded-full" />
+        {/* Head */}
+        <div className="absolute top-2 left-24 w-10 h-10 bg-orange-600 rounded-full">
+          {/* Mouth */}
+          <div className="absolute top-2 left-4 w-4 h-6 bg-black rounded-full" />
+          {/* Teeth */}
+          <div className="absolute top-1 left-3 w-1 h-2 bg-white rounded-full" />
+          <div className="absolute top-1 left-6 w-1 h-2 bg-white rounded-full" />
+          <div className="absolute top-7 left-3 w-1 h-2 bg-white rounded-full" />
+          <div className="absolute top-7 left-6 w-1 h-2 bg-white rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const Zombie3D = React.memo(({ variant }: { variant: 'normal' | 'runner' | 'tank' | 'inferno' | 'parasite' | 'crawler' | 'brute' }) => {
+  const color = variant === 'tank' ? '#2f4f4f' : variant === 'runner' ? '#8b0000' : variant === 'inferno' ? '#ff4500' : variant === 'parasite' ? '#800080' : variant === 'crawler' ? '#556b2f' : variant === 'brute' ? '#000000' : '#2e3b23';
+  const skinColor = variant === 'tank' ? '#556b2f' : variant === 'runner' ? '#8a8370' : variant === 'inferno' ? '#330000' : variant === 'parasite' ? '#9370db' : variant === 'crawler' ? '#6b8e23' : variant === 'brute' ? '#444444' : '#b8b09b';
+  const scale = variant === 'tank' ? 1.3 : variant === 'runner' ? 0.9 : variant === 'brute' ? 1.5 : variant === 'parasite' ? 0.6 : variant === 'crawler' ? 0.7 : 1;
+
+  return (
+    <group scale={[scale, scale, scale]}>
+      {/* Torso */}
+      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </Box>
+      {/* Head */}
+      <Box args={[0.4, 0.45, 0.45]} position={[0, 1.9, 0]}>
+        <meshStandardMaterial color={skinColor} roughness={0.8} />
+      </Box>
+      {/* Nose */}
+      <Box args={[0.1, 0.1, 0.1]} position={[0, 1.9, 0.25]}>
+        <meshStandardMaterial color={skinColor} />
+      </Box>
+      {/* Ears */}
+      <Box args={[0.1, 0.2, 0.1]} position={[0.25, 1.9, 0]}>
+        <meshStandardMaterial color={skinColor} />
+      </Box>
+      <Box args={[0.1, 0.2, 0.1]} position={[-0.25, 1.9, 0]}>
+        <meshStandardMaterial color={skinColor} />
+      </Box>
+      {/* Arms */}
+      <Box args={[0.18, 0.18, 0.8]} position={[0.35, 1.5, 0.3]}>
+        <meshStandardMaterial color={color} />
+      </Box>
+      <Box args={[0.18, 0.18, 0.8]} position={[-0.35, 1.5, 0.3]}>
+        <meshStandardMaterial color={color} />
+      </Box>
+      {/* Legs */}
+      <Box args={[0.22, 0.8, 0.22]} position={[0.15, 0.4, 0]}>
+        <meshStandardMaterial color="#111" />
+      </Box>
+      <Box args={[0.22, 0.8, 0.22]} position={[-0.15, 0.4, 0]}>
+        <meshStandardMaterial color="#111" />
+      </Box>
+      {/* Eyes */}
+      <Sphere args={[0.04, 8, 8]} position={[0.12, 1.95, 0.22]}>
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} />
+      </Sphere>
+      <Sphere args={[0.04, 8, 8]} position={[-0.12, 1.95, 0.22]}>
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} />
+      </Sphere>
+      {variant === 'inferno' && (
+        <Sphere args={[0.8, 16, 16]} position={[0, 1.2, 0]}>
+          <meshStandardMaterial color="#ff4400" transparent opacity={0.3} emissive="#ff4400" emissiveIntensity={2} />
+        </Sphere>
+      )}
+      {/* Rags/Clothing */}
+      <Box args={[0.7, 0.3, 0.5]} position={[0, 0.9, 0]}>
+        <meshStandardMaterial color="#333" />
+      </Box>
+    </group>
+  );
+});
+
+const Dragon3D = () => {
+  return (
+    <group scale={[0.5, 0.5, 0.5]}>
+      {/* Body */}
+      <Box args={[4, 4, 10]} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+      </Box>
+      {/* Neck */}
+      <Box args={[2, 2, 5]} position={[0, 1.5, 6]} rotation={[-0.3, 0, 0]}>
+        <meshStandardMaterial color="#2a3b2a" />
+      </Box>
+      {/* Head */}
+      <Box args={[3, 3, 4]} position={[0, 3.5, 9]}>
+        <meshStandardMaterial color="#1a2b1a" />
+      </Box>
+      {/* Horns */}
+      <Box args={[0.5, 2, 0.5]} position={[1, 5, 9]} rotation={[0.5, 0, 0.2]}>
+        <meshStandardMaterial color="#000" />
+      </Box>
+      <Box args={[0.5, 2, 0.5]} position={[-1, 5, 9]} rotation={[0.5, 0, -0.2]}>
+        <meshStandardMaterial color="#000" />
+      </Box>
+      {/* Wings */}
+      <Box args={[12, 0.5, 5]} position={[8, 2, 0]} rotation={[0, 0, 0.3]}>
+        <meshStandardMaterial color="#111" />
+      </Box>
+      <Box args={[12, 0.5, 5]} position={[-8, 2, 0]} rotation={[0, 0, -0.3]}>
+        <meshStandardMaterial color="#111" />
+      </Box>
+      {/* Tail */}
+      <Box args={[2, 2, 6]} position={[0, 0, -8]}>
+        <meshStandardMaterial color="#2a3b2a" />
+      </Box>
+      {/* Spikes on back */}
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Box key={i} args={[0.5, 1, 0.5]} position={[0, 2.5, -4 + i * 2]}>
+          <meshStandardMaterial color="#000" />
+        </Box>
+      ))}
+      {/* Eyes */}
+      <Sphere args={[0.5, 16, 16]} position={[1, 4, 11.5]}>
+        <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={10} />
+      </Sphere>
+      <Sphere args={[0.5, 16, 16]} position={[-1, 4, 11.5]}>
+        <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={10} />
+      </Sphere>
+    </group>
+  );
 };
 
-const MAX_LEVEL = 55;
+const Elephant3D = () => {
+  return (
+    <group scale={[0.6, 0.6, 0.6]}>
+      {/* Body */}
+      <Box args={[6, 5, 8]} position={[0, 2.5, 0]}>
+        <meshStandardMaterial color="#555" />
+      </Box>
+      {/* Head */}
+      <Box args={[4, 4, 4]} position={[0, 3, 5]}>
+        <meshStandardMaterial color="#555" />
+      </Box>
+      {/* Trunk */}
+      <Box args={[1, 1, 3]} position={[0, 1.5, 7]} rotation={[0.4, 0, 0]}>
+        <meshStandardMaterial color="#555" />
+      </Box>
+      {/* Tusks */}
+      <Box args={[0.5, 0.5, 3]} position={[1.5, 2, 7]} rotation={[0, 0.2, 0]}>
+        <meshStandardMaterial color="#eee" />
+      </Box>
+      <Box args={[0.5, 0.5, 3]} position={[-1.5, 2, 7]} rotation={[0, -0.2, 0]}>
+        <meshStandardMaterial color="#eee" />
+      </Box>
+      {/* Ears */}
+      <Box args={[4, 3, 0.5]} position={[3, 3, 5]} rotation={[0, 0.3, 0]}>
+        <meshStandardMaterial color="#555" />
+      </Box>
+      <Box args={[4, 3, 0.5]} position={[-3, 3, 5]} rotation={[0, -0.3, 0]}>
+        <meshStandardMaterial color="#555" />
+      </Box>
+      {/* Armor */}
+      <Box args={[6.4, 3, 5]} position={[0, 3.5, 0]}>
+        <meshStandardMaterial color="#222" metalness={0.9} roughness={0.1} />
+      </Box>
+      {/* Legs */}
+      <Box args={[1.8, 3, 1.8]} position={[2.5, -1.5, 3]}><meshStandardMaterial color="#333" /></Box>
+      <Box args={[1.8, 3, 1.8]} position={[-2.5, -1.5, 3]}><meshStandardMaterial color="#333" /></Box>
+      <Box args={[1.8, 3, 1.8]} position={[2.5, -1.5, -3]}><meshStandardMaterial color="#333" /></Box>
+      <Box args={[1.8, 3, 1.8]} position={[-2.5, -1.5, -3]}><meshStandardMaterial color="#333" /></Box>
+    </group>
+  );
+};
+
+const Ogre3D = () => {
+  return (
+    <group scale={[0.6, 0.6, 0.6]}>
+      {/* Body */}
+      <Box args={[5, 6, 4]} position={[0, 3, 0]}>
+        <meshStandardMaterial color="#2d4a22" />
+      </Box>
+      {/* Head */}
+      <Box args={[3, 3, 3]} position={[0, 7, 0]}>
+        <meshStandardMaterial color="#2d4a22" />
+      </Box>
+      {/* Horns */}
+      <Box args={[0.5, 2, 0.5]} position={[1, 8.5, 0]} rotation={[0, 0, 0.5]}>
+        <meshStandardMaterial color="#000" />
+      </Box>
+      <Box args={[0.5, 2, 0.5]} position={[-1, 8.5, 0]} rotation={[0, 0, -0.5]}>
+        <meshStandardMaterial color="#000" />
+      </Box>
+      {/* Eyes */}
+      <Sphere args={[0.4, 16, 16]} position={[0.6, 7.2, 1.01]}>
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={10} />
+      </Sphere>
+      <Sphere args={[0.4, 16, 16]} position={[-0.6, 7.2, 1.01]}>
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={10} />
+      </Sphere>
+      {/* Arms */}
+      <Box args={[1.8, 5, 1.8]} position={[3.5, 3, 0]} rotation={[0, 0, 0.2]}>
+        <meshStandardMaterial color="#2d4a22" />
+      </Box>
+      <Box args={[1.8, 5, 1.8]} position={[-3.5, 3, 0]} rotation={[0, 0, -0.2]}>
+        <meshStandardMaterial color="#2d4a22" />
+      </Box>
+      {/* Club */}
+      <Box args={[1.2, 10, 1.2]} position={[4.5, 3, 2]} rotation={[Math.PI / 4, 0, 0]}>
+        <meshStandardMaterial color="#4a3018" />
+      </Box>
+      {/* Legs */}
+      <Box args={[2, 3, 2]} position={[1.5, -1.5, 0]}><meshStandardMaterial color="#1a2b14" /></Box>
+      <Box args={[2, 3, 2]} position={[-1.5, -1.5, 0]}><meshStandardMaterial color="#1a2b14" /></Box>
+    </group>
+  );
+};
+
+const Worm3D = () => {
+  return (
+    <group scale={[0.8, 0.8, 0.8]}>
+      {/* Body segments */}
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Sphere key={i} args={[3.5 - i * 0.3, 16, 16]} position={[0, -i * 2.5, 0]}>
+          <meshStandardMaterial color="#5a3a22" roughness={0.8} />
+        </Sphere>
+      ))}
+      {/* Head */}
+      <group position={[0, 2.5, 0]}>
+        <Box args={[5, 1, 5]} position={[0, 1.5, 0]} rotation={[0.6, 0, 0]}>
+          <meshStandardMaterial color="#5a3a22" />
+        </Box>
+        <Box args={[5, 1, 5]} position={[0, -1.5, 0]} rotation={[-0.6, 0, 0]}>
+          <meshStandardMaterial color="#5a3a22" />
+        </Box>
+        {/* Teeth */}
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Box key={i} args={[0.5, 1, 0.5]} position={[-2 + i * 1.3, 0, -2.5]} rotation={[0.3, 0, 0]}>
+            <meshStandardMaterial color="#fff" />
+          </Box>
+        ))}
+        {/* Eyes */}
+        <Sphere args={[0.5, 16, 16]} position={[1, 0, -2.5]}>
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} />
+        </Sphere>
+        <Sphere args={[0.5, 16, 16]} position={[-1, 0, -2.5]}>
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} />
+        </Sphere>
+      </group>
+    </group>
+  );
+};
+
+const Enemy3DViewer = ({ type }: { type: string }) => {
+  return (
+    <div className="w-full h-[400px] bg-black/40 rounded-sm border border-white/10 relative overflow-hidden">
+      <Canvas shadows camera={{ position: [0, 2, 10], fov: 50 }}>
+        <Stage intensity={0.5} environment="city" adjustCamera={false}>
+          <Suspense fallback={null}>
+            {type === 'normal' && <Zombie3D variant="normal" />}
+            {type === 'runner' && <Zombie3D variant="runner" />}
+            {type === 'tank' && <Zombie3D variant="tank" />}
+            {type === 'inferno' && <Zombie3D variant="inferno" />}
+            {type === 'parasite' && <Zombie3D variant="parasite" />}
+            {type === 'crawler' && <Zombie3D variant="crawler" />}
+            {type === 'brute' && <Zombie3D variant="brute" />}
+            {type === 'dragon' && <Dragon3D />}
+            {type === 'elephant' && <Elephant3D />}
+            {type === 'ogre' && <Ogre3D />}
+            {type === 'worm' && <Worm3D />}
+          </Suspense>
+        </Stage>
+        <OrbitControls enablePan={false} enableZoom={true} minDistance={5} maxDistance={20} autoRotate />
+      </Canvas>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full border border-white/20 text-[10px] text-white/60 font-black uppercase tracking-widest pointer-events-none">
+        Drag to Rotate • Scroll to Zoom
+      </div>
+    </div>
+  );
+};
+
+const Player3DViewer = ({ profile }: { profile: any }) => {
+  const bodyColor = profile.bodyColor || '#ffffff';
+  const clothesColor = profile.clothesColor || '#333333';
+  const { hat, glasses, mask, helmet, chest, boots, gloves } = profile;
+
+  return (
+    <div className="w-full h-[400px] bg-black/40 rounded-sm border border-white/10 relative overflow-hidden">
+      <Canvas shadows camera={{ position: [0, 2, 10], fov: 50 }}>
+        <Stage intensity={0.5} environment="city" adjustCamera={false}>
+          <Suspense fallback={null}>
+            <group>
+              {/* Torso */}
+              <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
+                <meshStandardMaterial color={clothesColor} roughness={0.9} />
+              </Box>
+              
+              {/* Chest Accessory */}
+              {chest !== 'none' && (
+                <Box args={[0.65, 0.6, 0.45]} position={[0, 1.3, 0]}>
+                  <meshStandardMaterial color={chest === 'plate_carrier' ? '#4a5568' : chest === 'heavy_armor' ? '#2d3748' : '#718096'} roughness={0.7} metalness={0.5} />
+                </Box>
+              )}
+
+              {/* Head */}
+              <Box args={[0.4, 0.45, 0.45]} position={[0, 1.9, 0]}>
+                <meshStandardMaterial color={bodyColor} roughness={0.8} />
+              </Box>
+
+              {/* Hat */}
+              {hat !== 'none' && (
+                <Box args={[0.45, 0.1, 0.5]} position={[0, 2.15, 0]}>
+                  <meshStandardMaterial color={hat === 'baseball_cap' ? '#e53e3e' : hat === 'beanie' ? '#3182ce' : '#1a202c'} roughness={0.9} />
+                </Box>
+              )}
+
+              {/* Glasses */}
+              {glasses !== 'none' && (
+                <Box args={[0.42, 0.1, 0.1]} position={[0, 1.95, 0.23]}>
+                  <meshStandardMaterial color="#000000" roughness={0.2} metalness={0.8} />
+                </Box>
+              )}
+
+              {/* Mask */}
+              {mask !== 'none' && (
+                <Box args={[0.42, 0.2, 0.1]} position={[0, 1.8, 0.23]}>
+                  <meshStandardMaterial color={mask === 'bandana' ? '#e53e3e' : mask === 'gas_mask' ? '#4a5568' : '#cbd5e0'} roughness={0.9} />
+                </Box>
+              )}
+
+              {/* Helmet */}
+              {helmet !== 'none' && (
+                <Box args={[0.45, 0.5, 0.5]} position={[0, 1.95, 0]}>
+                  <meshStandardMaterial color={helmet === 'combat_helmet' ? '#4a5568' : helmet === 'swat_helmet' ? '#1a202c' : '#e2e8f0'} roughness={0.6} metalness={0.4} />
+                </Box>
+              )}
+
+              {/* Arms */}
+              <Box args={[0.18, 0.8, 0.18]} position={[0.4, 1.3, 0]}>
+                <meshStandardMaterial color={clothesColor} />
+              </Box>
+              <Box args={[0.18, 0.8, 0.18]} position={[-0.4, 1.3, 0]}>
+                <meshStandardMaterial color={clothesColor} />
+              </Box>
+
+              {/* Gloves */}
+              {gloves !== 'none' && (
+                <>
+                  <Box args={[0.2, 0.2, 0.2]} position={[0.4, 0.85, 0]}>
+                    <meshStandardMaterial color={gloves === 'tactical_gloves' ? '#1a202c' : '#4a5568'} roughness={0.8} />
+                  </Box>
+                  <Box args={[0.2, 0.2, 0.2]} position={[-0.4, 0.85, 0]}>
+                    <meshStandardMaterial color={gloves === 'tactical_gloves' ? '#1a202c' : '#4a5568'} roughness={0.8} />
+                  </Box>
+                </>
+              )}
+
+              {/* Legs */}
+              <Box args={[0.22, 0.8, 0.22]} position={[0.15, 0.4, 0]}>
+                <meshStandardMaterial color={clothesColor} />
+              </Box>
+              <Box args={[0.22, 0.8, 0.22]} position={[-0.15, 0.4, 0]}>
+                <meshStandardMaterial color={clothesColor} />
+              </Box>
+
+              {/* Boots */}
+              {boots !== 'none' && (
+                <>
+                  <Box args={[0.25, 0.3, 0.3]} position={[0.15, 0.15, 0.05]}>
+                    <meshStandardMaterial color={boots === 'combat_boots' ? '#1a202c' : '#4a5568'} roughness={0.9} />
+                  </Box>
+                  <Box args={[0.25, 0.3, 0.3]} position={[-0.15, 0.15, 0.05]}>
+                    <meshStandardMaterial color={boots === 'combat_boots' ? '#1a202c' : '#4a5568'} roughness={0.9} />
+                  </Box>
+                </>
+              )}
+            </group>
+          </Suspense>
+        </Stage>
+        <OrbitControls enablePan={false} enableZoom={true} minDistance={5} maxDistance={20} autoRotate />
+      </Canvas>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full border border-white/20 text-[10px] text-white/60 font-black uppercase tracking-widest pointer-events-none">
+        Drag to Rotate • Scroll to Zoom
+      </div>
+    </div>
+  );
+};
 
 const ACHIEVEMENTS: Achievement[] = [
   { id: 'red9_hero', name: 'Red9 Hero', description: 'Reach round 20 on Red9', icon: '🏆', mapId: 'Red9', category: 'map' },
@@ -593,7 +1112,23 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: 'zombie_slayer', name: 'Zombie Slayer', description: 'Kill 10,000 zombies total', icon: '💀', category: 'combat' },
   { id: 'revive_master', name: 'Guardian Angel', description: 'Revive 50 players/bots total', icon: '👼', category: 'combat' },
   { id: 'headshot_king', name: 'Headshot King', description: 'Get 1,000 headshots in a single game', icon: '👑', category: 'combat' },
-  { id: 'knife_master', name: 'Knife Master', description: 'Get 500 knife kills in a single game', icon: '⚔️', category: 'combat' }
+  { id: 'knife_master', name: 'Knife Master', description: 'Get 500 knife kills in a single game', icon: '⚔️', category: 'combat' },
+  { id: 'dance_machine', name: 'Dance Machine', description: 'Buy all dance moves', icon: '💃', category: 'progression' },
+  { id: 'shopaholic', name: 'Shopaholic', description: 'Spend 10,000 shop points', icon: '🛍️', category: 'progression' },
+  { id: 'boss_hunter', name: 'Boss Hunter', description: 'Kill 50 bosses', icon: '👹', category: 'combat' },
+  { id: 'first_blood', name: 'First Blood', description: 'Get your first kill', icon: '🩸', category: 'combat' },
+  { id: 'survivor_10', name: 'Survivor', description: 'Reach round 10', icon: '🛡️', category: 'progression' },
+  { id: 'survivor_25', name: 'Veteran Survivor', description: 'Reach round 25', icon: '🎖️', category: 'progression' },
+  { id: 'pack_a_punch_first', name: 'Power Up', description: 'Pack-a-Punch a weapon for the first time', icon: '⚡', category: 'progression' },
+  { id: 'perk_addict', name: 'Perk Addict', description: 'Have 4 perks active at the same time', icon: '🥤', category: 'progression' },
+  { id: 'sharp_shooter', name: 'Sharp Shooter', description: 'Get 50 headshots in a single game', icon: '🎯', category: 'combat' },
+  { id: 'boss_slayer_first', name: 'David vs Goliath', description: 'Kill your first boss', icon: '👹', category: 'combat' },
+  { id: 'melee_master', name: 'Melee Master', description: 'Get 100 melee kills in a single game', icon: '🔪', category: 'combat' },
+  { id: 'rich_kid', name: 'Rich Kid', description: 'Accumulate 50,000 points in a single game', icon: '💰', category: 'progression' },
+  { id: 'shop_spender', name: 'Big Spender', description: 'Spend 5,000 shop points', icon: '🛍️', category: 'progression' },
+  { id: 'fashionista', name: 'Fashionista', description: 'Buy 5 clothing items', icon: '👕', category: 'progression' },
+  { id: 'weapon_collector', name: 'Weapon Collector', description: 'Buy 5 weapon camos', icon: '🔫', category: 'progression' },
+  { id: 'emblem_creator', name: 'Artist', description: 'Save a custom emblem', icon: '🎨', category: 'progression' }
 ];
 
 const getLevelData = (totalXp: number) => {
@@ -672,13 +1207,273 @@ const getWeaponStatsWithAttachments = (baseStats: any, attachments: WeaponAttach
   return stats;
 };
 
+const EMBLEM_SHAPES = [
+  '★', '●', '■', '▲', '✦', '♥', '♠', '♣', '♦', '☠', '☢', '☣', '⚡', '🔥', '⚔', '🛡', '💀', '👽', '👻', '🤖',
+  '🌙', '⭐', '🌟', '✨', '☄', '☀', '☁', '❄', '💧', '🌊', '🔥', '🌪', '🌈', '☂', '☔', '⚡', '⛄', '🪐', '🌍', '🌎',
+  '🌏', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🚀', '🛸', '🚁', '🛶', '⛵', '🚤', '🛥', '🛳', '⛴', '🚢', '⚓',
+  '⛽', '🚧', '🚦', '🚥', '🛑', '🚲', '🚡', '🚠', '🚟', '🚃', '🚋', '🚝', '🚄', '🚅', '🚈', '🚞', '🚂', '🚆', '🚇', '🚊',
+  '🚉', '🚁', '🛩', '✈', '🛫', '🛬', '🚀', '🛰', '💺', '🛶', '⛵', '🛥', '🚤', '🛳', '⛴', '🚢', '⚓', '🚧', '⛽', '🚏',
+  '🚦', '🚥', '🗺', '🗿', '🗽', '🗼', '🏰', '🏯', '🏟', '🎡', '🎢', '🎠', '⛲', '⛱', '🏖', '🏝', '🏜', '🌋', '⛰', '🏔',
+  '🗻', '🏕', '⛺', '🏠', '🏡', '🏘', '🏚', '🏗', '🏭', '🏢', '🏬', '🏣', '🏤', '🏥', '🏦', '🏨', '🏪', '🏫', '🏩', '💒',
+  '🏛', '⛪', '🕌', '🕍', '🕋', '⛩', '🛤', '🛣', '🗾', '🎑', '🏞', '🌅', '🌄', '🌠', '🎇', '🎆', '🌇', '🌆', '🏙', '🌃',
+  '🌌', '🌉', '🌁', '⌚', '📱', '📲', '💻', '⌨', '🖥', '🖨', '🖱', '🖲', '🕹', '🗜', '💽', '💾', '💿', '📀', '📼', '📷',
+  '📸', '📹', '🎥', '📽', '🎞', '📞', '☎', '📟', '📠', '📺', '📻', '🎙', '🎚', '🎛', '⏱', '⏲', '⏰', '🕰', '⏳', '⌛',
+  '📡', '🔋', '🔌', '💡', '🔦', '🕯', '🗑', '🛢', '💸', '💵', '💴', '💶', '💷', '💰', '💳', '💎', '⚖', '🔧', '🔨', '⚒',
+  '🛠', '⛏', '🔩', '⚙', '⛓', '🔫', '💣', '🔪', '🗡', '⚔', '🛡', '🚬', '⚰', '⚱', '🏺', '🔮', '📿', '💈', '⚗', '🔭',
+  '🔬', '🕳', '💊', '💉', '🌡', '🏷', '🔖', '🚽', '🚿', '🛁', '🛀', '🔑', '🗝', '🛋', '🛌', '🛏', '🚪', '🛎', '🖼', '🗺',
+  '⛱', '🗿', '🛍', '🛒', '🎈', '🎏', '🎀', '🎁', '🎊', '🎉', '🎎', '🎐', '🎌', '🏮', '✉', '📩', '📨', '📧', '💌', '📥',
+  '📤', '📦', '🏷', '📪', '📫', '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '📊', '📈', '📉', '🗒', '🗓', '📆', '📅',
+  '📇', '🗃', '🗳', '🗄', '📋', '📁', '📂', '🗂', '🗞', '📰', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '📖', '🔖',
+  '🔗', '📎', '🖇', '📐', '📏', '📌', '📍', '✂', '🖊', '🖋', '✒', '🖌', '🖍', '📝', '✏', '🔍', '🔎', '🔏', '🔐', '🔒',
+  '🔓', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+];
+
+const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: EmblemLayer[], onSave: (emblem: EmblemLayer[]) => void, onClose: () => void }) => {
+  const [layers, setLayers] = useState<EmblemLayer[]>(initialEmblem.length > 0 ? initialEmblem : []);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(layers.length > 0 ? layers[0].id : null);
+
+  const addLayer = () => {
+    if (layers.length >= 100) return; // Max 100 layers
+    const newLayer: EmblemLayer = {
+      id: Math.random().toString(36).substring(2, 9),
+      icon: EMBLEM_SHAPES[0],
+      color: '#ffffff',
+      x: 0,
+      y: 0,
+      scale: 1,
+      rotation: 0
+    };
+    setLayers([newLayer, ...layers]);
+    setSelectedLayerId(newLayer.id);
+  };
+
+  const removeLayer = (id: string) => {
+    const newLayers = layers.filter(l => l.id !== id);
+    setLayers(newLayers);
+    if (selectedLayerId === id) {
+      setSelectedLayerId(newLayers.length > 0 ? newLayers[0].id : null);
+    }
+  };
+
+  const updateLayer = (id: string, updates: Partial<EmblemLayer>) => {
+    setLayers(layers.map(l => l.id === id ? { ...l, ...updates } : l));
+  };
+
+  const moveLayerUp = (index: number) => {
+    if (index === 0) return;
+    const newLayers = [...layers];
+    const temp = newLayers[index - 1];
+    newLayers[index - 1] = newLayers[index];
+    newLayers[index] = temp;
+    setLayers(newLayers);
+  };
+
+  const moveLayerDown = (index: number) => {
+    if (index === layers.length - 1) return;
+    const newLayers = [...layers];
+    const temp = newLayers[index + 1];
+    newLayers[index + 1] = newLayers[index];
+    newLayers[index] = temp;
+    setLayers(newLayers);
+  };
+
+  const selectedLayer = layers.find(l => l.id === selectedLayerId);
+
+  return (
+    <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+      <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="flex justify-between items-center p-4 border-b border-white/10 bg-zinc-950">
+          <h2 className="text-2xl font-black italic uppercase text-white">Emblem Editor</h2>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded font-bold uppercase text-sm transition-colors">Cancel</button>
+            <button onClick={() => onSave(layers)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-black italic uppercase text-sm transition-colors">Save Emblem</button>
+          </div>
+        </div>
+        
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Panel: Layers */}
+          <div className="w-64 bg-zinc-950 border-r border-white/10 flex flex-col">
+            <div className="p-4 border-b border-white/10 flex justify-between items-center">
+              <span className="text-white font-bold uppercase text-sm">Layers ({layers.length}/100)</span>
+              <button onClick={addLayer} disabled={layers.length >= 100} className="p-1 bg-white/10 hover:bg-white/20 rounded disabled:opacity-50 text-white"><PlusCircle size={16} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+              {layers.map((layer, index) => (
+                <div 
+                  key={layer.id} 
+                  className={`flex items-center justify-between p-2 rounded cursor-pointer border ${selectedLayerId === layer.id ? 'bg-white/10 border-white/30' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
+                  onClick={() => setSelectedLayerId(layer.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-black text-xl" style={{ color: layer.color }}>{layer.icon}</span>
+                    <span className="text-white/60 text-xs font-bold uppercase">Layer {layers.length - index}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="flex flex-col">
+                      <button onClick={(e) => { e.stopPropagation(); moveLayerUp(index); }} disabled={index === 0} className="text-white/40 hover:text-white disabled:opacity-30"><ChevronUp size={12} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); moveLayerDown(index); }} disabled={index === layers.length - 1} className="text-white/40 hover:text-white disabled:opacity-30"><ChevronDown size={12} /></button>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }} className="p-1 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 rounded ml-1"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ))}
+              {layers.length === 0 && (
+                <div className="text-center p-4 text-white/30 text-sm italic">No layers. Add one to start.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Center Panel: Canvas */}
+          <div className="flex-1 flex items-center justify-center bg-zinc-900 p-8 relative overflow-hidden">
+            {/* Grid Background */}
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+            
+            {/* Emblem Canvas */}
+            <div className="w-64 h-64 bg-zinc-800 rounded-lg shadow-2xl relative overflow-hidden border-2 border-white/20 flex items-center justify-center">
+              {/* Render layers from bottom to top (reverse order of array) */}
+              {[...layers].reverse().map(layer => (
+                <div 
+                  key={layer.id} 
+                  className={`absolute flex items-center justify-center ${selectedLayerId === layer.id ? 'ring-1 ring-white/50 ring-offset-1 ring-offset-zinc-800' : ''}`}
+                  style={{
+                    color: layer.color,
+                    transform: `translate(${layer.x}px, ${layer.y}px) scale(${layer.scale}) rotate(${layer.rotation}deg)`,
+                    transition: 'transform 0.1s ease-out'
+                  }}
+                >
+                  <span className="font-black" style={{ fontSize: '100px', lineHeight: 1, fontFamily: 'sans-serif' }}>{layer.icon}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Panel: Properties */}
+          <div className="w-72 bg-zinc-950 border-l border-white/10 flex flex-col">
+            <div className="p-4 border-b border-white/10">
+              <span className="text-white font-bold uppercase text-sm">Properties</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {selectedLayer ? (
+                <div className="space-y-6">
+                  {/* Shape Selection */}
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">Shape</label>
+                    <div className="grid grid-cols-5 gap-1">
+                      {EMBLEM_SHAPES.map(shape => (
+                        <button 
+                          key={shape}
+                          onClick={() => updateLayer(selectedLayer.id, { icon: shape })}
+                          className={`h-10 flex items-center justify-center text-xl rounded ${selectedLayer.icon === shape ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'}`}
+                        >
+                          {shape}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color */}
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">Color</label>
+                    <input 
+                      type="color" 
+                      value={selectedLayer.color} 
+                      onChange={(e) => updateLayer(selectedLayer.id, { color: e.target.value })}
+                      className="w-full h-10 rounded cursor-pointer bg-zinc-800 border-none"
+                    />
+                  </div>
+
+                  {/* Position X */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-400 uppercase">Position X</label>
+                      <span className="text-xs text-white/60 font-mono">{selectedLayer.x}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="-150" max="150" 
+                      value={selectedLayer.x} 
+                      onChange={(e) => updateLayer(selectedLayer.id, { x: parseInt(e.target.value) })}
+                      className="w-full accent-emerald-500"
+                    />
+                  </div>
+
+                  {/* Position Y */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-400 uppercase">Position Y</label>
+                      <span className="text-xs text-white/60 font-mono">{selectedLayer.y}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="-150" max="150" 
+                      value={selectedLayer.y} 
+                      onChange={(e) => updateLayer(selectedLayer.id, { y: parseInt(e.target.value) })}
+                      className="w-full accent-emerald-500"
+                    />
+                  </div>
+
+                  {/* Scale */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-400 uppercase">Scale</label>
+                      <span className="text-xs text-white/60 font-mono">{selectedLayer.scale.toFixed(2)}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0.1" max="5" step="0.1"
+                      value={selectedLayer.scale} 
+                      onChange={(e) => updateLayer(selectedLayer.id, { scale: parseFloat(e.target.value) })}
+                      className="w-full accent-emerald-500"
+                    />
+                  </div>
+
+                  {/* Rotation */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-400 uppercase">Rotation</label>
+                      <span className="text-xs text-white/60 font-mono">{selectedLayer.rotation}°</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" max="360" 
+                      value={selectedLayer.rotation} 
+                      onChange={(e) => updateLayer(selectedLayer.id, { rotation: parseInt(e.target.value) })}
+                      className="w-full accent-emerald-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-white/30 text-sm italic mt-10">Select a layer to edit properties</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PlayerProfileModal = ({ progression, onClose, onUpdateProfile }: { progression: Progression, onClose: () => void, onUpdateProfile?: (p: Progression) => void }) => {
   const p = progression.profile || DEFAULT_PROFILE;
   const [clanTag, setClanTag] = useState(p.clanTag || '');
   const [avatarVariant, setAvatarVariant] = useState(p.customization?.avatarVariant || 0);
   const [bodyColor, setBodyColor] = useState(p.customization?.bodyColor || '#ffffff');
   const [clothesColor, setClothesColor] = useState(p.customization?.clothesColor || '#333333');
+  const [clothesStyle, setClothesStyle] = useState(p.customization?.clothesStyle || 'default');
   const [headAccessory, setHeadAccessory] = useState(p.customization?.headAccessory || 'none');
+
+  const [equippedCallingCard, setEquippedCallingCard] = useState(p.customization?.equippedCallingCard || 'default');
+  const [finisherMove, setFinisherMove] = useState(p.customization?.finisherMove || 'Tactical Takedown');
+  const [hat, setHat] = useState(p.customization?.hat || 'none');
+  const [glasses, setGlasses] = useState(p.customization?.glasses || 'none');
+  const [mask, setMask] = useState(p.customization?.mask || 'none');
+  const [helmet, setHelmet] = useState(p.customization?.helmet || 'none');
+  const [chest, setChest] = useState(p.customization?.chest || 'none');
+  const [boots, setBoots] = useState(p.customization?.boots || 'none');
+  const [gloves, setGloves] = useState(p.customization?.gloves || 'none');
+  const [emblem, setEmblem] = useState<EmblemLayer[]>(p.customization?.emblem || []);
+  const [showEmblemEditor, setShowEmblemEditor] = useState(false);
 
   const handleSave = () => {
     if (onUpdateProfile) {
@@ -687,7 +1482,7 @@ const PlayerProfileModal = ({ progression, onClose, onUpdateProfile }: { progres
         profile: {
           ...p,
           clanTag,
-          customization: { ...p.customization, avatarVariant, bodyColor, clothesColor, headAccessory }
+          customization: { ...p.customization, avatarVariant, bodyColor, clothesColor, clothesStyle, headAccessory, equippedCallingCard, finisherMove, emblem, hat, glasses, mask, helmet, chest, boots, gloves }
         }
       });
     }
@@ -705,9 +1500,9 @@ const PlayerProfileModal = ({ progression, onClose, onUpdateProfile }: { progres
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-zinc-800 p-4 rounded-xl space-y-4">
-            <h3 className="text-sm font-bold text-zinc-400 uppercase">Customization</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-zinc-800 p-4 rounded-xl space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase sticky top-0 bg-zinc-800 py-2 z-10">Customization</h3>
             <div>
               <label className="block text-xs font-bold text-zinc-400 uppercase">Clan Tag (Max 5)</label>
               <input 
@@ -741,19 +1536,173 @@ const PlayerProfileModal = ({ progression, onClose, onUpdateProfile }: { progres
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-zinc-400 uppercase">Head Accessory</label>
-              <select value={headAccessory} onChange={(e) => setHeadAccessory(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
-                <option value="none">None</option>
-                <option value="hat">Hat</option>
-                <option value="glasses">Glasses</option>
-                <option value="mask">Mask</option>
-                <option value="helmet">Helmet</option>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Clothes Style</label>
+              <select value={clothesStyle} onChange={(e) => setClothesStyle(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.clothes.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.clothes?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Hat</label>
+              <select value={hat} onChange={(e) => setHat(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.hats.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.hats?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Glasses</label>
+              <select value={glasses} onChange={(e) => setGlasses(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.glasses.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.glasses?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Mask</label>
+              <select value={mask} onChange={(e) => setMask(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.masks.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.masks?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Helmet</label>
+              <select value={helmet} onChange={(e) => setHelmet(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.helmets.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.helmets?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Chest</label>
+              <select value={chest} onChange={(e) => setChest(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.chest.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.chest?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Boots</label>
+              <select value={boots} onChange={(e) => setBoots(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.boots.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.boots?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Gloves</label>
+              <select value={gloves} onChange={(e) => setGloves(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.gloves.map(item => {
+                  const unlocked = item.cost === 0 || p.shopItems?.gloves?.includes(item.id);
+                  return (
+                    <option key={item.id} value={item.id} disabled={!unlocked}>
+                      {item.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Calling Card</label>
+              <select value={equippedCallingCard} onChange={(e) => setEquippedCallingCard(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {CALLING_CARDS.map(card => {
+                  const unlocked = isCallingCardUnlocked(card, p);
+                  return (
+                    <option key={card.id} value={card.id} disabled={!unlocked}>
+                      {card.name} {unlocked ? '' : `(Locked - ${card.description})`}
+                    </option>
+                  );
+                })}
+              </select>
+              <div className={`w-full h-12 mt-2 rounded border border-white/20 ${CALLING_CARDS.find(c => c.id === equippedCallingCard)?.style || 'bg-zinc-700'}`}></div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Finisher Move</label>
+              <select value={finisherMove} onChange={(e) => setFinisherMove(e.target.value)} disabled={!onUpdateProfile} className="w-full bg-zinc-700 p-2 rounded mt-1 font-mono uppercase">
+                {SHOP_ITEMS.finisherMoves.map(move => {
+                  const unlocked = move.cost === 0 || p.shopItems?.finisherMoves?.includes(move.id);
+                  return (
+                    <option key={move.id} value={move.id} disabled={!unlocked}>
+                      {move.name} {unlocked ? '' : `(Locked - Buy in Shop)`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase">Emblem</label>
+              <div className="flex gap-4 items-center mt-1">
+                <div className="w-16 h-16 bg-zinc-700 rounded border border-white/20 relative overflow-hidden flex items-center justify-center">
+                  {emblem.length > 0 ? (
+                    emblem.map(layer => (
+                      <div key={layer.id} className="absolute" style={{
+                        color: layer.color,
+                        transform: `translate(${layer.x}px, ${layer.y}px) scale(${layer.scale}) rotate(${layer.rotation}deg)`
+                      }}>
+                        {/* We'll render a simple shape or text for the icon here */}
+                        <span className="font-black text-2xl" style={{ fontFamily: 'sans-serif' }}>{layer.icon}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-zinc-500 text-xs">None</span>
+                  )}
+                </div>
+                {onUpdateProfile && (
+                  <button onClick={() => setShowEmblemEditor(true)} className="bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded text-sm font-bold uppercase transition-colors">
+                    Edit Emblem
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="bg-zinc-800 p-4 rounded-xl">
-            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">General Stats</h3>
+          <div className="bg-zinc-800 p-4 rounded-xl flex flex-col">
+            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-4">Preview</h3>
+            <div className="flex-1 min-h-[400px]">
+              <Player3DViewer profile={{ bodyColor, clothesColor, hat, glasses, mask, helmet, chest, boots, gloves }} />
+            </div>
+          </div>
+
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 pr-2">
+            <div className="bg-zinc-800 p-4 rounded-xl">
+              <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">General Stats</h3>
             <p>Level: {p.level}</p>
             <p>Total Kills: {p.totalKills}</p>
             <p>Boss Kills: {p.bossKills}</p>
@@ -775,20 +1724,48 @@ const PlayerProfileModal = ({ progression, onClose, onUpdateProfile }: { progres
             {Object.entries(p.killsPerZombieType || {}).length > 0 ? Object.entries(p.killsPerZombieType || {}).map(([type, kills]) => <p key={type}>{type}: {kills} kills</p>) : <p className="text-zinc-500 italic">No data</p>}
           </div>
 
-          <div className="bg-zinc-800 p-4 rounded-xl md:col-span-2">
-            <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Game History</h3>
-            <div className="max-h-40 overflow-y-auto">
-              {(p.gameHistory || []).length > 0 ? (p.gameHistory || []).map((h, i) => <p key={i}>{new Date(h.date).toLocaleDateString()}: {h.mapId} - Round {h.round} - {h.kills} kills</p>) : <p className="text-zinc-500 italic">No history</p>}
+            <div className="bg-zinc-800 p-4 rounded-xl">
+              <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Achievements</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {ACHIEVEMENTS.map(achievement => {
+                  const unlocked = progression.achievements.includes(achievement.id);
+                  return (
+                    <div key={achievement.id} className={`p-3 rounded-xl border flex flex-col items-center text-center gap-2 transition-all ${unlocked ? 'bg-emerald-900/20 border-emerald-500/50' : 'bg-black/40 border-white/5 opacity-50 grayscale'}`}>
+                      <span className="text-3xl">{achievement.icon}</span>
+                      <span className={`text-xs font-black uppercase ${unlocked ? 'text-emerald-400' : 'text-white/40'}`}>{achievement.name}</span>
+                      <span className="text-[10px] text-white/60 leading-tight">{achievement.description}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-zinc-800 p-4 rounded-xl">
+              <h3 className="text-sm font-bold text-zinc-400 uppercase mb-2">Game History</h3>
+              <div className="max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20">
+                {(p.gameHistory || []).length > 0 ? (p.gameHistory || []).map((h, i) => <p key={i}>{new Date(h.date).toLocaleDateString()}: {h.mapId} - Round {h.round} - {h.kills} kills</p>) : <p className="text-zinc-500 italic">No history</p>}
+              </div>
             </div>
           </div>
         </div>
       </div>
+      {showEmblemEditor && (
+        <EmblemEditor 
+          initialEmblem={emblem} 
+          onSave={(newEmblem) => {
+            setEmblem(newEmblem);
+            setShowEmblemEditor(false);
+          }} 
+          onClose={() => setShowEmblemEditor(false)} 
+        />
+      )}
     </div>
   );
 };
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
+  const [selectedEnemyFor3D, setSelectedEnemyFor3D] = useState<string | null>(null);
   const [thirdPersonMode, setThirdPersonMode] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [myRoomId] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
@@ -976,6 +1953,8 @@ const App: React.FC = () => {
   }, [stats.weaponName]);
   const [godMode, setGodMode] = useState(false);
   const [showModMenu, setShowModMenu] = useState(false);
+  const [showSecretModButtons, setShowSecretModButtons] = useState(false);
+  const bowieHoldTimer = useRef<NodeJS.Timeout | null>(null);
   const [lore, setLore] = useState("Wait for the bus...");
   const [isReloading, setIsReloading] = useState(false);
   const [bloodOverlay, setBloodOverlay] = useState(0);
@@ -1010,6 +1989,8 @@ const App: React.FC = () => {
   const [openDoors, setOpenDoors] = useState<string[]>([]);
   const [teleportTarget, setTeleportTarget] = useState<THREE.Vector3 | null>(null);
   const [selectedWeaponInfo, setSelectedWeaponInfo] = useState<string | null>(null);
+  const [previewMove, setPreviewMove] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<'dance' | 'finisher'>('dance');
 
   // Red9 Easter Egg State
   const [red9CurseActive, setRed9CurseActive] = useState(false);
@@ -1020,12 +2001,27 @@ const App: React.FC = () => {
   const [heartPositions, setHeartPositions] = useState<THREE.Vector3[]>([]);
   const [collectedHearts, setCollectedHearts] = useState<boolean[]>([false, false, false]);
   const [dragonActive, setDragonActive] = useState(false);
+  const [ztownBossStage, setZtownBossStage] = useState(0); // 0: dragon, 1: elephant, 2: ogre, 3: worm
   const [dragonHealth, setDragonHealth] = useState(250000); // 2500 * 100 (base zombie hp)
   const [bossDefeated, setBossDefeated] = useState(false);
+  
+  const bossType = useMemo(() => {
+    if (stats.activeMapId === 'town') return 'dragon';
+    if (stats.activeMapId === 'bunker') return 'elephant';
+    if (stats.activeMapId === 'mukkatown') return 'ogre';
+    if (stats.activeMapId === 'king_robbos_farm') return 'worm';
+    if (stats.activeMapId === 'z-town') {
+      const types: ('dragon' | 'elephant' | 'ogre' | 'worm')[] = ['dragon', 'elephant', 'ogre', 'worm'];
+      return types[ztownBossStage] || 'dragon';
+    }
+    return 'dragon';
+  }, [stats.activeMapId, ztownBossStage]);
   
   const [isBoxCycling, setIsBoxCycling] = useState(false);
   const [cyclingWeapon, setCyclingWeapon] = useState<string | null>(null);
   const [infoTab, setInfoTab] = useState<'guns' | 'perks' | 'bombs' | 'powerups' | 'enemies' | 'progression'>('guns');
+  const [shopTab, setShopTab] = useState<'callingCards' | 'camos' | 'clothes' | 'finisherMoves' | 'hats' | 'glasses' | 'masks' | 'helmets' | 'chest' | 'boots' | 'gloves'>('callingCards');
+  const [previewItem, setPreviewItem] = useState<{ item: any, shopTab: string } | null>(null);
 
   const [instaKillExpiry, setInstaKillExpiry] = useState(0);
   const [doublePointsExpiry, setDoublePointsExpiry] = useState(0);
@@ -1687,7 +2683,7 @@ const App: React.FC = () => {
         else if (infoTab === 'perks') contentLen = 19;
         else if (infoTab === 'bombs') contentLen = 3;
         else if (infoTab === 'powerups') contentLen = 7;
-        else if (infoTab === 'enemies') contentLen = 8;
+        else if (infoTab === 'enemies') contentLen = 11;
         else if (infoTab === 'progression') contentLen = 1;
         maxIndex = 1 + 5 + contentLen; // 0:Back, 1-5:Tabs, 6..N:Items, N+1:Return
       } else if (isModMenu) {
@@ -1735,9 +2731,10 @@ const App: React.FC = () => {
         e.preventDefault();
         let next = (selectedMenuIndex - 1 + maxIndex + 1) % (maxIndex + 1);
         if (isModMenu && modMenuType === 'limited') {
-           if (next >= 8 && next <= 20) next = 7;
+           if (next >= 9 && next <= 20) next = 8;
            else if (next === 6) next = 5;
            else if (next >= 1 && next <= 4) next = 0;
+           if (!showSecretModButtons && (next === 32 || next === 33)) next = 8;
         }
         setSelectedMenuIndex(next);
       } else if (e.key === 'ArrowDown' || e.key === keybindSettings.moveBackward || e.key === 'ArrowRight') {
@@ -1746,7 +2743,8 @@ const App: React.FC = () => {
         if (isModMenu && modMenuType === 'limited') {
            if (next >= 1 && next <= 4) next = 5;
            else if (next === 6) next = 7;
-           else if (next >= 8 && next <= 20) next = 21;
+           else if (next >= 9 && next <= 20) next = 21;
+           if (!showSecretModButtons && (next === 32 || next === 33)) next = 21;
         }
         setSelectedMenuIndex(next);
       } else if (e.key === 'Enter' || e.key === ' ' || e.key === keybindSettings.jump) {
@@ -1926,6 +2924,7 @@ const App: React.FC = () => {
     team: stats.team,
     multiplayerMode: stats.multiplayerMode,
     kills: stats.kills,
+    points: stats.points,
     level: getLevelData(progression.xp).level,
     rankMastery: progression.rankMastery
   }), [stats, isReloading, instaKillExpiry, doublePointsExpiry, now, godMode, progression.xp, progression.rankMastery]);
@@ -1982,7 +2981,9 @@ const App: React.FC = () => {
       rankMasteryStars: progression.stars || 0,
       level: getLevelData(progression.xp).level,
       rankMastery: progression.rankMastery,
-      gems: finalStats.gems || 0
+      gems: finalStats.gems || 0,
+      equippedCallingCard: progression.profile?.customization?.equippedCallingCard || 'default',
+      emblem: progression.profile?.customization?.emblem || []
     };
     const newBoard = [...leaderboard, entry]
       .sort((a, b) => b.round - a.round || b.kills - a.kills);
@@ -2155,7 +3156,7 @@ const App: React.FC = () => {
                const map = MAPS.find(m => m.id === stats.activeMapId);
                if (map && map.spawnPoints) {
                  const spawn = map.spawnPoints[Math.floor(Math.random() * map.spawnPoints.length)];
-                 setTeleportTarget(new THREE.Vector3(spawn.x, spawn.y, spawn.z));
+                 setTeleportTarget(new THREE.Vector3(spawn[0], spawn[1], spawn[2]));
                }
              }, 3000);
            } else {
@@ -2221,7 +3222,17 @@ const App: React.FC = () => {
         next.kills += update.kills;
         if (update.kills > 0 && !isCustomGameSession && status !== GameStatus.CUSTOM_GAME) {
           setProgression(p => {
-            const newP = { ...p, totalKills: (p.totalKills || 0) + update.kills };
+            const newTotalKills = (p.totalKills || 0) + update.kills;
+            const newKillsSinceLastReward = (p.killsSinceLastReward || 0) + update.kills;
+            const pointsToAdd = Math.floor(newKillsSinceLastReward / 150) * 2;
+            const newPoints = (p.profile?.shopPoints || 0) + pointsToAdd;
+            
+            const newP = { 
+              ...p, 
+              totalKills: newTotalKills, 
+              killsSinceLastReward: newKillsSinceLastReward % 150,
+              profile: { ...(p.profile || DEFAULT_PROFILE), shopPoints: newPoints }
+            };
             localStorage.setItem('ztown_progression', JSON.stringify(newP));
             return newP;
           });
@@ -2282,6 +3293,11 @@ const App: React.FC = () => {
           setTimeout(() => setShowRoundSplash(false), 3000);
           next.grenades = Math.min(4, next.grenades + 2);
           next.flashbangs = Math.min(2, next.flashbangs + 1);
+          
+          // Shop points: 1 point for passing 5 rounds
+          if (update.round > 5 && update.round % 5 === 0) {
+            setProgression(p => ({ ...p, profile: { ...(p.profile || DEFAULT_PROFILE), shopPoints: ((p.profile?.shopPoints || 0) + 1) } }));
+          }
           
           // Revive player if downed at round end
           if (next.isDowned) {
@@ -2814,12 +3830,14 @@ const App: React.FC = () => {
       const newCollected = [...collectedHearts];
       newCollected[index] = true;
       setCollectedHearts(newCollected);
-      setLastPerkGained(`Dragon Heart ${index + 1}/3 Found`);
+      const count = newCollected.filter(Boolean).length;
+      setLastPerkGained(`Boss Heart ${count}/3 Found`);
       setTimeout(() => setLastPerkGained(null), 3000);
     } else if (interactPrompt.id === 'summon_dragon') {
       soundService.playPerk();
       setDragonActive(true);
-      setLastPerkGained("DRAGON SUMMONED!");
+      setDragonHealth(250000);
+      setLastPerkGained("BOSS SUMMONED!");
       setTimeout(() => setLastPerkGained(null), 3000);
     } else if (interactPrompt.id.endsWith('_door')) {
       if (openDoors.includes(interactPrompt.id)) return;
@@ -3722,6 +4740,15 @@ const App: React.FC = () => {
   const handleDragonDefeated = useCallback(() => {
     setDragonActive(false);
     setBossDefeated(true);
+    setCollectedHearts([false, false, false]); // Reset for next boss
+    
+    // Shop points: 5 points for killing a boss
+    setProgression(p => ({ ...p, profile: { ...(p.profile || DEFAULT_PROFILE), shopPoints: ((p.profile?.shopPoints || 0) + 5) } }));
+    
+    if (stats.activeMapId === 'z-town' && ztownBossStage < 3) {
+      setZtownBossStage(prev => prev + 1);
+      setBossDefeated(false); // Allow next boss
+    }
     setStats(prev => {
       const allPerks = ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip', 'bandolier', 'tortoise', 'blaze', 'stronghold', 'blood', 'elemental'];
       // Add 5 random perks
@@ -3857,6 +4884,7 @@ const App: React.FC = () => {
               heartPositions={heartPositions}
               collectedHearts={collectedHearts}
               dragonActive={dragonActive}
+              bossType={bossType}
               dragonHealth={dragonHealth}
               setDragonHealth={setDragonHealth}
               killAllZombies={killAllZombies}
@@ -3943,7 +4971,9 @@ const App: React.FC = () => {
                 transformOrigin: 'top center'
               }}
             >
-              <span className="text-red-600 font-black italic text-2xl tracking-widest drop-shadow-[0_0_10px_rgba(220,38,38,0.8)] uppercase">Zombie Dragon</span>
+              <span className="text-red-600 font-black italic text-2xl tracking-widest drop-shadow-[0_0_10px_rgba(220,38,38,0.8)] uppercase">
+                {bossType === 'dragon' ? 'Zombie Dragon' : bossType === 'elephant' ? 'Mutated Elephant' : bossType === 'ogre' ? 'Zombie Ogre' : 'Giant Worm'}
+              </span>
               <div className="w-full h-6 bg-black/80 border-2 border-red-900 rounded-sm overflow-hidden relative shadow-[0_0_20px_rgba(220,38,38,0.3)]">
                 <div 
                   className="absolute top-0 left-0 h-full bg-gradient-to-r from-red-700 to-red-500 transition-all duration-300"
@@ -4725,8 +5755,24 @@ const App: React.FC = () => {
                     
                     {customGameConfig.gameMode !== 'dead_ops' && (
                       <div className="flex flex-col gap-2">
+                        {stats.activeMapId === 'z-town' && (
+                          <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
+                            <span className="text-white/60 text-xs uppercase font-black tracking-widest">Active Boss Target</span>
+                            <div className="flex gap-2">
+                              {['dragon', 'elephant', 'ogre', 'worm'].map((boss, idx) => (
+                                <button
+                                  key={boss}
+                                  onClick={() => setZtownBossStage(idx)}
+                                  className={`px-2 py-1 text-xs font-bold uppercase rounded ${ztownBossStage === idx ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}
+                                >
+                                  {boss}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between bg-black/40 p-3 rounded-sm border border-white/5">
-                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Dragon Hearts</span>
+                          <span className="text-white/60 text-xs uppercase font-black tracking-widest">Boss Hearts</span>
                           <span className={`text-sm font-black italic ${collectedHearts.filter(Boolean).length === 3 ? 'text-emerald-500' : 'text-yellow-500'}`}>
                             {collectedHearts.filter(Boolean).length} / 3
                           </span>
@@ -5015,6 +6061,41 @@ const App: React.FC = () => {
 
                     <button 
                       id="menu-item-8"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        bowieHoldTimer.current = setTimeout(() => {
+                          setShowSecretModButtons(true);
+                          soundService.playPowerUpPickup();
+                        }, 4000);
+                      }}
+                      onMouseUp={(e) => {
+                        e.stopPropagation();
+                        if (bowieHoldTimer.current) {
+                          clearTimeout(bowieHoldTimer.current);
+                          bowieHoldTimer.current = null;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.stopPropagation();
+                        if (bowieHoldTimer.current) {
+                          clearTimeout(bowieHoldTimer.current);
+                          bowieHoldTimer.current = null;
+                        }
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        bowieHoldTimer.current = setTimeout(() => {
+                          setShowSecretModButtons(true);
+                          soundService.playPowerUpPickup();
+                        }, 4000);
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        if (bowieHoldTimer.current) {
+                          clearTimeout(bowieHoldTimer.current);
+                          bowieHoldTimer.current = null;
+                        }
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStats(prev => ({ ...prev, hasBowie: true }));
@@ -5023,6 +6104,107 @@ const App: React.FC = () => {
                     >
                       <Swords size={24} /> Give Bowie Knife
                     </button>
+
+                    {showSecretModButtons && (
+                      <div className="flex gap-2 animate-in slide-in-from-bottom-4 duration-500">
+                        <button 
+                          id="menu-item-32"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProgression(p => {
+                              const allCallingCards = CALLING_CARDS.map(c => c.id);
+                              const allCamos = SHOP_ITEMS.camos.map(c => c.id as WeaponCamo);
+                              const allClothes = SHOP_ITEMS.clothes.map(c => c.id);
+                              const allFinisherMoves = SHOP_ITEMS.finisherMoves.map(c => c.id);
+                              const allHats = SHOP_ITEMS.hats.map(c => c.id);
+                              const allGlasses = SHOP_ITEMS.glasses.map(c => c.id);
+                              const allMasks = SHOP_ITEMS.masks.map(c => c.id);
+                              const allHelmets = SHOP_ITEMS.helmets.map(c => c.id);
+                              const allChest = SHOP_ITEMS.chest.map(c => c.id);
+                              const allBoots = SHOP_ITEMS.boots.map(c => c.id);
+                              const allGloves = SHOP_ITEMS.gloves.map(c => c.id);
+                              
+                              const allAchievements = ACHIEVEMENTS.map(a => a.id);
+                              
+                              const currentProfile = p.profile || DEFAULT_PROFILE;
+                              return {
+                                ...p,
+                                achievements: allAchievements,
+                                profile: {
+                                  ...currentProfile,
+                                  achievements: allAchievements,
+                                  shopPoints: 999999,
+                                  unlockedCallingCards: allCallingCards,
+                                  shopItems: {
+                                    callingCards: allCallingCards,
+                                    camos: allCamos,
+                                    clothes: allClothes,
+                                    finisherMoves: allFinisherMoves,
+                                    hats: allHats,
+                                    glasses: allGlasses,
+                                    masks: allMasks,
+                                    helmets: allHelmets,
+                                    chest: allChest,
+                                    boots: allBoots,
+                                    gloves: allGloves,
+                                    danceMoves: ['Moonwalk', 'Floss', 'Orange Justice', 'Carlton Dance']
+                                  }
+                                }
+                              };
+                            });
+                          }} 
+                          className={`flex-1 py-3 bg-emerald-600/20 text-emerald-500 font-black text-lg rounded-sm border border-emerald-500/30 flex items-center justify-center gap-2 active:scale-95 transition-all ${selectedMenuIndex === 32 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                        >
+                          <Unlock size={20} /> Unlock All
+                        </button>
+                        <button 
+                          id="menu-item-33"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProgression(p => {
+                              const currentProfile = p.profile || DEFAULT_PROFILE;
+                              return {
+                                ...p,
+                                achievements: [],
+                                profile: {
+                                  ...currentProfile,
+                                  achievements: [],
+                                  shopPoints: 0,
+                                customization: {
+                                  avatarVariant: 0,
+                                  bodyColor: '#ffffff',
+                                  clothesColor: '#333333',
+                                  clothesStyle: 'default',
+                                  headAccessory: 'none',
+                                  equippedCallingCard: 'default',
+                                  victoryPose: 'Standard Salute',
+                                  finisherMove: 'Tactical Takedown',
+                                },
+                                unlockedCallingCards: ['default'],
+                                shopItems: {
+                                  callingCards: ['default'],
+                                  camos: ['none' as WeaponCamo],
+                                  clothes: ['default'],
+                                  finisherMoves: ['Tactical Takedown'],
+                                  hats: ['none'],
+                                  glasses: ['none'],
+                                  masks: ['none'],
+                                  helmets: ['none'],
+                                  chest: ['none'],
+                                  boots: ['none'],
+                                  gloves: ['none'],
+                                  danceMoves: ['none']
+                                }
+                              }
+                            };
+                          });
+                          }} 
+                          className={`flex-1 py-3 bg-red-900/20 text-red-500 font-black text-lg rounded-sm border border-red-900/30 flex items-center justify-center gap-2 active:scale-95 transition-all ${selectedMenuIndex === 33 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                        >
+                          <Lock size={20} /> Reset All
+                        </button>
+                      </div>
+                    )}
 
                     {modMenuType === 'full' && (
                       <div className="pt-4 border-t border-white/10">
@@ -5316,8 +6498,8 @@ const App: React.FC = () => {
                           { name: 'Galil Wallbuy', pos: [70, 1.2, -58], color: 'bg-stone-600/40 text-stone-400 border-stone-600/50' },
                           { name: 'Bowie Knife', pos: stats.activeMapId === 'bunker' ? [18, 1.2, 5] : [-54, 1.2, 8], color: 'bg-stone-700/40 text-stone-300 border-stone-700/50' },
                           { name: 'Gravestone', pos: stats.activeMapId === 'bunker' ? [-55, 1.2, 0] : [115, 1.2, 0], color: 'bg-stone-800/40 text-stone-500 border-stone-800/50' },
-                          // Dragon Hearts
-                          ...heartPositions.map((pos, i) => ({ name: `Dragon Heart ${i+1}`, pos: [pos.x, pos.y, pos.z], color: 'bg-red-900/40 text-red-500 border-red-900/50' })),
+                          // Boss Hearts
+                          ...heartPositions.map((pos, i) => ({ name: `Boss Heart ${i+1}`, pos: [pos.x, pos.y, pos.z], color: 'bg-red-900/40 text-red-500 border-red-900/50' })),
                           { name: 'Crafting Table', pos: MAPS.find(m => m.id === stats.activeMapId)?.craftingTablePos || [0, 1.2, 90], color: 'bg-orange-800/40 text-orange-500 border-orange-800/50' },
                           { name: 'Buyable Ending', pos: (() => {
                             const pos = MAPS.find(m => m.id === stats.activeMapId)?.interactables.find(i => i.id === 'buyableEnding')?.pos;
@@ -5851,6 +7033,50 @@ const App: React.FC = () => {
                     </div>
                   )}
                  <div className="h-[1px] bg-white/10 w-full" />
+                 
+                 {/* Victory Pose / Finisher Display */}
+                 <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-transparent to-pink-900/20 border border-pink-500/30 rounded-sm relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/victory/800/400')] opacity-20 bg-cover bg-center mix-blend-overlay" />
+                    <div className="relative z-10 flex flex-col items-center gap-4 w-full">
+                      <div className="flex justify-between items-center w-full px-4">
+                        <div className="flex flex-col items-start">
+                          <span className="text-pink-400 font-black text-[10px] uppercase tracking-[0.3em]">Victory Pose</span>
+                          <span className="text-white font-black italic text-xl drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]">
+                            {progression.profile?.customization?.victoryPose || 'Standard Salute'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-pink-400 font-black text-[10px] uppercase tracking-[0.3em]">Finisher Move</span>
+                          <span className="text-white font-black italic text-xl drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]">
+                            {progression.profile?.customization?.finisherMove || 'Tactical Takedown'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Move Preview UI */}
+                      <div className="w-full mt-4 space-y-4">
+                        <div className="flex gap-2 justify-center">
+                          <button onClick={() => setPreviewType('dance')} className={`px-4 py-2 rounded ${previewType === 'dance' ? 'bg-pink-600' : 'bg-zinc-700'}`}>Dance</button>
+                          <button onClick={() => setPreviewType('finisher')} className={`px-4 py-2 rounded ${previewType === 'finisher' ? 'bg-pink-600' : 'bg-zinc-700'}`}>Finisher</button>
+                        </div>
+                        <select onChange={(e) => setPreviewMove(e.target.value)} className="w-full bg-zinc-700 p-2 rounded">
+                          <option value="">Select Move</option>
+                          {previewType === 'dance' ? (progression.profile?.shopItems?.danceMoves || []).map(m => <option key={m} value={m}>{m}</option>) : (progression.profile?.shopItems?.finisherMoves || []).map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        {previewMove && (
+                          <div className="w-full h-48 bg-black/50 rounded overflow-hidden">
+                            <Player3DViewerComponent customization={{ ...progression.profile?.customization, [previewType === 'dance' ? 'danceMove' : 'finisherMove']: previewMove }} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="h-[1px] bg-pink-500/30 w-full my-2" />
+                      <span className="text-white/50 text-[10px] uppercase font-bold tracking-widest text-center">
+                        Unlock more poses, finishers, and gear in the Black Market Shop
+                      </span>
+                    </div>
+                 </div>
+
                  <div className="flex justify-between items-center px-4">
                     <span className="text-white/40 uppercase font-black text-xs">Score recorded for</span>
                     <span className="text-emerald-500 font-black text-xl italic">{nickname || 'Survivor'}</span>
@@ -5972,18 +7198,34 @@ const App: React.FC = () => {
                       className={`grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px] gap-4 p-4 items-center border-b border-white/5 transition-all cursor-pointer ${
                         selectedMenuIndex === idx + 2 + MAPS.length ? 'bg-white/10' : 'hover:bg-white/5'
                       }`}
-                      onClick={() => setShowPlayerProfile({ nickname: entry.nickname, level: entry.level || 1, totalKills: entry.kills, bossKills: entry.bossDefeated ? 1 : 0, mostPlayedMode: 'standard', mostUsedGuns: {}, mostUsedPerks: {}, killsPerZombieType: { normal: 0, runner: 0, tank: 0, inferno: 0, parasite: 0, crawler: 0, brute: 0 }, achievements: [], gameHistory: [entry], clanTag: '', xp: 0, totalRevives: 0, totalDowns: 0, totalHeadshots: entry.headshots, totalKnifeKills: entry.knifeKills, totalEquipmentKills: entry.equipmentKills, totalGems: entry.gems || 0, customization: { avatarVariant: 0, bodyColor: '#ffffff', clothesColor: '#333333', headAccessory: 'none' } })}
+                      onClick={() => setShowPlayerProfile({ nickname: entry.nickname, level: entry.level || 1, totalKills: entry.kills, bossKills: entry.bossDefeated ? 1 : 0, mostPlayedMode: 'standard', mostUsedGuns: {}, mostUsedPerks: {}, killsPerZombieType: { normal: 0, runner: 0, tank: 0, inferno: 0, parasite: 0, crawler: 0, brute: 0 }, achievements: [], gameHistory: [entry], clanTag: '', xp: 0, totalRevives: 0, totalDowns: 0, totalHeadshots: entry.headshots, totalKnifeKills: entry.knifeKills, totalEquipmentKills: entry.equipmentKills, totalGems: entry.gems || 0, customization: { avatarVariant: 0, bodyColor: '#ffffff', clothesColor: '#333333', headAccessory: 'none', equippedCallingCard: entry.equippedCallingCard, emblem: entry.emblem } })}
                     >
                       <span className={`text-xl font-black italic ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-300' : idx === 2 ? 'text-orange-400' : 'text-white/20'}`}>#{idx + 1}</span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-white font-black italic tracking-tighter text-lg uppercase truncate">{entry.nickname || 'Anonymous'}</span>
-                        {entry.rankMasteryStars && entry.rankMasteryStars > 0 && (
-                          <div className="flex gap-0.5">
-                            {Array.from({ length: entry.rankMasteryStars }).map((_, i) => (
-                              <Star key={i} className="text-yellow-400 w-2 h-2 fill-yellow-400" />
-                            ))}
-                          </div>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-12 h-6 ${CALLING_CARDS.find(c => c.id === entry.equippedCallingCard)?.style || 'bg-zinc-700'} rounded relative overflow-hidden flex items-center justify-center`}>
+                          {entry.emblem && entry.emblem.length > 0 && (
+                            <div className="absolute inset-0 flex items-center justify-center scale-[0.25]">
+                              {[...entry.emblem].reverse().map(layer => (
+                                <div key={layer.id} className="absolute flex items-center justify-center" style={{
+                                  color: layer.color,
+                                  transform: `translate(${layer.x}px, ${layer.y}px) scale(${layer.scale}) rotate(${layer.rotation}deg)`
+                                }}>
+                                  <span className="font-black" style={{ fontSize: '100px', lineHeight: 1, fontFamily: 'sans-serif' }}>{layer.icon}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-white font-black italic tracking-tighter text-lg uppercase truncate">{entry.nickname || 'Anonymous'}</span>
+                          {entry.rankMasteryStars && entry.rankMasteryStars > 0 && (
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: entry.rankMasteryStars }).map((_, i) => (
+                                <Star key={i} className="text-yellow-400 w-2 h-2 fill-yellow-400" />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex justify-center">
                         {entry.rankMastery !== undefined ? getRankMasteryIcon(entry.rankMastery, 20) : <span className="text-white/10">-</span>}
@@ -6754,8 +7996,15 @@ const App: React.FC = () => {
                 </button>
                 <button 
                   id={`menu-item-${MAPS.length + 7}`}
+                  onClick={() => setStatus(GameStatus.SHOP)} 
+                  className={`py-5 bg-white/5 border border-white/10 text-white/80 font-black text-xl rounded-sm active:scale-95 flex items-center justify-center gap-3 uppercase italic transition-all hover:bg-white/10 ${selectedMenuIndex === MAPS.length + 7 ? 'ring-2 ring-white bg-white/20' : ''}`}
+                >
+                  <ShoppingCart size={20} className="text-pink-500 shrink-0" /> Shop
+                </button>
+                <button 
+                  id={`menu-item-${MAPS.length + 8}`}
                   onClick={() => setStatus(GameStatus.CUSTOM_GAME)} 
-                  className={`col-span-2 py-5 bg-purple-900/50 border border-purple-500/30 text-white font-black text-2xl rounded-sm active:scale-95 flex items-center justify-center gap-3 uppercase italic transition-all hover:bg-purple-800/50 ${selectedMenuIndex === MAPS.length + 7 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
+                  className={`col-span-2 py-5 bg-purple-900/50 border border-purple-500/30 text-white font-black text-2xl rounded-sm active:scale-95 flex items-center justify-center gap-3 uppercase italic transition-all hover:bg-purple-800/50 ${selectedMenuIndex === MAPS.length + 8 ? 'ring-4 ring-white scale-105 z-10' : ''}`}
                 >
                   <Wrench size={24} className="text-purple-400" /> Custom Game
                 </button>
@@ -6773,6 +8022,135 @@ const App: React.FC = () => {
             <div className="flex flex-col items-center gap-2 opacity-30 mt-8">
               <AlertCircle size={20} className="text-white" />
               <span className="text-white text-[10px] uppercase font-bold italic tracking-widest">Mobile Optimized Experience</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {status === GameStatus.SHOP && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center bg-black/95 p-8 overflow-y-auto">
+          <div className="max-w-6xl w-full space-y-8 animate-in slide-in-from-bottom duration-500 py-8">
+            <div className="flex items-center justify-between sticky top-0 bg-black/95 z-20 py-4 border-b border-white/10">
+              <button 
+                id="menu-item-0"
+                onClick={() => setStatus(GameStatus.START)} 
+                className={`p-3 bg-white/5 rounded-full text-white/60 active:scale-90 transition-all border border-white/10 ${selectedMenuIndex === 0 ? 'ring-2 ring-white bg-white/20 text-white' : ''}`}
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <h2 className="text-4xl sm:text-5xl font-black text-white italic tracking-tighter uppercase flex items-center gap-4">
+                <ShoppingCart className="text-pink-500 w-8 h-8 sm:w-10 sm:h-10" /> Black Market
+              </h2>
+              <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-sm border border-white/20">
+                <Gem className="text-cyan-400" size={20} />
+                <span className="text-cyan-400 font-black text-xl">{progression.profile?.totalGems || 0}</span>
+              </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex overflow-x-auto bg-white/5 p-1 rounded-sm border border-white/10 gap-1 pb-2 scrollbar-thin scrollbar-thumb-white/20">
+              {[
+                { id: 'callingCards', label: 'Calling Cards', icon: <ShoppingCart size={16} /> },
+                { id: 'camos', label: 'Weapon Camos', icon: <Swords size={16} /> },
+                { id: 'clothes', label: 'Clothes', icon: <User size={16} /> },
+                { id: 'finisherMoves', label: 'Finisher Moves', icon: <Skull size={16} /> },
+                { id: 'hats', label: 'Hats', icon: <User size={16} /> },
+                { id: 'glasses', label: 'Glasses', icon: <Eye size={16} /> },
+                { id: 'masks', label: 'Masks', icon: <UserX size={16} /> },
+                { id: 'helmets', label: 'Helmets', icon: <Shield size={16} /> },
+                { id: 'chest', label: 'Chest', icon: <BoxIcon size={16} /> },
+                { id: 'boots', label: 'Boots', icon: <Move size={16} /> },
+                { id: 'gloves', label: 'Gloves', icon: <Hand size={16} /> },
+              ].map((tab, idx) => (
+                <button
+                  key={tab.id}
+                  id={`menu-item-${idx + 1}`}
+                  onClick={() => setShopTab(tab.id as any)}
+                  className={`flex-none px-4 py-3 rounded-sm flex items-center justify-center gap-2 text-[10px] font-black uppercase italic tracking-tighter transition-all ${
+                    shopTab === tab.id 
+                      ? 'bg-pink-600 text-white shadow-lg scale-[1.02]' 
+                      : 'text-white/40 hover:text-white hover:bg-white/5'
+                  } ${selectedMenuIndex === idx + 1 ? 'ring-2 ring-white z-10' : ''}`}
+                >
+                  {tab.icon}
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-sm overflow-hidden p-4 sm:p-6 min-h-[400px]">
+              {previewItem && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreviewItem(null)}>
+                <div className="bg-black/90 p-6 rounded-xl border border-white/20 max-w-md w-full" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-2xl font-black text-white italic uppercase mb-4">{previewItem.item.name}</h3>
+                  <ShopItemPreview item={previewItem.item} shopTab={previewItem.shopTab} />
+                  <button onClick={() => setPreviewItem(null)} className="mt-4 w-full py-2 bg-white/10 text-white font-black uppercase rounded-lg">Close</button>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {SHOP_ITEMS[shopTab].map((item, idx) => {
+                  const isOwned = progression.profile?.shopItems?.[shopTab]?.includes(item.id as any);
+                  const canAfford = (progression.profile?.totalGems || 0) >= item.cost;
+                  
+                  return (
+                    <div key={item.id} id={`menu-item-${idx + 6}`} onClick={() => setPreviewItem({ item, shopTab })} className={`bg-black/40 p-4 rounded-xl border flex flex-col items-center text-center gap-4 transition-all ${selectedMenuIndex === idx + 6 ? 'ring-2 ring-white scale-105 z-10' : ''} ${isOwned ? 'border-emerald-500/50 bg-emerald-900/10' : 'border-white/10 hover:bg-white/5'} cursor-pointer`}>
+                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                        {shopTab === 'callingCards' && <ShoppingCart className="text-pink-400" size={24} />}
+                        {shopTab === 'camos' && <Swords className="text-orange-400" size={24} />}
+                        {shopTab === 'clothes' && <User className="text-blue-400" size={24} />}
+                        {shopTab === 'finisherMoves' && <Skull className="text-red-400" size={24} />}
+                        {shopTab === 'hats' && <User className="text-yellow-400" size={24} />}
+                        {shopTab === 'glasses' && <Eye className="text-purple-400" size={24} />}
+                        {shopTab === 'masks' && <UserX className="text-green-400" size={24} />}
+                        {shopTab === 'helmets' && <Shield className="text-gray-400" size={24} />}
+                        {shopTab === 'chest' && <BoxIcon className="text-emerald-400" size={24} />}
+                        {shopTab === 'boots' && <Move className="text-orange-400" size={24} />}
+                        {shopTab === 'gloves' && <Hand className="text-indigo-400" size={24} />}
+                      </div>
+                      
+                      <div className="flex flex-col">
+                        <span className="text-lg font-black uppercase italic text-white">{item.name}</span>
+                        {!isOwned && (
+                          <div className="flex items-center justify-center gap-1 mt-1">
+                            <Gem size={12} className={canAfford ? 'text-cyan-400' : 'text-red-400'} />
+                            <span className={`text-xs font-bold ${canAfford ? 'text-cyan-400' : 'text-red-400'}`}>{item.cost}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        disabled={isOwned || !canAfford}
+                        onClick={() => {
+                          if (!isOwned && canAfford && progression.profile) {
+                            const newGems = (progression.profile.totalGems || 0) - item.cost;
+                            const newShopItems = { ...progression.profile.shopItems };
+                            if (!newShopItems[shopTab]) newShopItems[shopTab] = [];
+                            newShopItems[shopTab].push(item.id as any);
+                            
+                            setProgression(prev => ({
+                              ...prev,
+                              profile: {
+                                ...(prev.profile || DEFAULT_PROFILE),
+                                totalGems: newGems,
+                                shopItems: newShopItems
+                              }
+                            }));
+                          }
+                        }}
+                        className={`w-full py-2 rounded-lg font-black uppercase text-xs tracking-widest transition-all ${
+                          isOwned 
+                            ? 'bg-emerald-600/20 text-emerald-500 border border-emerald-500/30' 
+                            : canAfford 
+                              ? 'bg-pink-600 hover:bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)]' 
+                              : 'bg-white/5 text-white/30 cursor-not-allowed'
+                        }`}
+                      >
+                        {isOwned ? 'Owned' : canAfford ? 'Purchase' : 'Not Enough Gems'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -7822,299 +9200,72 @@ const App: React.FC = () => {
                     <Skull size={20} /> Bestiary
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
-                    {/* Zombie */}
-                    <div id="menu-item-6" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 6 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <ZombieModel variant="normal" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-emerald-500 uppercase italic leading-none">Zombie</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60 font-bold uppercase">Common</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
+                    {[
+                      { id: 'normal', name: 'Zombie', variant: 'normal', color: 'text-emerald-500', tags: ['Common', 'Hostile'], desc: 'Reanimated corpses driven by an insatiable hunger. Their strength and speed increase with each wave.', stats: { hp: '150 + 100/Rnd', dmg: '50 / Hit', spd: 'Variable' } },
+                      { id: 'runner', name: 'Runner', variant: 'runner', color: 'text-red-400', tags: ['Fast', 'Hostile'], desc: 'Agile mutations that close the distance quickly. Lower health but extremely dangerous in groups.', stats: { hp: '70% Normal', dmg: '50 / Hit', spd: 'Very Fast' }, unlock: 'Round 5+' },
+                      { id: 'tank', name: 'Tank', variant: 'tank', color: 'text-slate-400', tags: ['Armored', 'Hostile'], desc: 'Heavily armored juggernauts. Slow movement but massive health pool. Focus fire required.', stats: { hp: '250% Normal', dmg: '75 / Hit', spd: 'Slow' }, unlock: 'Round 10+' },
+                      { id: 'inferno', name: 'Inferno', variant: 'inferno', color: 'text-orange-500', tags: ['Fire', 'Explosive'], desc: 'Burning variants that deal fire damage over time and explode upon death.', stats: { hp: '120% Normal', dmg: '60 + Burn', spd: 'Normal' }, unlock: 'Round 15+' },
+                      { id: 'parasite', name: 'Parasite', variant: 'parasite', color: 'text-purple-400', tags: ['Flying', 'Projectile'], desc: 'Flying pests that swarm the player. Weak individually but dangerous in numbers.', stats: { hp: '50% Normal', dmg: '20 / Hit', spd: 'Very Fast' }, unlock: 'Round 12+' },
+                      { id: 'crawler', name: 'Crawler', variant: 'crawler', color: 'text-emerald-600', tags: ['Stealth', 'Hostile'], desc: 'Low-profile mutations that scuttle along the ground. Hard to hit and release toxic gas.', stats: { hp: '80% Normal', dmg: '35 / Hit', spd: 'Fast' }, unlock: 'Round 8+' },
+                      { id: 'brute', name: 'Brute', variant: 'brute', color: 'text-red-700', tags: ['Elite', 'Heavy'], desc: 'A massive, hulking monstrosity. Extremely durable and deals heavy damage.', stats: { hp: '500% Normal', dmg: '75 / Hit', spd: 'Very Slow' }, unlock: 'Round 20+' },
+                      { id: 'dragon', name: 'Undead Dragon', variant: 'dragon', color: 'text-red-600', tags: ['Legendary', 'Boss'], desc: 'The Ancient Undead Dragon. Breathes fire and commands the skies. Weak point: Core.', stats: { hp: '250,000', dmg: '100 / Hit', spd: 'Airborne' }, unlock: 'Story Mode' },
+                      { id: 'elephant', name: 'War Elephant', variant: 'elephant', color: 'text-slate-400', tags: ['Legendary', 'Boss'], desc: 'A mutated war elephant with heavy armor. Charges players with unstoppable force.', stats: { hp: '300,000', dmg: '150 / Hit', spd: 'Charging' }, unlock: 'Story Mode' },
+                      { id: 'ogre', name: 'Giant Ogre', variant: 'ogre', color: 'text-emerald-500', tags: ['Legendary', 'Boss'], desc: 'A massive infected ogre wielding a spiked club. Can spin to clear nearby players.', stats: { hp: '200,000', dmg: '100 / Hit', spd: 'Dizzy State' }, unlock: 'Story Mode' },
+                      { id: 'worm', name: 'Giant Worm', variant: 'worm', color: 'text-orange-600', tags: ['Legendary', 'Boss'], desc: 'A subterranean terror. Burrows underground and is only vulnerable when it surfaces to attack.', stats: { hp: '250,000', dmg: '60 / Hit', spd: 'Surface State' }, unlock: 'Story Mode' },
+                    ].map((enemy, idx) => (
+                      <div 
+                        key={enemy.id} 
+                        id={`menu-item-${idx + 6}`} 
+                        onClick={() => setSelectedEnemyFor3D(enemy.id)} 
+                        className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-all cursor-pointer group ${selectedMenuIndex === idx + 6 ? 'bg-white/10 ring-2 ring-white scale-[1.02] z-10' : 'hover:bg-white/10 hover:border-white/20'}`}
+                      >
+                        <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden group-hover:border-emerald-500/50 transition-colors">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
+                          {enemy.unlock && <div className="absolute top-2 right-2 bg-red-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white z-20">{enemy.unlock}</div>}
+                          <div className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            {enemy.id === 'dragon' ? <DragonModel /> : 
+                             enemy.id === 'elephant' ? <ElephantModel /> : 
+                             enemy.id === 'ogre' ? <OgreModel /> : 
+                             enemy.id === 'worm' ? <WormModel /> : 
+                             <ZombieModel variant={enemy.variant as any} />}
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                            <div className="bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-1 rounded-full flex items-center gap-1">
+                              <Eye size={10} /> View 3D
                             </div>
                           </div>
                         </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Reanimated corpses driven by an insatiable hunger. Their strength and speed increase with each wave.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">150 + 100/Rnd</span>
+                        <div className="flex flex-col w-full">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className={`text-2xl font-black uppercase italic leading-none ${enemy.color}`}>{enemy.name}</span>
+                              <div className="flex gap-2 mt-1">
+                                {enemy.tags.map(tag => (
+                                  <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${tag === 'Boss' ? 'bg-red-600 text-white' : 'bg-white/10 text-white/60'}`}>{tag}</span>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">50 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-yellow-400">Variable</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Runner Zombie */}
-                    <div id="menu-item-7" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 7 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <div className="absolute top-2 right-2 bg-red-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white">Round 5+</div>
-                        <ZombieModel variant="runner" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-red-400 uppercase italic leading-none">Runner</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-red-900/60 px-2 py-0.5 rounded-full text-red-200 font-bold uppercase">Fast</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
+                          <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
+                            {enemy.desc}
+                          </p>
+                          <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
+                            <div className="flex flex-col items-center border-r border-white/10">
+                              <span className="text-white/30 text-[8px]">Health</span>
+                              <span className="text-emerald-400">{enemy.stats.hp}</span>
+                            </div>
+                            <div className="flex flex-col items-center border-r border-white/10">
+                              <span className="text-white/30 text-[8px]">Damage</span>
+                              <span className="text-red-400">{enemy.stats.dmg}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-white/30 text-[8px]">Speed</span>
+                              <span className="text-yellow-400">{enemy.stats.spd}</span>
                             </div>
                           </div>
                         </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Agile mutations that close the distance quickly. Lower health but extremely dangerous in groups.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">70% Normal</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">50 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-red-500">Very Fast</span>
-                          </div>
-                        </div>
                       </div>
-                    </div>
-
-                    {/* Tank Zombie */}
-                    <div id="menu-item-8" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 8 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <div className="absolute top-2 right-2 bg-slate-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white">Round 10+</div>
-                        <ZombieModel variant="tank" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-slate-400 uppercase italic leading-none">Tank</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-slate-700/60 px-2 py-0.5 rounded-full text-slate-200 font-bold uppercase">Armored</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Heavily armored juggernauts. Slow movement but massive health pool. Focus fire required.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">250% Normal</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">75 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-slate-500">Slow</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Crawler Zombie */}
-                    <div id="menu-item-9" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 9 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <div className="absolute top-2 right-2 bg-emerald-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white">Round 8+</div>
-                        <ZombieModel variant="crawler" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-emerald-600 uppercase italic leading-none">Crawler</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded-full text-emerald-200 font-bold uppercase">Stealth</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Low-profile mutations that scuttle along the ground. Hard to hit and release toxic gas.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">80% Normal</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">35 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-yellow-400">Fast</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Parasite */}
-                    <div id="menu-item-10" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 10 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <div className="absolute top-2 right-2 bg-purple-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white">Round 12+</div>
-                        <ZombieModel variant="parasite" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-purple-400 uppercase italic leading-none">Parasite</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-purple-900/60 px-2 py-0.5 rounded-full text-purple-200 font-bold uppercase">Flying</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Airborne pests that swarm the player. Weak individually but dangerous in numbers.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">50% Normal</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">20 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-red-500">Very Fast</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Inferno Zombie */}
-                    <div id="menu-item-11" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 11 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <div className="absolute top-2 right-2 bg-orange-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white">Round 15+</div>
-                        <ZombieModel variant="inferno" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-orange-500 uppercase italic leading-none">Inferno</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-orange-900/60 px-2 py-0.5 rounded-full text-orange-200 font-bold uppercase">Explosive</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Volatile zombies infused with element 115. They explode violently upon death, damaging nearby players.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">150% Normal</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">45 + Burn</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-yellow-400">Normal</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Brute */}
-                    <div id="menu-item-12" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 12 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <div className="absolute top-2 right-2 bg-red-800 text-[8px] font-black uppercase px-1.5 py-0.5 rounded text-white">Round 20+</div>
-                        <ZombieModel variant="brute" />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-red-700 uppercase italic leading-none">Brute</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-red-950/60 px-2 py-0.5 rounded-full text-red-200 font-bold uppercase">Elite</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Hostile</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          A massive, hulking monstrosity. Extremely durable and deals heavy damage.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">500% Normal</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">75 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Speed</span>
-                            <span className="text-slate-500">Very Slow</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Dragon Boss */}
-                    <div id="menu-item-13" onClick={() => {}} className={`bg-white/5 p-4 rounded-sm border border-white/10 flex flex-col sm:flex-row items-center gap-6 transition-colors ${selectedMenuIndex === 13 ? 'bg-white/10 ring-1 ring-white/20' : 'hover:bg-white/10'}`}>
-                      <div className="w-32 h-32 shrink-0 bg-black/50 rounded-sm border border-white/5 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
-                        <DragonModel />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="text-2xl font-black text-red-600 uppercase italic leading-none">Dragon Boss</span>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-[10px] bg-yellow-600/20 px-2 py-0.5 rounded-full text-yellow-500 font-bold uppercase">Legendary</span>
-                              <span className="text-[10px] bg-red-900/40 px-2 py-0.5 rounded-full text-red-400 font-bold uppercase">Boss</span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-xs text-white/40 font-bold uppercase tracking-tight leading-tight mt-3 mb-3">
-                          Ancient beast summoned through dark rituals. Controls the undead horde and rains fire from above.
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 text-[10px] font-bold uppercase text-white/60 bg-black/20 p-2 rounded-sm border border-white/5">
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Health</span>
-                            <span className="text-emerald-400">250,000</span>
-                          </div>
-                          <div className="flex flex-col items-center border-r border-white/10">
-                            <span className="text-white/30 text-[8px]">Damage</span>
-                            <span className="text-red-400">50 / Hit</span>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <span className="text-white/30 text-[8px]">Weakness</span>
-                            <span className="text-yellow-400">Head / Heart</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -8236,7 +9387,7 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <button id={`menu-item-${(infoTab === 'guns' ? SORTED_WEAPONS.length : infoTab === 'perks' ? 19 : infoTab === 'bombs' ? 3 : infoTab === 'enemies' ? 8 : infoTab === 'progression' ? 1 : 4) + 5}`} onClick={() => setStatus(GameStatus.START)} className={`w-full py-5 bg-emerald-700 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-emerald-950 ${selectedMenuIndex === (infoTab === 'guns' ? SORTED_WEAPONS.length : infoTab === 'perks' ? 19 : infoTab === 'bombs' ? 3 : infoTab === 'enemies' ? 8 : infoTab === 'progression' ? 1 : 4) + 5 ? 'ring-4 ring-white scale-105' : ''}`}>
+            <button id={`menu-item-${(infoTab === 'guns' ? SORTED_WEAPONS.length : infoTab === 'perks' ? 19 : infoTab === 'bombs' ? 3 : infoTab === 'enemies' ? 11 : infoTab === 'progression' ? 1 : 4) + 5}`} onClick={() => setStatus(GameStatus.START)} className={`w-full py-5 bg-emerald-700 text-white font-black text-2xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border-b-4 border-emerald-950 ${selectedMenuIndex === (infoTab === 'guns' ? SORTED_WEAPONS.length : infoTab === 'perks' ? 19 : infoTab === 'bombs' ? 3 : infoTab === 'enemies' ? 11 : infoTab === 'progression' ? 1 : 4) + 5 ? 'ring-4 ring-white scale-105' : ''}`}>
                Return to Base
             </button>
           </div>
@@ -8321,6 +9472,92 @@ const App: React.FC = () => {
                     <div className="h-1.5 bg-black rounded-full overflow-hidden">
                       <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (100 / 2000) * 100)}%` }} />
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enemy 3D Viewer Modal */}
+      {selectedEnemyFor3D && (
+        <div className="absolute inset-0 z-[140] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={() => setSelectedEnemyFor3D(null)}>
+          <div className="bg-zinc-900 border border-white/20 rounded-sm w-full h-full max-w-5xl max-h-[80vh] flex flex-col shadow-2xl animate-in zoom-in duration-300 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b border-white/10 bg-black/20">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-red-600/20 rounded-sm border border-red-600/40 text-red-500">
+                  <Skull size={24} />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-black text-white italic uppercase tracking-tighter leading-none">
+                    {selectedEnemyFor3D.charAt(0).toUpperCase() + selectedEnemyFor3D.slice(1)} <span className="text-red-600">Tactical Intel</span>
+                  </h3>
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mt-1">Interactive 360° Threat Analysis</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedEnemyFor3D(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white">
+                <X size={32} />
+              </button>
+            </div>
+            
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+              <div className="flex-1 bg-black/40 relative cursor-move">
+                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                  <div className="bg-black/60 backdrop-blur-md border border-white/10 p-2 rounded-sm text-[8px] font-bold text-white/60 uppercase flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse" /> Live Feed: Active
+                  </div>
+                  <div className="bg-black/60 backdrop-blur-md border border-white/10 p-2 rounded-sm text-[8px] font-bold text-white/60 uppercase">
+                    Rotation: Enabled
+                  </div>
+                </div>
+                
+                <Enemy3DViewer type={selectedEnemyFor3D} />
+                
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-4">
+                  <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[10px] font-black text-white/80 uppercase flex items-center gap-2">
+                    <MousePointer2 size={12} className="text-emerald-500" /> Drag to Rotate
+                  </div>
+                  <div className="bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[10px] font-black text-white/80 uppercase flex items-center gap-2">
+                    <Move size={12} className="text-blue-500" /> Scroll to Zoom
+                  </div>
+                </div>
+              </div>
+              
+              <div className="w-full lg:w-80 bg-black/20 border-l border-white/10 p-6 overflow-y-auto custom-scrollbar">
+                <h4 className="text-sm font-black text-red-500 uppercase tracking-widest mb-4 border-b border-red-900/30 pb-2">Combat Data</h4>
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[10px] text-white/40 uppercase font-black tracking-widest block mb-2">Threat Level</span>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= (selectedEnemyFor3D === 'dragon' || selectedEnemyFor3D === 'elephant' || selectedEnemyFor3D === 'ogre' || selectedEnemyFor3D === 'worm' ? 5 : selectedEnemyFor3D === 'brute' ? 4 : 2) ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.5)]' : 'bg-white/10'}`} />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/10">
+                      <span className="text-[8px] text-white/30 uppercase font-black block mb-1">Armor Type</span>
+                      <span className="text-xs font-bold text-white uppercase">{selectedEnemyFor3D === 'tank' || selectedEnemyFor3D === 'elephant' ? 'Heavy' : 'Light'}</span>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-sm border border-white/10">
+                      <span className="text-[8px] text-white/30 uppercase font-black block mb-1">Behavior</span>
+                      <span className="text-xs font-bold text-white uppercase">{selectedEnemyFor3D === 'runner' ? 'Aggressive' : 'Stalking'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-red-900/20 p-4 rounded-sm border border-red-900/40">
+                    <div className="flex items-center gap-2 text-red-400 mb-2">
+                      <Zap size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Tactical Advice</span>
+                    </div>
+                    <p className="text-xs text-white/70 font-medium leading-relaxed italic">
+                      {selectedEnemyFor3D === 'dragon' ? "Aim for the glowing core when it opens its mouth to breathe fire. Stay mobile to avoid ground-based fire pools." :
+                       selectedEnemyFor3D === 'tank' ? "Focus fire on the head to break the helmet. Explosives are highly effective against armored plating." :
+                       selectedEnemyFor3D === 'runner' ? "Keep your distance. Use high-fire-rate weapons to stop them before they close the gap." :
+                       "Maintain situational awareness. Do not let them corner you in tight spaces."}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect, useMemo, Suspense } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Sky, Stars, Plane, Box, Sphere, Cylinder, Grid, Float, useTexture, Sparkles, Text, Torus, Html } from '@react-three/drei';
-import { User } from 'lucide-react';
+import { User, Skull, Shield, Zap, Swords } from 'lucide-react';
 import * as THREE from 'three';
 import { GameStatus, PowerUpType, MapConfig, WeaponCamo, PlayerScore, WeaponAttachment, Progression, ZombieType, GameSettings, HUDSettings, ZombieData, MultiplayerMode } from '../types';
 import { soundService } from '../services/soundService';
@@ -67,11 +67,13 @@ interface SceneProps {
     hp: number;
     team?: number;
     kills: number;
+    points: number;
     multiplayerMode?: MultiplayerMode;
   };
   heartPositions: THREE.Vector3[];
   collectedHearts: boolean[];
   dragonActive: boolean;
+  bossType?: 'dragon' | 'elephant' | 'ogre' | 'worm';
   dragonHealth: number;
   setDragonHealth: (hp: number) => void;
   onDragonDefeated: () => void;
@@ -148,7 +150,7 @@ interface Effect {
   scale?: number;
 }
 
-const WEAPONS_STATS: Record<string, { clip: number, damage: number, rate: number, color: string, barrelLen: number, twoHanded: boolean, recoil: number }> = {
+export const WEAPONS_STATS: Record<string, { clip: number, damage: number, rate: number, color: string, barrelLen: number, twoHanded: boolean, recoil: number }> = {
   'M1911': { clip: 8, damage: 65, rate: 200, color: '#999', barrelLen: 0.25, twoHanded: false, recoil: 0.15 },
   'MP5': { clip: 30, damage: 55, rate: 100, color: '#333', barrelLen: 0.4, twoHanded: true, recoil: 0.1 },
   'GALIL': { clip: 35, damage: 85, rate: 120, color: '#554433', barrelLen: 0.6, twoHanded: true, recoil: 0.12 },
@@ -201,7 +203,7 @@ const WEAPONS_STATS: Record<string, { clip: number, damage: number, rate: number
   'DEATH_MACHINE': { clip: 999, damage: 150, rate: 30, color: '#00ffff', barrelLen: 0.8, twoHanded: true, recoil: 0.1 }
 };
 
-const CAMO_PROPS: Record<string, { color?: string, emissive?: string, emissiveIntensity?: number, metalness?: number, roughness?: number, texture?: string }> = {
+export const CAMO_PROPS: Record<string, { color?: string, emissive?: string, emissiveIntensity?: number, metalness?: number, roughness?: number, texture?: string }> = {
   'gilded': { color: '#ffd700', metalness: 0.9, roughness: 0.1, emissive: '#ffd700', emissiveIntensity: 0.5 },
   'crystal': { color: '#e0f7fa', metalness: 0.5, roughness: 0.1, emissive: '#e0f7fa', emissiveIntensity: 1, texture: 'https://picsum.photos/seed/crystal/256/256' },
   'void_matter': { color: '#4a148c', metalness: 0.8, roughness: 0.2, emissive: '#7b1fa2', emissiveIntensity: 2, texture: 'https://picsum.photos/seed/galaxy/256/256' },
@@ -619,7 +621,7 @@ const WeaponMaterial: React.FC<{ camo: WeaponCamo; stats: any; materialRef: Reac
   );
 };
 
-const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?: WeaponAttachment[] }> = ({ weaponName, camo, attachments = [] }) => {
+export const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?: WeaponAttachment[] }> = ({ weaponName, camo, attachments = [] }) => {
   const stats = WEAPONS_STATS[weaponName];
   const camoProps = CAMO_PROPS[camo];
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
@@ -736,9 +738,9 @@ const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?
 
   useFrame((state) => {
     if (materialRef.current) {
+      const time = state.clock.elapsedTime;
       // Animate PaP (if no camo)
       if (isPap && camo === 'none') {
-        const time = state.clock.elapsedTime;
         materialRef.current.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.3;
         materialRef.current.emissive.setHSL((time * 0.1) % 1, 1, 0.5);
         // Make it look metallic and shiny
@@ -755,7 +757,6 @@ const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?
 
       // Animate Dark Matter
       if (camo === 'void_matter') {
-        const time = state.clock.elapsedTime;
         materialRef.current.emissiveIntensity = 2 + Math.sin(time * 2) * 0.5;
         materialRef.current.color.setHSL(0.75 + Math.sin(time * 0.1) * 0.05, 0.8, 0.2);
         
@@ -766,7 +767,6 @@ const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?
       }
       // Animate Magma
       if (camo === 'lava') {
-        const time = state.clock.elapsedTime;
         materialRef.current.emissiveIntensity = 3 + Math.sin(time * 5) * 1;
         // Shift hue slightly for flowing lava effect
         materialRef.current.emissive.setHSL(0.05 + Math.sin(time) * 0.02, 1, 0.5);
@@ -778,12 +778,11 @@ const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?
       }
       // Animate Ice
       if (camo === 'frost') {
-        materialRef.current.opacity = 0.6 + Math.sin(state.clock.elapsedTime) * 0.1;
+        materialRef.current.opacity = 0.6 + Math.sin(time) * 0.1;
         if (leftMaterialRef.current) leftMaterialRef.current.opacity = materialRef.current.opacity;
       }
       // Animate Nebula
       if (camo === 'galaxy') {
-         const time = state.clock.elapsedTime;
          materialRef.current.emissiveIntensity = 1.5 + Math.sin(time * 0.5) * 0.5;
          materialRef.current.color.setHSL(0.6 + Math.sin(time * 0.2) * 0.1, 0.8, 0.2);
          
@@ -794,7 +793,6 @@ const WeaponModel: React.FC<{ weaponName: string; camo: WeaponCamo; attachments?
       }
       // Animate Red Hex
       if (camo === 'crimson_hex') {
-         const time = state.clock.elapsedTime;
          materialRef.current.emissiveIntensity = 0.5 + Math.sin(time * 3) * 0.3;
          if (leftMaterialRef.current) leftMaterialRef.current.emissiveIntensity = materialRef.current.emissiveIntensity;
       }
@@ -1346,7 +1344,10 @@ const Rain = ({ playerPosRef, opacity }: { playerPosRef: React.RefObject<THREE.V
   const points = useRef<THREE.Points>(null);
   const velocities = useRef(rainData.vel);
 
+  const frameCounter = useRef(0);
   useFrame((state, delta) => {
+    frameCounter.current++;
+    if (frameCounter.current % 2 !== 0) return;
     if (points.current && playerPosRef.current) {
       const positions = points.current.geometry.attributes.position.array as Float32Array;
       for (let i = 0; i < count; i++) {
@@ -1642,11 +1643,11 @@ const Bus = ({ posRef, rotRef, busState }: { posRef: React.MutableRefObject<THRE
 };
 
 export const Scene: React.FC<SceneProps> = ({ 
-  status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, kingRobboRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, playerRotRef: externalPlayerRotRef, zombieRefsRef: externalZombieRefsRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
+  status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, kingRobboRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, playerRotRef: externalPlayerRotRef, zombieRefsRef: externalZombieRefsRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, bossType = 'dragon', dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
   spawnZombieType, onSpawnZombieComplete, changeAllZombiesType, onChangeAllZombiesComplete,
   onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, easterEggTriggered, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard', cyclingWeapon, scoreLimit = 35, teleportAllToMe, setTeleportAllToMe, difficulty = 'normal'
 }) => {
-  const { camera, scene } = useThree();
+  const { camera, scene, clock } = useThree();
 
   const isShooting = useRef(false);
   const internalPlayerPos = useRef(new THREE.Vector3(0, 1.2, 15));
@@ -2051,6 +2052,10 @@ export const Scene: React.FC<SceneProps> = ({
   const dragonPos = useRef(new THREE.Vector3());
   const dragonRotY = useRef(0);
   const dragonGroupRef = useRef<THREE.Group>(null);
+  const bossState = useRef<'idle' | 'charging' | 'dizzy' | 'spinning' | 'digging' | 'emerging' | 'attacking'>('idle');
+  const bossTimer = useRef(0);
+  const bossTarget = useRef(new THREE.Vector3());
+  const bossWarningPos = useRef(new THREE.Vector3());
 
   const preBossRoundZombies = useRef(0);
   const wasDragonActive = useRef(false);
@@ -2080,6 +2085,9 @@ export const Scene: React.FC<SceneProps> = ({
       zombiesToSpawnThisRound.current = 100;
       zombieRefs.current = [];
       setZombieIds([]);
+      dragonPos.current.set(0, 0, 0); // Reset position
+      bossState.current = 'idle';
+      bossTimer.current = 0;
     } else if (!dragonActive && wasDragonActive.current) {
       wasDragonActive.current = false;
       if (status === GameStatus.PLAYING) {
@@ -2114,7 +2122,7 @@ export const Scene: React.FC<SceneProps> = ({
       }
     });
 
-    // Dragon Hearts and Summoning (Disabled in Dead Ops)
+    // Boss Hearts and Summoning (Disabled in Dead Ops)
     if (gameMode !== 'dead_ops') {
       const canSeeHearts = gameMode !== 'story' || (gameState.perks.length > 0 && gameState.weaponTier > 0);
       
@@ -2123,7 +2131,7 @@ export const Scene: React.FC<SceneProps> = ({
           if (!collectedHearts[i]) {
             items.push({
               id: `heart_${i}`,
-              type: `Dragon Heart ${i + 1}`,
+              type: `Boss Heart ${i + 1}`,
               cost: 0,
               pos: pos,
               color: '#ff0000'
@@ -2137,7 +2145,7 @@ export const Scene: React.FC<SceneProps> = ({
         if (gameMode !== 'story' || (gameMode === 'story' && objectivesCompleted)) {
           items.push({
             id: 'summon_dragon',
-            type: 'Summon Dragon',
+            type: 'Summon Boss',
             cost: 0,
             pos: new THREE.Vector3(...mapConfig.craftingTablePos),
             color: '#ffaa00'
@@ -2168,7 +2176,7 @@ export const Scene: React.FC<SceneProps> = ({
         setCurrentObjective('Pack-a-Punch a Weapon');
       } else if (!objectivesCompleted) {
         if (!collectedHearts.every(h => h)) {
-          setCurrentObjective(`Find all Dragon Hearts (${collectedHearts.filter(h => h).length}/${collectedHearts.length})`);
+          setCurrentObjective(`Find all Boss Hearts (${collectedHearts.filter(h => h).length}/${collectedHearts.length})`);
         } else {
           setCurrentObjective('Summon the Dragon at the Crafting Table');
           setObjectivesCompleted(true);
@@ -2426,6 +2434,14 @@ export const Scene: React.FC<SceneProps> = ({
     frameCount.current++;
     if (status !== GameStatus.PLAYING) return;
 
+    const gameSpeed = 1.0; // Normal time scale to prevent jumpiness
+    const delta = Math.min(rawDelta, 0.1) * gameSpeed;
+    gameTime.current += delta * 1000;
+    const now = gameTime.current;
+
+    // --- ESSENTIAL SMOOTH LOGIC (Runs every frame) ---
+    // Player Rotation, Movement, and Basic State
+
     // Teleport to player
     if (teleportToPlayerId) {
       const target = botsRef.current.find(b => b.id === teleportToPlayerId);
@@ -2465,9 +2481,6 @@ export const Scene: React.FC<SceneProps> = ({
          if (onTeleportPlayerToMeComplete) onTeleportPlayerToMeComplete();
       }
     }
-
-    const delta = Math.min(rawDelta, 0.1);
-    gameTime.current += delta * 1000;
 
     if (killAllZombies) {
       zombieRefs.current.forEach(z => {
@@ -2655,10 +2668,10 @@ export const Scene: React.FC<SceneProps> = ({
       if (!red9BlessingClaimed) {
         const dist = playerPos.current.distanceTo(currentGravePos);
         if (dist < 6) {
-          const now = Date.now();
-          if (now - lastJumpTime.current > 1000) { 
+          const nowTime = Date.now();
+          if (nowTime - lastJumpTime.current > 1000) { 
              red9JumpCount.current++;
-             lastJumpTime.current = now;
+             lastJumpTime.current = nowTime;
              if (red9JumpCount.current >= 3) {
                onRed9Blessing();
              }
@@ -2696,15 +2709,14 @@ export const Scene: React.FC<SceneProps> = ({
          if (Math.abs(moveInput.current.x) > 0.1 || Math.abs(moveInput.current.y) > 0.1) {
              // Calculate direction from input
              // Input Y is forward (-Z), Input X is right (+X)
-             const dir = new THREE.Vector3(moveInput.current.x, 0, -moveInput.current.y).normalize();
-             slideDir.current.copy(dir);
+             slideDir.current.set(moveInput.current.x, 0, -moveInput.current.y).normalize();
          } else {
-             const forwardVec = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
-             slideDir.current.copy(forwardVec);
+             tempEuler.current.set(0, playerRot.current.y, 0);
+             slideDir.current.set(0, 0, -1).applyEuler(tempEuler.current);
          }
       } else {
-         const forwardVec = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, playerRot.current.y, 0));
-         slideDir.current.copy(forwardVec);
+         tempEuler.current.set(0, playerRot.current.y, 0);
+         slideDir.current.set(0, 0, -1).applyEuler(tempEuler.current);
       }
       
       soundService.playKnife(); // Placeholder sound
@@ -2728,7 +2740,7 @@ export const Scene: React.FC<SceneProps> = ({
       }
     }
 
-    let speed = gameState.perks.includes('stamin') ? 11 : 7.5;
+    let speed = gameState.perks.includes('stamin') ? 18 : 13.5;
     if (gameState.perks.includes('blaze')) speed *= 1.2;
     if (sprintRequest.current && !aimRequest.current) speed *= 1.6;
     if (aimRequest.current) speed *= 0.6;
@@ -2784,6 +2796,7 @@ export const Scene: React.FC<SceneProps> = ({
        }
     }
 
+    // --- HEAVY LOGIC (Runs every frame now for smoothness) ---
     const forward = tempVec1.current;
     const right = tempVec2.current;
 
@@ -2921,13 +2934,15 @@ export const Scene: React.FC<SceneProps> = ({
     }
 
     if (gameMode === 'dead_ops') {
-      camera.position.copy(playerPos.current).add(new THREE.Vector3(0, 20, 10)); // High angle top-down
+      tempVec1.current.set(0, 20, 10);
+      camera.position.copy(playerPos.current).add(tempVec1.current); // High angle top-down
       camera.lookAt(playerPos.current);
     } else if (thirdPersonMode) {
       camera.quaternion.setFromEuler(playerRot.current);
-      const offset = new THREE.Vector3(0.5, 0, 2.5);
-      offset.applyQuaternion(camera.quaternion);
-      camera.position.copy(playerPos.current).add(new THREE.Vector3(0, 1.5, 0)).add(offset);
+      tempVec1.current.set(0.5, 0, 2.5);
+      tempVec1.current.applyQuaternion(camera.quaternion);
+      tempVec2.current.set(0, 1.5, 0);
+      camera.position.copy(playerPos.current).add(tempVec2.current).add(tempVec1.current);
     } else {
       camera.position.copy(playerPos.current);
       camera.quaternion.setFromEuler(playerRot.current);
@@ -2961,7 +2976,6 @@ export const Scene: React.FC<SceneProps> = ({
     }
 
     const weapon = WEAPONS_STATS[gameState.weaponName] || WEAPONS_STATS['M1911'];
-    const now = gameTime.current;
 
     if (grenadeRequest.current || flashbangRequest.current || kingRobboRequest.current) {
        soundService.playThrow();
@@ -3181,23 +3195,29 @@ export const Scene: React.FC<SceneProps> = ({
         flashTimer.current = 0.08;
         soundService.playShoot(gameState.weaponName);
         
-        let direction: THREE.Vector3;
-        let rayOrigin: THREE.Vector3;
+        let direction = tempVec1.current;
+        let rayOrigin = tempVec2.current;
         
         if (gameMode === 'dead_ops') {
             // Use targetRot for instant aim response in Dead Ops
-            direction = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, targetRot.current.y, 0));
-            // Lower ray origin to chest/gun height (approx 0.7m) for scaled down player (0.5 scale)
-            rayOrigin = new THREE.Vector3(playerPos.current.x, 0.7, playerPos.current.z);
+            tempEuler.current.set(0, targetRot.current.y, 0);
+            direction.set(0, 0, -1).applyEuler(tempEuler.current);
+            // Lower ray origin to chest/gun height (approx 1.4m) for full scale player
+            rayOrigin.set(playerPos.current.x, 1.4, playerPos.current.z);
         } else {
-            direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            rayOrigin = camera.position.clone();
+            direction.set(0, 0, -1).applyQuaternion(camera.quaternion);
+            rayOrigin.copy(camera.position);
         }
 
-        const muzzleOffset = isLeft ? new THREE.Vector3(-0.25, -0.3, -0.5) : new THREE.Vector3(0.25, -0.3, -0.5);
-        const muzzlePos = gameMode === 'dead_ops' 
-            ? new THREE.Vector3(playerPos.current.x, 0.7, playerPos.current.z).add(direction.clone().multiplyScalar(0.6))
-            : camera.position.clone().add(muzzleOffset.applyQuaternion(camera.quaternion)).add(direction.clone().multiplyScalar(0.6));
+        const muzzleOffset = tempVec3.current;
+        muzzleOffset.set(isLeft ? -0.25 : 0.25, -0.3, -0.5);
+        
+        const muzzlePos = _v1;
+        if (gameMode === 'dead_ops') {
+            muzzlePos.set(playerPos.current.x, 1.4, playerPos.current.z).add(_v2.copy(direction).multiplyScalar(0.6));
+        } else {
+            muzzlePos.copy(camera.position).add(_v2.copy(muzzleOffset).applyQuaternion(camera.quaternion)).add(_v3.copy(direction).multiplyScalar(0.6));
+        }
         
         if (!gameState.attachments.includes('suppressor')) {
           effects.current.push({ 
@@ -3400,29 +3420,55 @@ export const Scene: React.FC<SceneProps> = ({
             });
 
             if (closestHit.bot.hp <= 0) {
-                closestHit.bot.isDowned = true;
-                closestHit.bot.downedTimer = 30;
+                if (gameMode === 'multiplayer') {
+                    closestHit.bot.hp = 150;
+                    closestHit.bot.isDowned = false;
+                    closestHit.bot.position.set(Math.random() * 20 - 10, 0, Math.random() * 20 - 10);
+                    onStatsUpdate({ hp: 150, isDowned: false }, closestHit.bot.id);
+                } else {
+                    closestHit.bot.isDowned = true;
+                    closestHit.bot.downedTimer = 30;
+                }
                 onStatsUpdate({ points: 100, kills: 1 }, undefined, gameState.weaponName);
             }
         } else if (closestHit.isDragon) {
-          const rankMasteryMultiplier = 1 + ((gameState as any).rankMastery || 0) * 0.1;
-          const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
-          const damage = weapon.damage * (gameState.perks.includes('double') ? 2 : 1) * rankMasteryMultiplier * levelMultiplier;
-          setDragonHealth(dragonHealth - damage);
-          onStatsUpdate({ points: 10, hit: true });
-          
-          effects.current.push({
-            id: Math.random().toString(),
-            type: 'blood',
-            pos: closestHit.hitPos,
-            life: 0.3,
-            color: '#ffaa00',
-            scale: 3.0
-          });
+          let canDamage = false;
+          if (bossType === 'dragon') canDamage = true;
+          else if (bossType === 'elephant' && bossState.current === 'dizzy') canDamage = true;
+          else if (bossType === 'ogre' && bossState.current === 'dizzy') canDamage = true;
+          else if (bossType === 'worm' && bossState.current === 'attacking') canDamage = true;
 
-          if (dragonHealth - damage <= 0) {
-            onDragonDefeated();
-            onUnlockAchievement('boss_slayer');
+          if (canDamage) {
+            const rankMasteryMultiplier = 1 + ((gameState as any).rankMastery || 0) * 0.1;
+            const levelMultiplier = 1 + Math.floor(((gameState as any).level || 1) / 5) * 0.01;
+            const damage = weapon.damage * (gameState.perks.includes('double') ? 2 : 1) * rankMasteryMultiplier * levelMultiplier;
+            setDragonHealth(dragonHealth - damage);
+            onStatsUpdate({ points: 10, hit: true });
+            
+            effects.current.push({
+              id: Math.random().toString(),
+              type: 'blood',
+              pos: closestHit.hitPos,
+              life: 0.3,
+              color: '#ffaa00',
+              scale: 3.0
+            });
+
+            if (dragonHealth - damage <= 0) {
+              onDragonDefeated();
+              onUnlockAchievement('boss_slayer');
+            }
+          } else {
+            // Deflected hit effect
+            effects.current.push({
+              id: Math.random().toString(),
+              type: 'flash',
+              pos: closestHit.hitPos,
+              life: 0.1,
+              color: '#ffffff',
+              scale: 0.5
+            });
+            soundService.playShoot('deflect'); // Placeholder for metal clank
           }
         }
         zombieRefs.current = zombieRefs.current.filter(z => z.hp > 0);
@@ -3712,8 +3758,15 @@ export const Scene: React.FC<SceneProps> = ({
                 scale: 1.0
               });
               if (closestEnemyBot.hp <= 0) {
-                  closestEnemyBot.isDowned = true;
-                  closestEnemyBot.downedTimer = 30;
+                  if (gameMode === 'multiplayer') {
+                      closestEnemyBot.hp = 150;
+                      closestEnemyBot.isDowned = false;
+                      closestEnemyBot.position.set(Math.random() * 20 - 10, 0, Math.random() * 20 - 10);
+                      onStatsUpdate({ hp: 150, isDowned: false }, closestEnemyBot.id);
+                  } else {
+                      closestEnemyBot.isDowned = true;
+                      closestEnemyBot.downedTimer = 30;
+                  }
                   onStatsUpdate({ points: 100, kills: 1 }, bot.id);
               }
           } else if (targetIsPlayer) {
@@ -4131,86 +4184,243 @@ export const Scene: React.FC<SceneProps> = ({
 
     // Boss logic (Disabled in Dead Ops)
     if (gameMode !== 'dead_ops' && dragonActive) {
-      if (dragonPos.current.lengthSq() === 0) {
-        dragonPos.current.set(0, 20, 0); // Start high up
-        dragonLastAttack.current = now; // Delay first attack
-      }
-
-      // Dragon movement: circle above map center
       const time = state.clock.elapsedTime;
-      const radius = 60; // Larger radius to cover more of the map
-      const speed = 0.3; // Slightly slower
-      const targetX = Math.cos(time * speed) * radius;
-      const targetZ = Math.sin(time * speed) * radius;
       
-      dragonPos.current.x = THREE.MathUtils.lerp(dragonPos.current.x, targetX, delta);
-      dragonPos.current.z = THREE.MathUtils.lerp(dragonPos.current.z, targetZ, delta);
-      dragonPos.current.y = 25 + Math.sin(time * 1.5) * 5; // Hover higher
-
-      // Look in direction of movement
-      const nextX = Math.cos((time + 0.1) * speed) * radius;
-      const nextZ = Math.sin((time + 0.1) * speed) * radius;
-      dragonRotY.current = Math.atan2(nextX - dragonPos.current.x, nextZ - dragonPos.current.z);
-
-      if (dragonGroupRef.current) {
-        dragonGroupRef.current.position.copy(dragonPos.current);
-        dragonGroupRef.current.rotation.y = dragonRotY.current;
-      }
-
-      // Fire breath attack every 15 seconds
-      if (now - dragonLastAttack.current > 15000) {
-        dragonLastAttack.current = now;
-        dragonFireTimer.current = 2.0; // Breathe fire for 2 seconds
-        soundService.playExplosion(); // Placeholder for roar/fire
-      }
-
-      if (dragonFireTimer.current > 0) {
-        dragonFireTimer.current -= delta;
-        
-        // Spawn fire particles
-        const fireCount = 5; // Particles per frame
-        for (let i = 0; i < fireCount; i++) {
-          // Calculate exact mouth position in world space
-          const mouthLocal = new THREE.Vector3(0, 1.5, 10);
-          const firePos = mouthLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), dragonRotY.current).add(dragonPos.current);
-
-          const toPlayer = playerPos.current.clone().sub(firePos);
-          // Add some spread
-          toPlayer.x += (Math.random() - 0.5) * 8;
-          toPlayer.y += (Math.random() - 0.5) * 8;
-          toPlayer.z += (Math.random() - 0.5) * 8;
-          
-          const velocity = toPlayer.normalize().multiplyScalar(50); // Fast moving fire
-
-          effects.current.push({
-            id: Math.random().toString(),
-            type: 'explosion',
-            pos: firePos,
-            velocity: velocity,
-            life: 1.0 + Math.random() * 0.5,
-            color: Math.random() > 0.5 ? '#ff4400' : '#ffaa00',
-            scale: 2 + Math.random() * 3
-          });
+      if (bossType === 'dragon') {
+        if (dragonPos.current.lengthSq() === 0) {
+          dragonPos.current.set(0, 20, 0); // Start high up
+          dragonLastAttack.current = now; // Delay first attack
         }
 
-        // Deal damage if player is hit (check every frame while breathing)
-        // Check if player is hidden (simple check: are they under a roof?)
-        let isHidden = false;
-        for (const obj of mapConfig.objects) {
-          if (obj.type === 'building') {
-            const size = new THREE.Vector3(...obj.args);
-            const pos = new THREE.Vector3(...obj.pos);
-            size.y = 20; 
-            if (checkAABB(playerPos.current, pos, size, 0)) {
-              isHidden = true;
-              break;
+        // Dragon movement: circle above map center
+        const radius = 60; // Larger radius to cover more of the map
+        const speed = 0.3; // Slightly slower
+        const targetX = Math.cos(time * speed) * radius;
+        const targetZ = Math.sin(time * speed) * radius;
+        
+        dragonPos.current.x = THREE.MathUtils.lerp(dragonPos.current.x, targetX, delta);
+        dragonPos.current.z = THREE.MathUtils.lerp(dragonPos.current.z, targetZ, delta);
+        dragonPos.current.y = 25 + Math.sin(time * 1.5) * 5; // Hover higher
+
+        // Look in direction of movement
+        const nextX = Math.cos((time + 0.1) * speed) * radius;
+        const nextZ = Math.sin((time + 0.1) * speed) * radius;
+        dragonRotY.current = Math.atan2(nextX - dragonPos.current.x, nextZ - dragonPos.current.z);
+
+        if (dragonGroupRef.current) {
+          dragonGroupRef.current.position.copy(dragonPos.current);
+          dragonGroupRef.current.rotation.y = dragonRotY.current;
+        }
+
+        // Fire breath attack every 15 seconds
+        if (now - dragonLastAttack.current > 15000) {
+          dragonLastAttack.current = now;
+          dragonFireTimer.current = 2.0; // Breathe fire for 2 seconds
+          soundService.playExplosion(); // Placeholder for roar/fire
+        }
+
+        if (dragonFireTimer.current > 0) {
+          dragonFireTimer.current -= delta;
+          
+          // Spawn fire particles
+          const fireCount = 5; // Particles per frame
+          for (let i = 0; i < fireCount; i++) {
+            // Calculate exact mouth position in world space
+            const mouthLocal = new THREE.Vector3(0, 1.5, 10);
+            const firePos = mouthLocal.applyAxisAngle(new THREE.Vector3(0, 1, 0), dragonRotY.current).add(dragonPos.current);
+
+            const toPlayer = playerPos.current.clone().sub(firePos);
+            // Add some spread
+            toPlayer.x += (Math.random() - 0.5) * 8;
+            toPlayer.y += (Math.random() - 0.5) * 8;
+            toPlayer.z += (Math.random() - 0.5) * 8;
+            
+            const velocity = toPlayer.normalize().multiplyScalar(50); // Fast moving fire
+
+            effects.current.push({
+              id: Math.random().toString(),
+              type: 'explosion',
+              pos: firePos,
+              velocity: velocity,
+              life: 1.0 + Math.random() * 0.5,
+              color: Math.random() > 0.5 ? '#ff4400' : '#ffaa00',
+              scale: 2 + Math.random() * 3
+            });
+          }
+
+          // Deal damage if player is hit (check every frame while breathing)
+          // Check if player is hidden (simple check: are they under a roof?)
+          let isHidden = false;
+          for (const obj of mapConfig.objects) {
+            if (obj.type === 'building') {
+              const size = new THREE.Vector3(...obj.args);
+              const pos = new THREE.Vector3(...obj.pos);
+              size.y = 20; 
+              if (checkAABB(playerPos.current, pos, size, 0)) {
+                isHidden = true;
+                break;
+              }
             }
+          }
+
+          if (!isHidden) {
+            // Deal damage over time (50 total over 2 seconds)
+            onStatsUpdate({ hp: -50 * (delta / 2.0) });
+          }
+        }
+      } else if (bossType === 'elephant') {
+        if (dragonPos.current.lengthSq() === 0) {
+          dragonPos.current.copy(playerPos.current).add(new THREE.Vector3(0, 0, 30));
+          dragonPos.current.y = 0;
+          bossState.current = 'idle';
+          bossTimer.current = 2.0;
+        }
+
+        bossTimer.current -= delta;
+
+        if (bossState.current === 'idle') {
+          // Face player
+          const dx = playerPos.current.x - dragonPos.current.x;
+          const dz = playerPos.current.z - dragonPos.current.z;
+          dragonRotY.current = Math.atan2(dx, dz);
+          
+          if (bossTimer.current <= 0) {
+            bossState.current = 'charging';
+            bossTarget.current.copy(playerPos.current);
+            soundService.playExplosion(); // Roar
+          }
+        } else if (bossState.current === 'charging') {
+          const speed = 25;
+          const dir = new THREE.Vector3(Math.sin(dragonRotY.current), 0, Math.cos(dragonRotY.current));
+          dragonPos.current.add(dir.multiplyScalar(speed * delta));
+          
+          // Check collision with player
+          if (dragonPos.current.distanceTo(playerPos.current) < 4) {
+            onStatsUpdate({ hp: -100 });
+            bossState.current = 'dizzy';
+            bossTimer.current = 5.0; // Dizzy for 5 seconds
+            soundService.playHurt();
+          }
+
+          // Check if passed target
+          const distToTarget = dragonPos.current.distanceTo(bossTarget.current);
+          if (distToTarget > 40 || dragonPos.current.length() > 100) {
+            bossState.current = 'dizzy';
+            bossTimer.current = 3.0;
+          }
+        } else if (bossState.current === 'dizzy') {
+          // Spin around
+          dragonRotY.current += delta * 2;
+          if (bossTimer.current <= 0) {
+            bossState.current = 'idle';
+            bossTimer.current = 2.0;
           }
         }
 
-        if (!isHidden) {
-          // Deal damage over time (50 total over 2 seconds)
-          onStatsUpdate({ hp: -50 * (delta / 2.0) });
+        if (dragonGroupRef.current) {
+          dragonGroupRef.current.position.copy(dragonPos.current);
+          dragonGroupRef.current.rotation.y = dragonRotY.current;
+        }
+      } else if (bossType === 'ogre') {
+        if (dragonPos.current.lengthSq() === 0) {
+          dragonPos.current.copy(playerPos.current).add(new THREE.Vector3(0, 0, 20));
+          dragonPos.current.y = 0;
+          bossState.current = 'idle';
+          bossTimer.current = 2.0;
+        }
+
+        bossTimer.current -= delta;
+
+        if (bossState.current === 'idle') {
+          // Move towards player slowly
+          const dx = playerPos.current.x - dragonPos.current.x;
+          const dz = playerPos.current.z - dragonPos.current.z;
+          dragonRotY.current = Math.atan2(dx, dz);
+          
+          const speed = 5;
+          const dir = new THREE.Vector3(Math.sin(dragonRotY.current), 0, Math.cos(dragonRotY.current));
+          dragonPos.current.add(dir.multiplyScalar(speed * delta));
+
+          if (dragonPos.current.distanceTo(playerPos.current) < 10 && bossTimer.current <= 0) {
+            bossState.current = 'spinning';
+            bossTimer.current = 3.0;
+            soundService.playExplosion();
+          }
+        } else if (bossState.current === 'spinning') {
+          dragonRotY.current += delta * 15; // Fast spin
+          
+          // Move towards player while spinning
+          const dx = playerPos.current.x - dragonPos.current.x;
+          const dz = playerPos.current.z - dragonPos.current.z;
+          const dir = new THREE.Vector3(dx, 0, dz).normalize();
+          dragonPos.current.add(dir.multiplyScalar(8 * delta));
+
+          if (dragonPos.current.distanceTo(playerPos.current) < 6) {
+            onStatsUpdate({ hp: -150 * delta }); // Heavy damage over time
+          }
+
+          if (bossTimer.current <= 0) {
+            bossState.current = 'dizzy';
+            bossTimer.current = 4.0;
+          }
+        } else if (bossState.current === 'dizzy') {
+          // Wobble
+          dragonRotY.current += Math.sin(time * 10) * 0.1;
+          if (bossTimer.current <= 0) {
+            bossState.current = 'idle';
+            bossTimer.current = 2.0;
+          }
+        }
+
+        if (dragonGroupRef.current) {
+          dragonGroupRef.current.position.copy(dragonPos.current);
+          dragonGroupRef.current.rotation.y = dragonRotY.current;
+        }
+      } else if (bossType === 'worm') {
+        if (dragonPos.current.lengthSq() === 0) {
+          dragonPos.current.copy(playerPos.current);
+          dragonPos.current.y = -10; // Underground
+          bossState.current = 'digging';
+          bossTimer.current = 3.0;
+        }
+
+        bossTimer.current -= delta;
+
+        if (bossState.current === 'digging') {
+          dragonPos.current.y = -10;
+          if (bossTimer.current <= 0) {
+            bossState.current = 'emerging';
+            bossTimer.current = 1.0;
+            bossWarningPos.current.copy(playerPos.current);
+            bossWarningPos.current.y = 0.1;
+            soundService.playExplosion(); // Rumble
+          }
+        } else if (bossState.current === 'emerging') {
+          // Show warning on ground (handled in render)
+          if (bossTimer.current <= 0) {
+            bossState.current = 'attacking';
+            bossTimer.current = 2.0;
+            dragonPos.current.copy(bossWarningPos.current);
+            dragonPos.current.y = -5; // Start coming up
+            
+            // Check if player is in warning area
+            if (playerPos.current.distanceTo(bossWarningPos.current) < 5) {
+              onStatsUpdate({ hp: -150 });
+              soundService.playHurt();
+            }
+          }
+        } else if (bossState.current === 'attacking') {
+          // Pop up
+          dragonPos.current.y = THREE.MathUtils.lerp(dragonPos.current.y, 5, delta * 5);
+          
+          if (bossTimer.current <= 0) {
+            bossState.current = 'digging';
+            bossTimer.current = 4.0;
+          }
+        }
+
+        if (dragonGroupRef.current) {
+          dragonGroupRef.current.position.copy(dragonPos.current);
         }
       }
     }
@@ -4479,7 +4689,7 @@ export const Scene: React.FC<SceneProps> = ({
               <meshStandardMaterial color="#333" />
             </Box>
             <Text position={[0, 2, 0]} fontSize={0.5} color="#ffaa00" outlineWidth={0.05} outlineColor="#000">
-              Summon Dragon
+              Summon Boss
             </Text>
             <pointLight intensity={10} color="#ffaa00" distance={10} />
           </group>
@@ -4520,6 +4730,16 @@ export const Scene: React.FC<SceneProps> = ({
           variant={b.variant}
           isReviving={b.isReviving}
           team={b.team}
+          isVictoryPose={status === GameStatus.GAMEOVER && (() => {
+            const participants = [
+              { id: 'local', score: gameState.points },
+              ...otherPlayers.map(p => ({ id: p.id, score: p.points })),
+              ...botsRef.current.map(bot => ({ id: bot.id, score: bot.points }))
+            ].sort((a, b) => b.score - a.score);
+            return participants.findIndex(p => p.id === b.id) < 3;
+          })()}
+          scale={1}
+          gameMode={gameMode}
         />
       ))}
       {zombieRefs.current.map(z => (
@@ -4527,88 +4747,400 @@ export const Scene: React.FC<SceneProps> = ({
       ))}
       {dragonActive && (
         <group ref={dragonGroupRef} position={dragonPos.current} rotation={[0, dragonRotY.current, 0]}>
-          {/* Dragon Body (Rotting) */}
-          <Box args={[4, 4, 10]} position={[0, 0, 0]}>
-            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
-          </Box>
-          {/* Exposed Ribs */}
-          <Box args={[4.2, 3.5, 1]} position={[0, 0, 2]}>
-            <meshStandardMaterial color="#8a8370" roughness={1} />
-          </Box>
-          <Box args={[4.2, 3.5, 1]} position={[0, 0, 0]}>
-            <meshStandardMaterial color="#8a8370" roughness={1} />
-          </Box>
-          <Box args={[4.2, 3.5, 1]} position={[0, 0, -2]}>
-            <meshStandardMaterial color="#8a8370" roughness={1} />
-          </Box>
-          
-          {/* Dragon Neck */}
-          <Box args={[2, 2, 4]} position={[0, 1, 6]} rotation={[-0.2, 0, 0]}>
-            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
-          </Box>
+          {bossType === 'dragon' && (
+            <>
+              {/* Boss Annotation */}
+              <Html position={[0, 12, 0]} center distanceFactor={15}>
+                <div className="flex flex-col items-center gap-1 pointer-events-none select-none w-64">
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500 animate-pulse"><Skull size={20} /></span>
+                    <span className="text-white font-black text-2xl uppercase italic tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Ancient Undead Dragon</span>
+                  </div>
+                  <div className="w-full h-3 bg-black/80 border-2 border-white/20 rounded-full overflow-hidden shadow-lg">
+                    <div 
+                      className="h-full bg-gradient-to-r from-red-700 via-orange-500 to-yellow-400 transition-all duration-300 shadow-[0_0_10px_rgba(239,68,68,0.5)]" 
+                      style={{ width: `${(dragonHealth / 250000) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between w-full px-1">
+                    <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Phase 1: Airborne</span>
+                    <span className="text-[10px] text-white/90 font-black uppercase tracking-widest">{Math.ceil(dragonHealth).toLocaleString()} / 250,000 HP</span>
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {dragonHealth < 125000 && (
+                      <span className="px-1.5 py-0.5 bg-red-600 text-[8px] text-white font-black rounded uppercase animate-pulse">Enraged</span>
+                    )}
+                    <span className="px-1.5 py-0.5 bg-yellow-600 text-[8px] text-white font-black rounded uppercase">Weak Point: Core</span>
+                  </div>
+                  <div className="mt-2 px-3 py-1 bg-black/40 backdrop-blur-sm border border-red-500/30 rounded text-[9px] text-red-200 font-bold uppercase tracking-wider animate-bounce">
+                    Hint: Hide under roofs during fire breath!
+                  </div>
+                </div>
+              </Html>
 
-          {/* Dragon Head */}
-          <group position={[0, 2, 9]}>
-            {/* Upper Skull */}
-            <Box args={[3, 2, 4]} position={[0, 0.5, 0]}>
-              <meshStandardMaterial color="#1a2b1a" roughness={0.9} />
-            </Box>
-            {/* Lower Jaw (Hanging) */}
-            <Box args={[2.5, 1, 3.5]} position={[0, -1, -0.2]} rotation={[0.2, 0, 0]}>
-              <meshStandardMaterial color="#1a2b1a" roughness={0.9} />
-            </Box>
-            {/* Glowing Eyes */}
-            <Sphere args={[0.4, 16, 16]} position={[1, 0.8, 1.5]}>
-              <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={8} />
-            </Sphere>
-            <Sphere args={[0.4, 16, 16]} position={[-1, 0.8, 1.5]}>
-              <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={8} />
-            </Sphere>
-          </group>
+              {/* Dragon Body (Rotting) */}
+              <Box args={[4, 4, 10]} position={[0, 0, 0]}>
+                <meshStandardMaterial color="#2a3b2a" roughness={0.9} metalness={0.1} />
+              </Box>
+              {/* Exposed Ribs */}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Box key={`rib-${i}`} args={[4.4, 3.5, 0.5]} position={[0, 0, 3 - i * 1.5]}>
+                  <meshStandardMaterial color="#d1d5db" roughness={1} />
+                </Box>
+              ))}
+              
+              {/* Glowing Core */}
+              <Sphere args={[1.5, 16, 16]} position={[0, -0.5, 2]}>
+                <meshStandardMaterial color="#ff4400" emissive="#ff4400" emissiveIntensity={5} transparent opacity={0.6} />
+              </Sphere>
 
-          {/* Dragon Wings (Torn) */}
-          <group position={[0, 1, 0]}>
-            {/* Right Wing Base */}
-            <Box args={[10, 0.5, 4]} position={[7, 0, 0]} rotation={[0, 0, 0.2]}>
-              <meshStandardMaterial color="#111" roughness={0.8} />
-            </Box>
-            {/* Right Wing Tip */}
-            <Box args={[8, 0.3, 3]} position={[15, 1.8, 0]} rotation={[0, 0, 0.4]}>
-              <meshStandardMaterial color="#111" roughness={0.8} />
-            </Box>
-            {/* Left Wing Base */}
-            <Box args={[10, 0.5, 4]} position={[-7, 0, 0]} rotation={[0, 0, -0.2]}>
-              <meshStandardMaterial color="#111" roughness={0.8} />
-            </Box>
-            {/* Left Wing Tip */}
-            <Box args={[8, 0.3, 3]} position={[-15, 1.8, 0]} rotation={[0, 0, -0.4]}>
-              <meshStandardMaterial color="#111" roughness={0.8} />
-            </Box>
-          </group>
+              {/* Dragon Neck */}
+              <Box args={[2, 2, 5]} position={[0, 1.5, 6]} rotation={[-0.3, 0, 0]}>
+                <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+              </Box>
 
-          {/* Tail */}
-          <Box args={[2, 2, 6]} position={[0, 0, -8]}>
-            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
-          </Box>
-          <Box args={[1, 1, 6]} position={[0, -0.5, -13]} rotation={[0.1, 0, 0]}>
-            <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
-          </Box>
-          
-          {/* Back Spikes */}
-          <Box args={[0.5, 2, 1]} position={[0, 2.5, 2]} rotation={[0.2, 0, 0]}>
-            <meshStandardMaterial color="#111" roughness={0.9} />
-          </Box>
-          <Box args={[0.5, 2, 1]} position={[0, 2.5, -1]} rotation={[0.2, 0, 0]}>
-            <meshStandardMaterial color="#111" roughness={0.9} />
-          </Box>
-          <Box args={[0.5, 2, 1]} position={[0, 2.5, -4]} rotation={[0.2, 0, 0]}>
-            <meshStandardMaterial color="#111" roughness={0.9} />
-          </Box>
+              {/* Dragon Head */}
+              <group position={[0, 2.5, 10]}>
+                {/* Upper Skull */}
+                <Box args={[3, 2, 4]} position={[0, 0.5, 0]}>
+                  <meshStandardMaterial color="#1a2b1a" roughness={0.9} />
+                </Box>
+                {/* Horns */}
+                <Box args={[0.4, 0.4, 3]} position={[1, 1.5, -1]} rotation={[-0.5, 0.2, 0]}><meshStandardMaterial color="#111" /></Box>
+                <Box args={[0.4, 0.4, 3]} position={[-1, 1.5, -1]} rotation={[-0.5, -0.2, 0]}><meshStandardMaterial color="#111" /></Box>
+                
+                {/* Lower Jaw (Hanging) */}
+                <Box args={[2.5, 1, 4]} position={[0, -1, 0]} rotation={[0.3, 0, 0]}>
+                  <meshStandardMaterial color="#1a2b1a" roughness={0.9} />
+                </Box>
+                {/* Teeth */}
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Box key={`tooth-${i}`} args={[0.1, 0.4, 0.1]} position={[1.1 * (i % 2 === 0 ? 1 : -1), -0.6, 1.5 - Math.floor(i/2) * 1]}>
+                    <meshStandardMaterial color="#eee" />
+                  </Box>
+                ))}
+                
+                {/* Glowing Eyes */}
+                <Sphere args={[0.5, 16, 16]} position={[1, 0.8, 1.5]}>
+                  <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={10} />
+                </Sphere>
+                <Sphere args={[0.5, 16, 16]} position={[-1, 0.8, 1.5]}>
+                  <meshStandardMaterial color="#ffaa00" emissive="#ffaa00" emissiveIntensity={10} />
+                </Sphere>
+              </group>
 
-          <pointLight position={[0, 2, 8]} intensity={20} color="#ffaa00" distance={30} />
-          
-          <group position={[0, 5, 0]} rotation={[0, -dragonRotY.current, 0]}>
-          </group>
+              {/* Dragon Wings (Torn) */}
+              <group position={[0, 1, 0]}>
+                {/* Right Wing */}
+                <group position={[2, 0, 0]} rotation={[0, 0, Math.sin(clock.elapsedTime * 2) * 0.2]}>
+                  <Box args={[12, 0.5, 5]} position={[6, 0, 0]} rotation={[0, 0, 0.2]}>
+                    <meshStandardMaterial color="#111" roughness={0.8} />
+                  </Box>
+                  {/* Wing Spikes */}
+                  <Box args={[0.3, 2, 0.3]} position={[10, 1, 2]} rotation={[0.5, 0, 0.5]}><meshStandardMaterial color="#333" /></Box>
+                  <Box args={[0.3, 2, 0.3]} position={[10, 1, -2]} rotation={[-0.5, 0, 0.5]}><meshStandardMaterial color="#333" /></Box>
+                </group>
+                {/* Left Wing */}
+                <group position={[-2, 0, 0]} rotation={[0, 0, -Math.sin(clock.elapsedTime * 2) * 0.2]}>
+                  <Box args={[12, 0.5, 5]} position={[-6, 0, 0]} rotation={[0, 0, -0.2]}>
+                    <meshStandardMaterial color="#111" roughness={0.8} />
+                  </Box>
+                  {/* Wing Spikes */}
+                  <Box args={[0.3, 2, 0.3]} position={[-10, 1, 2]} rotation={[0.5, 0, -0.5]}><meshStandardMaterial color="#333" /></Box>
+                  <Box args={[0.3, 2, 0.3]} position={[-10, 1, -2]} rotation={[-0.5, 0, -0.5]}><meshStandardMaterial color="#333" /></Box>
+                </group>
+              </group>
+
+              {/* Tail with Spikes */}
+              <group position={[0, 0, -5]}>
+                <Box args={[2, 2, 6]} position={[0, 0, -3]}>
+                  <meshStandardMaterial color="#2a3b2a" roughness={0.9} />
+                </Box>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Box key={`tail-spike-${i}`} args={[0.4, 1.5, 0.4]} position={[0, 1.2, -1 - i * 1.5]} rotation={[0.5, 0, 0]}>
+                    <meshStandardMaterial color="#111" />
+                  </Box>
+                ))}
+              </group>
+              
+              <pointLight position={[0, 2, 8]} intensity={30} color="#ffaa00" distance={40} />
+            </>
+          )}
+
+          {bossType === 'elephant' && (
+            <group scale={1.5}>
+              {/* Boss Annotation */}
+              <Html position={[0, 10, 0]} center distanceFactor={15}>
+                <div className="flex flex-col items-center gap-1 pointer-events-none select-none w-64">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400"><Shield size={20} /></span>
+                    <span className="text-white font-black text-2xl uppercase italic tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Mutated War Elephant</span>
+                  </div>
+                  <div className="w-full h-3 bg-black/80 border-2 border-white/20 rounded-full overflow-hidden shadow-lg">
+                    <div 
+                      className="h-full bg-gradient-to-r from-slate-600 via-slate-400 to-slate-200 transition-all duration-300 shadow-[0_0_10px_rgba(148,163,184,0.5)]" 
+                      style={{ width: `${(dragonHealth / 300000) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between w-full px-1">
+                    <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Phase 1: Heavy Armor</span>
+                    <span className="text-[10px] text-white/90 font-black uppercase tracking-widest">{Math.ceil(dragonHealth).toLocaleString()} / 300,000 HP</span>
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {dragonHealth < 150000 && (
+                      <span className="px-1.5 py-0.5 bg-red-600 text-[8px] text-white font-black rounded uppercase animate-pulse">Armor Damaged</span>
+                    )}
+                    <span className="px-1.5 py-0.5 bg-yellow-600 text-[8px] text-white font-black rounded uppercase">Weak Point: Trunk</span>
+                  </div>
+                  {bossState.current === 'dizzy' ? (
+                    <div className="mt-2 px-3 py-1 bg-yellow-500/80 backdrop-blur-sm border border-yellow-200 rounded text-[10px] text-black font-black uppercase tracking-wider animate-pulse">
+                      VULNERABLE - ATTACK NOW!
+                    </div>
+                  ) : (
+                    <div className="mt-2 px-3 py-1 bg-black/40 backdrop-blur-sm border border-slate-500/30 rounded text-[9px] text-slate-200 font-bold uppercase tracking-wider">
+                      Hint: Dodge charge to stun!
+                    </div>
+                  )}
+                </div>
+              </Html>
+
+              {/* Elephant Body */}
+              <Box args={[6, 5, 8]} position={[0, 2.5, 0]}>
+                <meshStandardMaterial color="#555" roughness={0.9} metalness={0.2} />
+              </Box>
+              {/* Head */}
+              <Box args={[4, 4, 4]} position={[0, 3, 5]}>
+                <meshStandardMaterial color="#555" roughness={0.9} />
+              </Box>
+              {/* Trunk */}
+              <group position={[0, 1.5, 7]} rotation={[0.2, 0, 0]}>
+                <Box args={[1, 1, 1]} position={[0, 0, 0]}><meshStandardMaterial color="#555" /></Box>
+                <Box args={[0.9, 1, 1]} position={[0, -0.8, 0.2]} rotation={[0.2, 0, 0]}><meshStandardMaterial color="#555" /></Box>
+                <Box args={[0.8, 1, 1]} position={[0, -1.6, 0.6]} rotation={[0.4, 0, 0]}><meshStandardMaterial color="#555" /></Box>
+              </group>
+              
+              {/* Tusks (Curved) */}
+              <group position={[1.5, 2, 7]} rotation={[0, 0.2, 0]}>
+                <Box args={[0.5, 0.5, 2]} position={[0, 0, 1]}><meshStandardMaterial color="#eee" /></Box>
+                <Box args={[0.4, 0.4, 2]} position={[0, 0.5, 2.5]} rotation={[-0.4, 0, 0]}><meshStandardMaterial color="#eee" /></Box>
+              </group>
+              <group position={[-1.5, 2, 7]} rotation={[0, -0.2, 0]}>
+                <Box args={[0.5, 0.5, 2]} position={[0, 0, 1]}><meshStandardMaterial color="#eee" /></Box>
+                <Box args={[0.4, 0.4, 2]} position={[0, 0.5, 2.5]} rotation={[-0.4, 0, 0]}><meshStandardMaterial color="#eee" /></Box>
+              </group>
+
+              {/* Armor Plates */}
+              <Box args={[6.4, 3, 5]} position={[0, 3.5, 0]}><meshStandardMaterial color="#222" metalness={0.9} roughness={0.1} /></Box>
+              <Box args={[3.5, 1.5, 3.5]} position={[0, 5.2, 5]}><meshStandardMaterial color="#222" metalness={0.9} roughness={0.1} /></Box>
+              {/* Spikes on armor */}
+              <Box args={[0.3, 1.5, 0.3]} position={[2, 5, 0]} rotation={[0.2, 0, 0.2]}><meshStandardMaterial color="#111" /></Box>
+              <Box args={[0.3, 1.5, 0.3]} position={[-2, 5, 0]} rotation={[0.2, 0, -0.2]}><meshStandardMaterial color="#111" /></Box>
+              
+              {/* Legs */}
+              <Box args={[1.8, 3, 1.8]} position={[2.5, -1.5, 3]}><meshStandardMaterial color="#333" /></Box>
+              <Box args={[1.8, 3, 1.8]} position={[-2.5, -1.5, 3]}><meshStandardMaterial color="#333" /></Box>
+              <Box args={[1.8, 3, 1.8]} position={[2.5, -1.5, -3]}><meshStandardMaterial color="#333" /></Box>
+              <Box args={[1.8, 3, 1.8]} position={[-2.5, -1.5, -3]}><meshStandardMaterial color="#333" /></Box>
+              {/* Dizzy indicator */}
+              {bossState.current === 'dizzy' && (
+                <group position={[0, 6, 5]}>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Sphere key={i} args={[0.3, 8, 8]} position={[Math.cos(clock.elapsedTime * 5 + i * 2) * 2, 0, Math.sin(clock.elapsedTime * 5 + i * 2) * 2]}>
+                      <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
+                    </Sphere>
+                  ))}
+                </group>
+              )}
+            </group>
+          )}
+
+          {bossType === 'ogre' && (
+            <group scale={2}>
+              {/* Boss Annotation */}
+              <Html position={[0, 12, 0]} center distanceFactor={15}>
+                <div className="flex flex-col items-center gap-1 pointer-events-none select-none w-64">
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-500"><Zap size={20} /></span>
+                    <span className="text-white font-black text-2xl uppercase italic tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Infected Giant Ogre</span>
+                  </div>
+                  <div className="w-full h-3 bg-black/80 border-2 border-white/20 rounded-full overflow-hidden shadow-lg">
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-700 via-emerald-500 to-emerald-300 transition-all duration-300 shadow-[0_0_10px_rgba(16,185,129,0.5)]" 
+                      style={{ width: `${(dragonHealth / 200000) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between w-full px-1">
+                    <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Phase 1: Rage</span>
+                    <span className="text-[10px] text-white/90 font-black uppercase tracking-widest">{Math.ceil(dragonHealth).toLocaleString()} / 200,000 HP</span>
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {dragonHealth < 100000 && (
+                      <span className="px-1.5 py-0.5 bg-red-600 text-[8px] text-white font-black rounded uppercase animate-pulse">Berserk</span>
+                    )}
+                    <span className="px-1.5 py-0.5 bg-yellow-600 text-[8px] text-white font-black rounded uppercase">Weak Point: Head</span>
+                  </div>
+                  {bossState.current === 'dizzy' ? (
+                    <div className="mt-2 px-3 py-1 bg-yellow-500/80 backdrop-blur-sm border border-yellow-200 rounded text-[10px] text-black font-black uppercase tracking-wider animate-pulse">
+                      EXHAUSTED - ATTACK NOW!
+                    </div>
+                  ) : (
+                    <div className="mt-2 px-3 py-1 bg-black/40 backdrop-blur-sm border border-emerald-500/30 rounded text-[9px] text-emerald-200 font-bold uppercase tracking-wider">
+                      Hint: Stay away during spin!
+                    </div>
+                  )}
+                </div>
+              </Html>
+
+              {/* Ogre Body (Fat) */}
+              <Box args={[5, 6, 4]} position={[0, 3, 0]}>
+                <meshStandardMaterial color="#2d4a22" roughness={0.8} metalness={0.1} />
+              </Box>
+              {/* Exposed Stomach/Wound */}
+              <Box args={[3, 2, 0.1]} position={[0, 2.5, 2.01]}>
+                <meshStandardMaterial color="#500" roughness={1} />
+              </Box>
+              
+              {/* Head */}
+              <group position={[0, 7, 0]}>
+                <Box args={[2, 2.5, 2]}>
+                  <meshStandardMaterial color="#2d4a22" roughness={0.8} />
+                </Box>
+                {/* Single Glowing Eye */}
+                <Sphere args={[0.4, 16, 16]} position={[0, 0.2, 1.01]}>
+                  <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={10} />
+                </Sphere>
+                {/* Horns */}
+                <Box args={[0.3, 0.3, 1]} position={[0.8, 1, 0]} rotation={[-0.5, 0.5, 0]}><meshStandardMaterial color="#111" /></Box>
+                <Box args={[0.3, 0.3, 1]} position={[-0.8, 1, 0]} rotation={[-0.5, -0.5, 0]}><meshStandardMaterial color="#111" /></Box>
+              </group>
+
+              {/* Spikes on back */}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Box key={`spike-${i}`} args={[0.4, 1.2, 0.4]} position={[(i % 2 === 0 ? 1 : -1) * 1.5, 5 - Math.floor(i/2) * 1.5, -2]} rotation={[0.5, 0, 0]}>
+                  <meshStandardMaterial color="#111" />
+                </Box>
+              ))}
+              
+              {/* Arms */}
+              <Box args={[1.8, 5, 1.8]} position={[3.5, 3, 0]} rotation={[0, 0, bossState.current === 'spinning' ? Math.PI / 2 : 0.2]}>
+                <meshStandardMaterial color="#2d4a22" roughness={0.8} />
+              </Box>
+              <Box args={[1.8, 5, 1.8]} position={[-3.5, 3, 0]} rotation={[0, 0, bossState.current === 'spinning' ? -Math.PI / 2 : -0.2]}>
+                <meshStandardMaterial color="#2d4a22" roughness={0.8} />
+              </Box>
+              {/* Massive Spiked Club */}
+              <group position={[4.5, 3, 2]} rotation={[Math.PI / 4, 0, bossState.current === 'spinning' ? Math.PI / 2 : 0]}>
+                <Box args={[1.2, 10, 1.2]}>
+                  <meshStandardMaterial color="#4a3018" roughness={0.9} />
+                </Box>
+                {/* Club Spikes */}
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Box key={`club-spike-${i}`} args={[0.3, 0.3, 1]} position={[0, 4 - i * 1, 0]} rotation={[0, i * Math.PI / 4, 0]}>
+                    <meshStandardMaterial color="#222" metalness={0.8} />
+                  </Box>
+                ))}
+              </group>
+              {/* Legs */}
+              <Box args={[2, 3, 2]} position={[1.5, -1.5, 0]}><meshStandardMaterial color="#1a2b14" /></Box>
+              <Box args={[2, 3, 2]} position={[-1.5, -1.5, 0]}><meshStandardMaterial color="#1a2b14" /></Box>
+              {/* Dizzy indicator */}
+              {bossState.current === 'dizzy' && (
+                <group position={[0, 9, 0]}>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Sphere key={i} args={[0.3, 8, 8]} position={[Math.cos(clock.elapsedTime * 5 + i * 2) * 2, 0, Math.sin(clock.elapsedTime * 5 + i * 2) * 2]}>
+                      <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={2} />
+                    </Sphere>
+                  ))}
+                </group>
+              )}
+            </group>
+          )}
+
+          {bossType === 'worm' && (
+            <group>
+              {/* Boss Annotation */}
+              <Html position={[0, 8, 0]} center distanceFactor={15}>
+                <div className="flex flex-col items-center gap-1 pointer-events-none select-none w-64">
+                  <div className="flex items-center gap-2">
+                    <span className="text-orange-500"><Swords size={20} /></span>
+                    <span className="text-white font-black text-2xl uppercase italic tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">Giant Abyssal Worm</span>
+                  </div>
+                  <div className="w-full h-3 bg-black/80 border-2 border-white/20 rounded-full overflow-hidden shadow-lg">
+                    <div 
+                      className="h-full bg-gradient-to-r from-orange-700 via-orange-500 to-orange-300 transition-all duration-300 shadow-[0_0_10px_rgba(249,115,22,0.5)]" 
+                      style={{ width: `${(dragonHealth / 400000) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between w-full px-1">
+                    <span className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Phase 1: Submerged</span>
+                    <span className="text-[10px] text-white/90 font-black uppercase tracking-widest">{Math.ceil(dragonHealth).toLocaleString()} / 400,000 HP</span>
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {dragonHealth < 200000 && (
+                      <span className="px-1.5 py-0.5 bg-red-600 text-[8px] text-white font-black rounded uppercase animate-pulse">Frenzied</span>
+                    )}
+                    <span className="px-1.5 py-0.5 bg-yellow-600 text-[8px] text-white font-black rounded uppercase">Weak Point: Mouth</span>
+                  </div>
+                  {bossState.current === 'attacking' ? (
+                    <div className="mt-2 px-3 py-1 bg-red-600/80 backdrop-blur-sm border border-red-200 rounded text-[10px] text-white font-black uppercase tracking-wider animate-pulse">
+                      SURFACED - ATTACK NOW!
+                    </div>
+                  ) : (
+                    <div className="mt-2 px-3 py-1 bg-black/40 backdrop-blur-sm border border-orange-500/30 rounded text-[9px] text-orange-200 font-bold uppercase tracking-wider">
+                      Hint: Move when ground glows red!
+                    </div>
+                  )}
+                </div>
+              </Html>
+
+              {/* Worm Segments */}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Sphere key={i} args={[3.5 - i * 0.3, 16, 16]} position={[0, -i * 2.5, 0]}>
+                  <meshStandardMaterial color="#5a3a22" roughness={0.9} metalness={0.1} />
+                </Sphere>
+              ))}
+              {/* Spikes on segments */}
+              {Array.from({ length: 12 }).map((_, i) => (
+                <Box key={`spike-${i}`} args={[0.4, 1.5, 0.4]} position={[Math.cos(i * Math.PI / 3) * 3, -Math.floor(i/3) * 2.5, Math.sin(i * Math.PI / 3) * 3]} rotation={[0, i * Math.PI / 3, 0.5]}>
+                  <meshStandardMaterial color="#111" />
+                </Box>
+              ))}
+              
+              {/* Mouth (Open when attacking) */}
+              {bossState.current === 'attacking' ? (
+                <group position={[0, 2.5, 0]}>
+                  {/* Multiple layers of jaws */}
+                  <Box args={[5, 1, 5]} position={[0, 1.5, 0]} rotation={[0.6, 0, 0]}>
+                    <meshStandardMaterial color="#5a3a22" />
+                  </Box>
+                  <Box args={[5, 1, 5]} position={[0, -1.5, 0]} rotation={[-0.6, 0, 0]}>
+                    <meshStandardMaterial color="#5a3a22" />
+                  </Box>
+                  {/* Inner Mouth Glow */}
+                  <Sphere args={[2, 16, 16]} position={[0, 0, -1]}>
+                    <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} />
+                  </Sphere>
+                  {/* Many Teeth */}
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <Box key={`tooth-${i}`} args={[0.2, 1.2, 0.2]} position={[Math.cos(i * Math.PI / 6) * 2, (i % 2 === 0 ? 1.5 : -1.5), Math.sin(i * Math.PI / 6) * 2]} rotation={[i % 2 === 0 ? 0.5 : -0.5, 0, 0]}>
+                      <meshStandardMaterial color="#eee" />
+                    </Box>
+                  ))}
+                </group>
+              ) : (
+                <Sphere args={[3.5, 16, 16]} position={[0, 2.5, 0]}>
+                  <meshStandardMaterial color="#5a3a22" roughness={0.9} />
+                </Sphere>
+              )}
+            </group>
+          )}
+        </group>
+      )}
+      {bossType === 'worm' && bossState.current === 'emerging' && (
+        <group position={bossWarningPos.current}>
+          <Sphere args={[5, 16, 16]} scale={[1, 0.01, 1]}>
+            <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} transparent opacity={0.5 + Math.sin(clock.elapsedTime * 10) * 0.5} />
+          </Sphere>
         </group>
       )}
       {projectiles.current.map(p => (
@@ -4696,9 +5228,18 @@ export const Scene: React.FC<SceneProps> = ({
           camo={displayCamo}
           isShooting={isShooting.current}
           variant={progression.xp % 100} // Use XP as a seed for player variant
-          scale={gameMode === 'dead_ops' ? 0.5 : 1}
+          scale={1}
           isJumping={!isGrounded.current}
           team={gameState.team}
+          customization={progression.profile?.customization}
+          isVictoryPose={status === GameStatus.GAMEOVER && (() => {
+            const participants = [
+              { id: 'local', score: gameState.points },
+              ...otherPlayers.map(p => ({ id: p.id, score: p.points })),
+              ...botsRef.current.map(b => ({ id: b.id, score: b.points }))
+            ].sort((a, b) => b.score - a.score);
+            return participants.findIndex(p => p.id === 'local') < 3;
+          })()}
         />
       )}
     </>
@@ -4738,7 +5279,340 @@ const PackAPunchMachine: React.FC<{ pos: THREE.Vector3 }> = ({ pos }) => {
   );
 };
 
-const LocalPlayerModel: React.FC<{
+export const CharacterBody: React.FC<{
+  isDowned: boolean;
+  clothingColor: string;
+  vestColor: string;
+  skinColor: string;
+  hairColor: string;
+  helmetType: number;
+  sleeveType: number;
+  backpackType: number;
+  hairType: number;
+  customization?: any;
+  leftLegRef: React.RefObject<THREE.Mesh>;
+  rightLegRef: React.RefObject<THREE.Mesh>;
+  leftArmRef: React.RefObject<THREE.Mesh>;
+  rightArmRef: React.RefObject<THREE.Mesh>;
+  weaponGroupRef: React.RefObject<THREE.Group>;
+  weaponName?: string;
+  camo?: string;
+}> = ({
+  isDowned, clothingColor, vestColor, skinColor, hairColor, helmetType, sleeveType, backpackType, hairType, customization,
+  leftLegRef, rightLegRef, leftArmRef, rightArmRef, weaponGroupRef, weaponName, camo
+}) => {
+  const getCustomizationItem = (key: string, pluralKey: string) => {
+    if (customization?.[pluralKey] && Array.isArray(customization[pluralKey])) return customization[pluralKey][0];
+    if (customization?.[key]) return customization[key];
+    return 'none';
+  };
+
+  const hatItem = getCustomizationItem('hat', 'hats');
+  const glassesItem = getCustomizationItem('glasses', 'glasses');
+  const maskItem = getCustomizationItem('mask', 'masks');
+  const helmetItem = getCustomizationItem('helmet', 'helmets');
+  const chestItem = getCustomizationItem('chest', 'chest');
+  const bootsItem = getCustomizationItem('boots', 'boots');
+  const glovesItem = getCustomizationItem('gloves', 'gloves');
+  const capeItem = getCustomizationItem('cape', 'capes');
+  const kneePadsItem = getCustomizationItem('kneePads', 'kneePads');
+
+  const hasHat = hatItem !== 'none';
+  const hasGlasses = glassesItem !== 'none';
+  const hasMask = maskItem !== 'none';
+  const hasHelmet = helmetItem !== 'none';
+  const hasChest = chestItem !== 'none';
+  const hasBoots = bootsItem !== 'none';
+  const hasGloves = glovesItem !== 'none';
+  const hasCape = capeItem !== 'none';
+  const hasKneePads = kneePadsItem !== 'none';
+
+  return (
+    <>
+      {/* Legs */}
+      <group position={[-0.15, 0.8, 0]} ref={leftLegRef}>
+        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
+          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
+        </Box>
+        {/* Knee Pad */}
+        {hasKneePads && (
+          <Box args={[0.28, 0.2, 0.1]} position={[0, -0.4, 0.16]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+        )}
+        {/* Boot */}
+        <Box args={[hasBoots && bootsItem === 'heavy_boots' ? 0.35 : 0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
+          <meshStandardMaterial color={hasBoots ? (bootsItem === 'jump_boots' ? '#444' : bootsItem === 'hover_boots' ? '#00ffff' : bootsItem === 'rocket_boots' ? '#ff4400' : '#222') : "#111"} roughness={0.9} emissive={hasBoots && (bootsItem === 'hover_boots' || bootsItem === 'rocket_boots') ? (bootsItem === 'hover_boots' ? '#00ffff' : '#ff4400') : '#000'} emissiveIntensity={hasBoots && (bootsItem === 'hover_boots' || bootsItem === 'rocket_boots') ? 2 : 0} />
+        </Box>
+      </group>
+      <group position={[0.15, 0.8, 0]} ref={rightLegRef}>
+        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
+          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
+        </Box>
+        {/* Knee Pad */}
+        {hasKneePads && (
+          <Box args={[0.28, 0.2, 0.1]} position={[0, -0.4, 0.16]}>
+            <meshStandardMaterial color="#111" />
+          </Box>
+        )}
+        {/* Boot */}
+        <Box args={[hasBoots && bootsItem === 'heavy_boots' ? 0.35 : 0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
+          <meshStandardMaterial color={hasBoots ? (bootsItem === 'jump_boots' ? '#444' : bootsItem === 'hover_boots' ? '#00ffff' : bootsItem === 'rocket_boots' ? '#ff4400' : '#222') : "#111"} roughness={0.9} emissive={hasBoots && (bootsItem === 'hover_boots' || bootsItem === 'rocket_boots') ? (bootsItem === 'hover_boots' ? '#00ffff' : '#ff4400') : '#000'} emissiveIntensity={hasBoots && (bootsItem === 'hover_boots' || bootsItem === 'rocket_boots') ? 2 : 0} />
+        </Box>
+      </group>
+      {/* Torso */}
+      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
+        <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+      </Box>
+      {/* Tactical Vest Details / Chest */}
+      {hasChest ? (
+        <group position={[0, 1.3, 0]}>
+          <Box args={[0.65, 0.7, 0.45]}>
+            <meshStandardMaterial color={chestItem === 'exo_suit' ? '#111' : vestColor} roughness={0.8} />
+          </Box>
+          {chestItem === 'exo_suit' && (
+            <>
+              <Box args={[0.7, 0.1, 0.5]} position={[0, 0, 0]}><meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} /></Box>
+              <Box args={[0.1, 0.7, 0.5]} position={[0, 0, 0]}><meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} /></Box>
+            </>
+          )}
+          {chestItem === 'heavy_armor' && (
+            <>
+              <Box args={[0.7, 0.4, 0.5]} position={[0, 0.1, 0]}><meshStandardMaterial color="#2d3748" /></Box>
+              <Box args={[0.4, 0.3, 0.55]} position={[0, -0.1, 0]}><meshStandardMaterial color="#1a202c" /></Box>
+            </>
+          )}
+          {chestItem === 'mech_suit' && (
+            <>
+              <Box args={[0.75, 0.8, 0.5]} position={[0, 0, 0]}><meshStandardMaterial color="#4a5568" metalness={0.8} /></Box>
+              <Box args={[0.2, 0.2, 0.1]} position={[0, 0.1, 0.26]}><meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={5} /></Box>
+            </>
+          )}
+          {chestItem === 'tactical_harness' && (
+            <>
+              <Box args={[0.1, 0.7, 0.46]} position={[0.2, 0, 0]}><meshStandardMaterial color="#1a202c" /></Box>
+              <Box args={[0.1, 0.7, 0.46]} position={[-0.2, 0, 0]}><meshStandardMaterial color="#1a202c" /></Box>
+              <Box args={[0.5, 0.1, 0.46]} position={[0, 0.2, 0]}><meshStandardMaterial color="#1a202c" /></Box>
+              <Box args={[0.5, 0.1, 0.46]} position={[0, -0.2, 0]}><meshStandardMaterial color="#1a202c" /></Box>
+            </>
+          )}
+        </group>
+      ) : (
+        <group>
+          <Box args={[0.65, 0.7, 0.45]} position={[0, 1.3, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+          <Box args={[0.2, 0.2, 0.1]} position={[0.15, 1.3, 0.23]}><meshStandardMaterial color="#111" /></Box>
+          <Box args={[0.2, 0.2, 0.1]} position={[-0.15, 1.3, 0.23]}><meshStandardMaterial color="#111" /></Box>
+        </group>
+      )}
+      
+      {/* Backpack */}
+      {backpackType > 0 && !hasCape && (
+        <Box args={[backpackType === 1 ? 0.4 : 0.5, backpackType === 1 ? 0.5 : 0.7, 0.2]} position={[0, 1.3, -0.3]}>
+          <meshStandardMaterial color={vestColor} roughness={0.8} />
+        </Box>
+      )}
+      {/* Cape */}
+      {hasCape && (
+        <group position={[0, 1.7, -0.22]} rotation={[0.1, 0, 0]}>
+          <Box args={[0.7, 1.3, 0.05]} position={[0, -0.6, 0]}>
+            <meshStandardMaterial color={capeItem === 'hero_cape' ? '#cc0000' : capeItem === 'royal_cape' ? '#4b0082' : capeItem === 'stealth_cape' ? '#111' : '#333'} roughness={0.4} />
+          </Box>
+          {/* Cape Collar */}
+          <Box args={[0.6, 0.1, 0.2]} position={[0, 0, 0.1]}>
+            <meshStandardMaterial color={capeItem === 'hero_cape' ? '#cc0000' : capeItem === 'royal_cape' ? '#4b0082' : capeItem === 'stealth_cape' ? '#111' : '#333'} />
+          </Box>
+        </group>
+      )}
+      {/* Arms */}
+      <group position={[-0.4, 1.6, 0]} ref={leftArmRef}>
+        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
+          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+        </Box>
+        {sleeveType === 1 && (
+          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
+            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
+          </Box>
+        )}
+        {hasGloves && (
+          <Box args={[hasGloves && glovesItem === 'power_gauntlets' ? 0.3 : 0.22, 0.2, 0.22]} position={[0, -0.65, 0]}>
+            <meshStandardMaterial color={glovesItem === 'cyber_hands' ? '#00ffff' : glovesItem === 'power_gauntlets' ? '#4a5568' : '#222'} emissive={glovesItem === 'cyber_hands' ? '#00ffff' : '#000'} emissiveIntensity={glovesItem === 'cyber_hands' ? 2 : 0} />
+          </Box>
+        )}
+        {/* Shoulder Pad */}
+        {(helmetType === 2 || hasChest) && (
+          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+      </group>
+      <group position={[0.4, 1.6, 0]} ref={rightArmRef}>
+        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
+          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
+        </Box>
+        {sleeveType === 1 && (
+          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
+            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
+          </Box>
+        )}
+        {hasGloves && (
+          <Box args={[hasGloves && glovesItem === 'power_gauntlets' ? 0.3 : 0.22, 0.2, 0.22]} position={[0, -0.65, 0]}>
+            <meshStandardMaterial color={glovesItem === 'cyber_hands' ? '#00ffff' : glovesItem === 'power_gauntlets' ? '#4a5568' : '#222'} emissive={glovesItem === 'cyber_hands' ? '#00ffff' : '#000'} emissiveIntensity={glovesItem === 'cyber_hands' ? 2 : 0} />
+          </Box>
+        )}
+        {/* Shoulder Pad */}
+        {(helmetType === 2 || hasChest) && (
+          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
+            <meshStandardMaterial color={vestColor} roughness={0.8} />
+          </Box>
+        )}
+        {/* Weapon attached to right arm */}
+        {!isDowned && weaponName && (
+          <group ref={weaponGroupRef} position={[0, -0.7, 0.2]} rotation={[Math.PI / 2.2, 0, 0]} scale={[0.5, 0.5, 0.5]}>
+            <group rotation={[0, Math.PI, 0]}>
+              <WeaponModel weaponName={weaponName} camo={(camo || 'none') as WeaponCamo} />
+            </group>
+          </group>
+        )}
+      </group>
+      {/* Head */}
+      <group position={[0, 1.9, 0]}>
+        <Box args={[0.4, 0.45, 0.45]}>
+          <meshStandardMaterial color={isDowned ? "#666" : skinColor} roughness={0.8} />
+        </Box>
+        
+        {/* Hair */}
+        {!hasHat && !hasHelmet && helmetType === 0 && hairType !== 2 && (
+          <group position={[0, 0.2, 0]}>
+            {hairType === 0 ? (
+              <Box args={[0.42, 0.15, 0.47]}>
+                <meshStandardMaterial color={hairColor} />
+              </Box>
+            ) : (
+              <Box args={[0.1, 0.25, 0.47]}>
+                <meshStandardMaterial color={hairColor} />
+              </Box>
+            )}
+          </group>
+        )}
+
+        {/* Hats */}
+        {hasHat && (
+          <group position={[0, 0.25, 0]}>
+            <Box args={[0.45, 0.1, 0.45]}>
+              <meshStandardMaterial color={hatItem === 'cowboy_hat' ? '#8b4513' : hatItem === 'top_hat' ? '#111' : hatItem === 'beret' ? '#800000' : '#333'} />
+            </Box>
+            {hatItem === 'baseball_cap' && (
+              <Box args={[0.45, 0.05, 0.3]} position={[0, -0.05, 0.3]}>
+                <meshStandardMaterial color="#333" />
+              </Box>
+            )}
+            {hatItem === 'cowboy_hat' && (
+              <Box args={[0.8, 0.05, 0.8]} position={[0, -0.05, 0]}>
+                <meshStandardMaterial color="#8b4513" />
+              </Box>
+            )}
+            {hatItem === 'top_hat' && (
+              <>
+                <Box args={[0.6, 0.05, 0.6]} position={[0, -0.05, 0]}>
+                  <meshStandardMaterial color="#111" />
+                </Box>
+                <Box args={[0.45, 0.4, 0.45]} position={[0, 0.2, 0]}>
+                  <meshStandardMaterial color="#111" />
+                </Box>
+              </>
+            )}
+            {hatItem === 'beanie' && (
+              <Box args={[0.46, 0.15, 0.46]} position={[0, 0, 0]}>
+                <meshStandardMaterial color="#4a5568" />
+              </Box>
+            )}
+            {hatItem === 'military_cap' && (
+              <Box args={[0.45, 0.1, 0.3]} position={[0, 0, 0.1]}>
+                <meshStandardMaterial color="#2d3748" />
+              </Box>
+            )}
+          </group>
+        )}
+
+        {/* Helmets */}
+        {(hasHelmet || helmetType > 0) && (
+          <group>
+            <Box args={[0.45, hasHelmet ? 0.35 : (helmetType === 1 ? 0.2 : 0.35), 0.5]} position={[0, hasHelmet ? 0.1 : (helmetType === 1 ? 0.15 : 0.1), 0]}>
+              <meshStandardMaterial color={hasHelmet && (helmetItem === 'space_helmet' || helmetItem === 'knight_helmet') ? '#fff' : vestColor} roughness={0.8} />
+            </Box>
+            {/* Face Shield */}
+            {(helmetType === 2 || (hasHelmet && helmetItem !== 'combat_helmet')) && (
+              <Box args={[0.4, 0.3, 0.05]} position={[0, -0.05, 0.23]}>
+                <meshStandardMaterial color={hasHelmet && helmetItem === 'space_helmet' ? '#ffaa00' : '#111'} transparent opacity={0.8} />
+              </Box>
+            )}
+            {hasHelmet && helmetItem === 'viking_helmet' && (
+              <>
+                <Box args={[0.1, 0.4, 0.1]} position={[0.2, 0.3, 0]} rotation={[0, 0, 0.4]}>
+                  <meshStandardMaterial color="#fff" />
+                </Box>
+                <Box args={[0.1, 0.4, 0.1]} position={[-0.2, 0.3, 0]} rotation={[0, 0, -0.4]}>
+                  <meshStandardMaterial color="#fff" />
+                </Box>
+              </>
+            )}
+            {hasHelmet && helmetItem === 'samurai_helmet' && (
+              <Box args={[0.3, 0.3, 0.05]} position={[0, 0.3, 0.2]} rotation={[-0.5, 0, 0]}>
+                <meshStandardMaterial color="#ffd700" />
+              </Box>
+            )}
+          </group>
+        )}
+
+        {/* Glasses */}
+        {hasGlasses && (
+          <group position={[0, 0.05, 0.23]}>
+            {glassesItem === 'monocle' ? (
+              <Box args={[0.15, 0.15, 0.05]} position={[0.1, 0, 0.02]}>
+                <meshStandardMaterial color="#ffd700" transparent opacity={0.5} />
+              </Box>
+            ) : (
+              <>
+                <Box args={[0.4, 0.1, 0.05]}>
+                  <meshStandardMaterial color="#111" />
+                </Box>
+                <Box args={[0.15, 0.1, 0.05]} position={[0.1, 0, 0.02]}>
+                  <meshStandardMaterial color={glassesItem === 'sunglasses' ? '#000' : glassesItem === 'aviators' ? '#333' : glassesItem === 'cyber_shades' ? '#00ffff' : glassesItem === 'tactical_goggles' ? '#00ff00' : '#fff'} transparent opacity={0.8} />
+                </Box>
+                <Box args={[0.15, 0.1, 0.05]} position={[-0.1, 0, 0.02]}>
+                  <meshStandardMaterial color={glassesItem === 'sunglasses' ? '#000' : glassesItem === 'aviators' ? '#333' : glassesItem === 'cyber_shades' ? '#00ffff' : glassesItem === 'tactical_goggles' ? '#00ff00' : '#fff'} transparent opacity={0.8} />
+                </Box>
+              </>
+            )}
+          </group>
+        )}
+
+        {/* Masks */}
+        {hasMask && (
+          <Box args={[0.42, maskItem === 'balaclava' ? 0.45 : 0.25, 0.1]} position={[0, maskItem === 'balaclava' ? 0 : -0.1, 0.23]}>
+            <meshStandardMaterial color={maskItem === 'surgical_mask' ? '#add8e6' : maskItem === 'skull_mask' ? '#eee' : maskItem === 'gas_mask' ? '#333' : maskItem === 'oni_mask' ? '#aa0000' : maskItem === 'bandana' ? '#3182ce' : '#fff'} />
+          </Box>
+        )}
+
+        {/* Eyes (only if no full face cover) */}
+        {!hasMask && !(helmetType === 2) && !(hasHelmet && helmetItem !== 'combat_helmet') && !hasGlasses && (
+          <>
+            <Box args={[0.1, 0.05, 0.05]} position={[-0.1, 0.05, 0.21]}>
+              <meshStandardMaterial color="#000" />
+            </Box>
+            <Box args={[0.1, 0.05, 0.05]} position={[0.1, 0.05, 0.21]}>
+              <meshStandardMaterial color="#000" />
+            </Box>
+          </>
+        )}
+      </group>
+    </>
+  );
+};
+
+export const LocalPlayerModel: React.FC<{
   playerPos: THREE.Vector3;
   playerRot: THREE.Euler;
   isDowned: boolean;
@@ -4749,7 +5623,9 @@ const LocalPlayerModel: React.FC<{
   scale?: number;
   isJumping: boolean;
   team?: number;
-}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1, isJumping, team }) => {
+  customization?: any;
+  isVictoryPose?: boolean;
+}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1, isJumping, team, customization, isVictoryPose }) => {
   const mesh = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Mesh>(null);
   const rightLeg = useRef<THREE.Mesh>(null);
@@ -4760,19 +5636,24 @@ const LocalPlayerModel: React.FC<{
   const walkTime = useRef(0);
 
   const clothingColor = useMemo(() => {
+    if (customization?.clothesColor) return customization.clothesColor;
     const colors = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea"];
     return colors[variant % colors.length];
-  }, [variant]);
+  }, [variant, customization]);
 
   const vestColor = useMemo(() => {
-    const colors = ["#1a2e1a", "#2e1a1a", "#1a1a2e", "#2e2e1a", "#1a2e2e"];
+    if (customization?.chest && customization.chest !== 'none') {
+      return customization.chest === 'plate_carrier' ? '#4a5568' : customization.chest === 'heavy_armor' ? '#2d3748' : '#718096';
+    }
+    const colors = ["#1a2e1a", "#2e1a1a", "#1a1a2e", "#2e2e1a", "#1a1a2e"];
     return colors[variant % colors.length];
-  }, [variant]);
+  }, [variant, customization]);
 
   const skinColor = useMemo(() => {
+    if (customization?.bodyColor) return customization.bodyColor;
     const colors = ["#fca5a5", "#f97316", "#fbbf24", "#d97706", "#78350f"];
     return colors[variant % colors.length];
-  }, [variant]);
+  }, [variant, customization]);
 
   const helmetType = useMemo(() => variant % 3, [variant]); // 0: none, 1: standard, 2: heavy
   const sleeveType = useMemo(() => (variant >> 2) % 2, [variant]); // 0: long, 1: short
@@ -4805,7 +5686,53 @@ const LocalPlayerModel: React.FC<{
         // Base arm rotation for holding weapon
         const holdWeaponRotX = -Math.PI / 2.2; // Pointing mostly forward
 
-        if (speed > 0.1) {
+        if (isVictoryPose) {
+          const time = state.clock.getElapsedTime();
+          const moveType = customization?.danceMove || customization?.finisherMove || 'Tactical Takedown';
+          
+          if (moveType === 'Moonwalk') {
+            mesh.current.position.z += Math.sin(time * 2) * 0.02;
+            if (leftLeg.current) leftLeg.current.rotation.x = Math.sin(time * 5) * 0.5;
+            if (rightLeg.current) rightLeg.current.rotation.x = Math.cos(time * 5) * 0.5;
+            if (leftArm.current) leftArm.current.rotation.x = 0.5;
+            if (rightArm.current) rightArm.current.rotation.x = 0.5;
+          } else if (moveType === 'Floss') {
+            const swing = Math.sin(time * 10) * 0.8;
+            if (leftArm.current) {
+              leftArm.current.rotation.z = swing;
+              leftArm.current.rotation.x = -0.5;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.z = swing;
+              rightArm.current.rotation.x = -0.5;
+            }
+            mesh.current.rotation.y += Math.sin(time * 10) * 0.1;
+          } else if (moveType === 'Carlton Dance') {
+            const swing = Math.sin(time * 8);
+            if (leftArm.current) {
+              leftArm.current.rotation.z = 1 + swing * 0.5;
+              leftArm.current.rotation.x = swing * 0.5;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.z = -1 + swing * 0.5;
+              rightArm.current.rotation.x = swing * 0.5;
+            }
+            if (leftLeg.current) leftLeg.current.rotation.z = swing * 0.2;
+            if (rightLeg.current) rightLeg.current.rotation.z = swing * 0.2;
+          } else if (moveType === 'Orange Justice') {
+            const swing = Math.sin(time * 12);
+            if (leftArm.current) leftArm.current.rotation.z = 0.5 + swing * 0.5;
+            if (rightArm.current) rightArm.current.rotation.z = -0.5 - swing * 0.5;
+            mesh.current.position.y = 1.2 + Math.abs(swing) * 0.2;
+          } else {
+            // Default Victory Pose / Finisher
+            const swing = Math.sin(time * 4);
+            if (leftArm.current) leftArm.current.rotation.x = -Math.PI / 2 + swing * 0.2;
+            if (rightArm.current) rightArm.current.rotation.x = -Math.PI / 2 - swing * 0.2;
+            if (leftLeg.current) leftLeg.current.rotation.y = 0.3;
+            if (rightLeg.current) rightLeg.current.rotation.y = -0.3;
+          }
+        } else if (speed > 0.1) {
           walkTime.current += delta * speed * 2;
           const swing = Math.sin(walkTime.current) * 0.5;
           if (leftLeg.current) leftLeg.current.rotation.x = swing;
@@ -4841,127 +5768,26 @@ const LocalPlayerModel: React.FC<{
   });
 
   return (
-    <group ref={mesh}>
-      {/* Legs */}
-      <group position={[-0.15, 0.8, 0]} ref={leftLeg}>
-        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
-          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
-        </Box>
-        {/* Boot */}
-        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
-          <meshStandardMaterial color="#111" roughness={0.9} />
-        </Box>
-      </group>
-      <group position={[0.15, 0.8, 0]} ref={rightLeg}>
-        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
-          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
-        </Box>
-        {/* Boot */}
-        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
-          <meshStandardMaterial color="#111" roughness={0.9} />
-        </Box>
-      </group>
-      {/* Torso */}
-      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
-        <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
-      </Box>
-      {/* Tactical Vest */}
-      <Box args={[0.65, 0.7, 0.45]} position={[0, 1.3, 0]}>
-        <meshStandardMaterial color={vestColor} roughness={0.8} />
-      </Box>
-      {/* Backpack */}
-      {backpackType > 0 && (
-        <Box args={[backpackType === 1 ? 0.4 : 0.5, backpackType === 1 ? 0.5 : 0.7, 0.2]} position={[0, 1.3, -0.3]}>
-          <meshStandardMaterial color={vestColor} roughness={0.8} />
-        </Box>
-      )}
-      {/* Arms */}
-      <group position={[-0.4, 1.6, 0]} ref={leftArm}>
-        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
-          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
-        </Box>
-        {sleeveType === 1 && (
-          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
-            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Shoulder Pad */}
-        {helmetType === 2 && (
-          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
-            <meshStandardMaterial color={vestColor} roughness={0.8} />
-          </Box>
-        )}
-      </group>
-      <group position={[0.4, 1.6, 0]} ref={rightArm}>
-        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
-          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
-        </Box>
-        {sleeveType === 1 && (
-          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
-            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Shoulder Pad */}
-        {helmetType === 2 && (
-          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
-            <meshStandardMaterial color={vestColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Weapon attached to right arm */}
-        {!isDowned && (
-          <group ref={weaponGroup} position={[0, -0.7, 0.2]} rotation={[Math.PI / 2.2, 0, 0]} scale={[0.5, 0.5, 0.5]}>
-            <WeaponModel weaponName={weaponName} camo={camo} />
-          </group>
-        )}
-      </group>
-      {/* Head */}
-      <group position={[0, 1.9, 0]}>
-        <Box args={[0.4, 0.45, 0.45]}>
-          <meshStandardMaterial color={isDowned ? "#666" : skinColor} roughness={0.8} />
-        </Box>
-        {/* Hair */}
-        {helmetType === 0 && hairType !== 2 && (
-          <group position={[0, 0.2, 0]}>
-            {hairType === 0 ? (
-              <Box args={[0.42, 0.15, 0.47]}>
-                <meshStandardMaterial color={hairColor} />
-              </Box>
-            ) : (
-              <Box args={[0.1, 0.25, 0.47]}>
-                <meshStandardMaterial color={hairColor} />
-              </Box>
-            )}
-          </group>
-        )}
-        {/* Helmet */}
-        {helmetType > 0 && (
-          <Box args={[0.45, helmetType === 1 ? 0.2 : 0.35, 0.5]} position={[0, helmetType === 1 ? 0.15 : 0.1, 0]}>
-            <meshStandardMaterial color={vestColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Face Shield for heavy helmet */}
-        {helmetType === 2 && (
-          <Box args={[0.4, 0.3, 0.05]} position={[0, -0.05, 0.23]}>
-            <meshStandardMaterial color="#111" transparent opacity={0.8} />
-          </Box>
-        )}
-        {/* Eyes */}
-        <Box args={[0.1, 0.05, 0.05]} position={[-0.1, 0.05, 0.21]}>
-          <meshStandardMaterial color="#000" />
-        </Box>
-        <Box args={[0.1, 0.05, 0.05]} position={[0.1, 0.05, 0.21]}>
-          <meshStandardMaterial color="#000" />
-        </Box>
-      </group>
-      <group position={[0, 2.8, 0]}>
-         <Html center zIndexRange={[100, 0]}>
-            <div className="flex flex-col items-center pointer-events-none select-none">
-               <div style={{ backgroundColor: team === 1 ? "#3b82f6" : "#ef4444", boxShadow: `0 0 10px ${team === 1 ? "#3b82f6" : "#ef4444"}` }} className="text-white p-1 rounded-full border border-white/50 mb-1">
-                  <User size={12} />
-               </div>
-            </div>
-         </Html>
-      </group>
+    <group ref={mesh} scale={[scale, scale, scale]}>
+      <CharacterBody 
+        isDowned={isDowned}
+        clothingColor={clothingColor}
+        vestColor={vestColor}
+        skinColor={skinColor}
+        hairColor={hairColor}
+        helmetType={helmetType}
+        sleeveType={sleeveType}
+        backpackType={backpackType}
+        hairType={hairType}
+        customization={customization}
+        leftLegRef={leftLeg}
+        rightLegRef={rightLeg}
+        leftArmRef={leftArm}
+        rightArmRef={rightArm}
+        weaponGroupRef={weaponGroup}
+        weaponName={weaponName}
+        camo={camo}
+      />
     </group>
   );
 };
@@ -4980,7 +5806,10 @@ const BotInstance: React.FC<{
   variant: number;
   isReviving: boolean;
   team?: number;
-}> = ({ position, id, name, targetId, zombieRefs, isDowned, downedTimer, playerPos, isPlayerDowned, isShooting, variant, isReviving, team }) => {
+  isVictoryPose?: boolean;
+  scale?: number;
+  gameMode?: string;
+}> = ({ position, id, name, targetId, zombieRefs, isDowned, downedTimer, playerPos, isPlayerDowned, isShooting, variant, isReviving, team, isVictoryPose, scale = 1, gameMode = 'standard' }) => {
   const mesh = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Mesh>(null);
   const rightLeg = useRef<THREE.Mesh>(null);
@@ -5020,6 +5849,30 @@ const BotInstance: React.FC<{
   }, [variant]);
   const hairType = useMemo(() => (variant >> 5) % 3, [variant]); // 0: short, 1: mohawk, 2: bald/shaved
   
+  const botCustomization = useMemo(() => {
+    const hats = ['none', 'baseball_cap', 'cowboy_hat', 'top_hat', 'beanie', 'beret', 'military_cap'];
+    const glasses = ['none', 'sunglasses', 'aviators', 'cyber_shades', 'tactical_goggles', 'monocle'];
+    const masks = ['none', 'surgical_mask', 'skull_mask', 'gas_mask', 'oni_mask', 'bandana', 'balaclava'];
+    const helmets = ['none', 'combat_helmet', 'riot_helmet', 'space_helmet', 'samurai_helmet', 'viking_helmet', 'knight_helmet'];
+    const chests = ['none', 'bulletproof_vest', 'plate_carrier', 'mech_suit', 'heavy_armor', 'exo_suit', 'tactical_harness'];
+    const boots = ['none', 'combat_boots', 'sneakers', 'rocket_boots', 'jump_boots', 'hover_boots', 'heavy_boots'];
+    const gloves = ['none', 'tactical_gloves', 'leather_gloves', 'power_gauntlets', 'cyber_hands', 'fingerless_gloves'];
+    const capes = ['none', 'hero_cape', 'royal_cape', 'stealth_cape', 'torn_cape'];
+    const kneePads = ['none', 'tactical_knee_pads', 'reinforced_knee_pads', 'cyber_knee_pads'];
+
+    return {
+      hats: [hats[variant % hats.length]],
+      glasses: [glasses[(variant >> 1) % glasses.length]],
+      masks: [masks[(variant >> 2) % masks.length]],
+      helmets: [helmets[(variant >> 3) % helmets.length]],
+      chest: [chests[(variant >> 4) % chests.length]],
+      boots: [boots[(variant >> 5) % boots.length]],
+      gloves: [gloves[(variant >> 6) % gloves.length]],
+      capes: [capes[(variant >> 7) % capes.length]],
+      kneePads: [kneePads[(variant >> 8) % kneePads.length]],
+    };
+  }, [variant]);
+
   useFrame((state, delta) => {
     if (mesh.current) {
       mesh.current.position.copy(position);
@@ -5052,7 +5905,14 @@ const BotInstance: React.FC<{
         // Base arm rotation for holding weapon
         const holdWeaponRotX = -Math.PI / 2.2; // Pointing mostly forward
 
-        if (speed > 0.1) {
+        if (isVictoryPose) {
+          const time = state.clock.getElapsedTime() + (variant * 0.5); // Offset for variety
+          const swing = Math.sin(time * 4);
+          if (leftArm.current) leftArm.current.rotation.x = -Math.PI / 2 + swing * 0.2;
+          if (rightArm.current) rightArm.current.rotation.x = -Math.PI / 2 - swing * 0.2;
+          if (leftLeg.current) leftLeg.current.rotation.y = 0.3;
+          if (rightLeg.current) rightLeg.current.rotation.y = -0.3;
+        } else if (speed > 0.1) {
           walkTime.current += delta * speed * 2;
           const swing = Math.sin(walkTime.current) * 0.5;
           if (leftLeg.current) leftLeg.current.rotation.x = swing;
@@ -5088,132 +5948,42 @@ const BotInstance: React.FC<{
   });
 
   return (
-    <group ref={mesh}>
-      {/* Legs */}
-      <group position={[-0.15, 0.8, 0]} ref={leftLeg}>
-        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
-          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
-        </Box>
-        {/* Boot */}
-        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
-          <meshStandardMaterial color="#111" roughness={0.9} />
-        </Box>
-      </group>
-      <group position={[0.15, 0.8, 0]} ref={rightLeg}>
-        <Box args={[0.25, 0.8, 0.3]} position={[0, -0.4, 0]}>
-          <meshStandardMaterial color={isDowned ? "#333" : clothingColor} roughness={0.9} />
-        </Box>
-        {/* Boot */}
-        <Box args={[0.28, 0.2, 0.4]} position={[0, -0.75, 0.05]}>
-          <meshStandardMaterial color="#111" roughness={0.9} />
-        </Box>
-      </group>
-      {/* Torso */}
-      <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
-        <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
-      </Box>
-      {/* Tactical Vest */}
-      <Box args={[0.65, 0.7, 0.45]} position={[0, 1.3, 0]}>
-        <meshStandardMaterial color={vestColor} roughness={0.8} />
-      </Box>
-      {/* Backpack */}
-      {backpackType > 0 && (
-        <Box args={[backpackType === 1 ? 0.4 : 0.5, backpackType === 1 ? 0.5 : 0.7, 0.2]} position={[0, 1.3, -0.3]}>
-          <meshStandardMaterial color={vestColor} roughness={0.8} />
-        </Box>
+    <group ref={mesh} scale={[scale, scale, scale]}>
+      <CharacterBody 
+        isDowned={isDowned}
+        clothingColor={clothingColor}
+        vestColor={vestColor}
+        skinColor={skinColor}
+        hairColor={hairColor}
+        helmetType={helmetType}
+        sleeveType={sleeveType}
+        backpackType={backpackType}
+        hairType={hairType}
+        customization={botCustomization}
+        leftLegRef={leftLeg}
+        rightLegRef={rightLeg}
+        leftArmRef={leftArm}
+        rightArmRef={rightArm}
+        weaponGroupRef={weaponGroup}
+        weaponName="M118"
+        camo="none"
+      />
+      {gameMode !== 'dead_ops' && (
+        <>
+          <group position={[0, 2.8, 0]}>
+             <Html center zIndexRange={[100, 0]}>
+                <div className="flex flex-col items-center pointer-events-none select-none">
+                   <div style={{ backgroundColor: teamColor, boxShadow: `0 0 10px ${teamColor}` }} className="text-white p-1 rounded-full border border-white/50 mb-1">
+                      <User size={12} />
+                   </div>
+                </div>
+             </Html>
+          </group>
+          <Text position={[0, 2.5, 0]} fontSize={0.3} color={isDowned ? "#ef4444" : (isReviving ? "#10b981" : "#60a5fa")} outlineWidth={0.02} outlineColor="#000">
+            {isDowned ? `REVIVE ${name} (${downedTimer}s)` : (isReviving ? `${name} (REVIVING)` : name)}
+          </Text>
+        </>
       )}
-      {/* Arms */}
-      <group position={[-0.4, 1.6, 0]} ref={leftArm}>
-        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
-          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
-        </Box>
-        {sleeveType === 1 && (
-          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
-            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Shoulder Pad */}
-        {helmetType === 2 && (
-          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
-            <meshStandardMaterial color={vestColor} roughness={0.8} />
-          </Box>
-        )}
-      </group>
-      <group position={[0.4, 1.6, 0]} ref={rightArm}>
-        <Box args={[0.2, sleeveType === 0 ? 0.7 : 0.35, 0.2]} position={[0, sleeveType === 0 ? -0.35 : -0.175, 0]}>
-          <meshStandardMaterial color={isDowned ? "#444" : clothingColor} roughness={0.9} />
-        </Box>
-        {sleeveType === 1 && (
-          <Box args={[0.18, 0.35, 0.18]} position={[0, -0.525, 0]}>
-            <meshStandardMaterial color={isDowned ? "#444" : skinColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Shoulder Pad */}
-        {helmetType === 2 && (
-          <Box args={[0.25, 0.25, 0.25]} position={[0, 0, 0]}>
-            <meshStandardMaterial color={vestColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Weapon placeholder attached to right arm */}
-        {!isDowned && (
-          <group ref={weaponGroup} position={[0, -0.7, 0.2]} rotation={[Math.PI / 2.2, 0, 0]}>
-            <Box args={[0.1, 0.1, 0.6]} position={[0, 0, 0]}>
-              <meshStandardMaterial color="#333" roughness={0.5} />
-            </Box>
-          </group>
-        )}
-      </group>
-      {/* Head */}
-      <group position={[0, 1.9, 0]}>
-        <Box args={[0.4, 0.45, 0.45]}>
-          <meshStandardMaterial color={isDowned ? "#666" : skinColor} roughness={0.8} />
-        </Box>
-        {/* Hair */}
-        {helmetType === 0 && hairType !== 2 && (
-          <group position={[0, 0.2, 0]}>
-            {hairType === 0 ? (
-              <Box args={[0.42, 0.15, 0.47]}>
-                <meshStandardMaterial color={hairColor} />
-              </Box>
-            ) : (
-              <Box args={[0.1, 0.25, 0.47]}>
-                <meshStandardMaterial color={hairColor} />
-              </Box>
-            )}
-          </group>
-        )}
-        {/* Helmet */}
-        {helmetType > 0 && (
-          <Box args={[0.45, helmetType === 1 ? 0.2 : 0.35, 0.5]} position={[0, helmetType === 1 ? 0.15 : 0.1, 0]}>
-            <meshStandardMaterial color={vestColor} roughness={0.8} />
-          </Box>
-        )}
-        {/* Face Shield for heavy helmet */}
-        {helmetType === 2 && (
-          <Box args={[0.4, 0.3, 0.05]} position={[0, -0.05, 0.23]}>
-            <meshStandardMaterial color="#111" transparent opacity={0.8} />
-          </Box>
-        )}
-        {/* Eyes */}
-        <Box args={[0.1, 0.05, 0.05]} position={[-0.1, 0.05, 0.21]}>
-          <meshStandardMaterial color="#000" />
-        </Box>
-        <Box args={[0.1, 0.05, 0.05]} position={[0.1, 0.05, 0.21]}>
-          <meshStandardMaterial color="#000" />
-        </Box>
-      </group>
-      <group position={[0, 2.8, 0]}>
-         <Html center zIndexRange={[100, 0]}>
-            <div className="flex flex-col items-center pointer-events-none select-none">
-               <div style={{ backgroundColor: teamColor, boxShadow: `0 0 10px ${teamColor}` }} className="text-white p-1 rounded-full border border-white/50 mb-1">
-                  <User size={12} />
-               </div>
-            </div>
-         </Html>
-      </group>
-      <Text position={[0, 2.5, 0]} fontSize={0.3} color={isDowned ? "#ef4444" : (isReviving ? "#10b981" : "#60a5fa")} outlineWidth={0.02} outlineColor="#000">
-        {isDowned ? `REVIVE ${name} (${downedTimer}s)` : (isReviving ? `${name} (REVIVING)` : name)}
-      </Text>
       {isDowned && (
         <Html position={[0, 3.5, 0]} center zIndexRange={[100, 0]}>
           <div className="flex flex-col items-center animate-bounce pointer-events-none select-none">
@@ -5263,7 +6033,10 @@ const ZombieInstance: React.FC<{ position: THREE.Vector3; variant: number; hitFl
     return 1.0;
   }, [type]);
 
+  const frameCounter = useRef(0);
   useFrame((state, delta) => {
+    frameCounter.current++;
+    if (frameCounter.current % 2 !== 0) return;
     if (paused) return;
     const meshRef = mesh.current;
     if (meshRef && playerPosRef.current) {
@@ -5308,70 +6081,118 @@ const ZombieInstance: React.FC<{ position: THREE.Vector3; variant: number; hitFl
 
   return (
     <group ref={mesh} scale={[scale, scale, scale]}>
+      {/* Elite Indicator */}
+      {(type === 'tank' || type === 'brute' || type === 'inferno') && (
+        <group position={[0, 2.5, 0]}>
+          <Html center distanceFactor={10}>
+            <div className="flex flex-col items-center gap-0.5 pointer-events-none select-none w-16">
+              <span className="text-[6px] text-white font-black uppercase tracking-tighter drop-shadow-md">
+                {type.toUpperCase()}
+              </span>
+              <div className="w-full h-1 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                <div className="h-full bg-red-500" style={{ width: '100%' }} />
+              </div>
+            </div>
+          </Html>
+        </group>
+      )}
+
       {/* Torso */}
       <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} emissive={hitFlash > 0 ? '#ff0000' : '#000'} />
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} roughness={0.9} metalness={0.1} emissive={hitFlash > 0 ? '#ff0000' : '#000'} />
       </Box>
       
       {/* Torn Shirt Details */}
       <Box args={[0.62, 0.3, 0.42]} position={[0, 1.4, 0]} rotation={[0.1, 0, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : (type === 'tank' ? '#111' : '#222')} />
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : (type === 'tank' ? '#111' : '#222')} roughness={0.9} />
       </Box>
       <Box args={[0.65, 0.2, 0.45]} position={[0, 1.0, 0]} rotation={[-0.1, 0.1, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : (type === 'tank' ? '#222' : '#333')} />
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : (type === 'tank' ? '#222' : '#333')} roughness={0.9} />
       </Box>
 
+      {/* Exposed Ribs for some variants */}
+      {(variant > 0.7 || type === 'brute') && (
+        <group position={[0, 1.25, 0.21]}>
+          <Box args={[0.4, 0.05, 0.02]} position={[0, 0.1, 0]}><meshStandardMaterial color="#eee" roughness={1} /></Box>
+          <Box args={[0.4, 0.05, 0.02]} position={[0, 0, 0]}><meshStandardMaterial color="#eee" roughness={1} /></Box>
+          <Box args={[0.4, 0.05, 0.02]} position={[0, -0.1, 0]}><meshStandardMaterial color="#eee" roughness={1} /></Box>
+        </group>
+      )}
+
       {/* Head */}
-      <Box args={[0.4, 0.45, 0.45]} position={[0, 1.9, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} />
-      </Box>
+      <group position={[0, 1.9, 0]}>
+        <Box args={[0.4, 0.45, 0.45]}>
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} roughness={0.8} />
+        </Box>
+        {/* Brain/Skull detail */}
+        {variant > 0.5 && (
+          <Box args={[0.3, 0.1, 0.3]} position={[0, 0.2, 0]}>
+            <meshStandardMaterial color="#800" roughness={1} />
+          </Box>
+        )}
+      </group>
       
       {/* Jaw/Mouth */}
       <Box args={[0.3, 0.15, 0.46]} position={[0, 1.75, 0.05]} rotation={[0.2, 0, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : '#3a1f1f'} />
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : '#3a1f1f'} roughness={0.9} />
       </Box>
 
       {/* Glowing Eyes */}
       <Sphere args={[0.04, 8, 8]} position={[0.12, 1.95, 0.22]}>
-        <meshLambertMaterial color={type === 'runner' ? '#ffaa00' : '#ff0000'} emissive={type === 'runner' ? '#ffaa00' : '#ff0000'} emissiveIntensity={5} />
+        <meshStandardMaterial color={type === 'runner' ? '#ffaa00' : (type === 'inferno' ? '#ff4400' : '#ff0000')} emissive={type === 'runner' ? '#ffaa00' : (type === 'inferno' ? '#ff4400' : '#ff0000')} emissiveIntensity={8} />
       </Sphere>
       <Sphere args={[0.04, 8, 8]} position={[-0.12, 1.95, 0.22]}>
-        <meshLambertMaterial color={type === 'runner' ? '#ffaa00' : '#ff0000'} emissive={type === 'runner' ? '#ffaa00' : '#ff0000'} emissiveIntensity={5} />
+        <meshStandardMaterial color={type === 'runner' ? '#ffaa00' : (type === 'inferno' ? '#ff4400' : '#ff0000')} emissive={type === 'runner' ? '#ffaa00' : (type === 'inferno' ? '#ff4400' : '#ff0000')} emissiveIntensity={8} />
       </Sphere>
+
+      {/* Inferno Flames */}
+      {type === 'inferno' && (
+        <group position={[0, 1.5, 0]}>
+          <Sphere args={[0.3, 8, 8]} position={[0, 0.5, 0]}>
+            <meshStandardMaterial color="#ff4400" transparent opacity={0.4} emissive="#ff4400" emissiveIntensity={2} />
+          </Sphere>
+        </group>
+      )}
 
       {/* Arms (Classic reach pose) */}
       <group position={[0.35, 1.5, 0]}>
         <Box args={[0.18, 0.18, 0.4]} position={[0, 0, 0.2]}>
-          <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} />
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} roughness={0.9} />
         </Box>
         <Box args={[0.15, 0.15, 0.4]} position={[0, 0, 0.55]}>
-          <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} />
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} roughness={0.8} />
         </Box>
+        {/* Fingers/Claws */}
+        <Box args={[0.05, 0.05, 0.15]} position={[0.05, 0, 0.75]}><meshStandardMaterial color="#222" /></Box>
+        <Box args={[0.05, 0.05, 0.15]} position={[-0.05, 0, 0.75]}><meshStandardMaterial color="#222" /></Box>
       </group>
       
       <group position={[-0.35, 1.5, 0]}>
         <Box args={[0.18, 0.18, 0.4]} position={[0, 0, 0.2]}>
-          <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} />
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : clothingColor} roughness={0.9} />
         </Box>
         <Box args={[0.15, 0.15, 0.4]} position={[0, 0, 0.55]}>
-          <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} />
+          <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : skinColor} roughness={0.8} />
         </Box>
+        {/* Fingers/Claws */}
+        <Box args={[0.05, 0.05, 0.15]} position={[0.05, 0, 0.75]}><meshStandardMaterial color="#222" /></Box>
+        <Box args={[0.05, 0.05, 0.15]} position={[-0.05, 0, 0.75]}><meshStandardMaterial color="#222" /></Box>
       </group>
 
       {/* Legs */}
       <Box args={[0.22, 0.8, 0.22]} position={[0.15, 0.4, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : '#1a1a1a'} />
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : '#1a1a1a'} roughness={0.9} />
       </Box>
       <Box args={[0.22, 0.8, 0.22]} position={[-0.15, 0.4, 0]}>
-        <meshLambertMaterial color={hitFlash > 0 ? '#ff0000' : '#1a1a1a'} />
+        <meshStandardMaterial color={hitFlash > 0 ? '#ff0000' : '#1a1a1a'} roughness={0.9} />
       </Box>
       
       {/* Blood Splatters */}
       <Box args={[0.2, 0.2, 0.41]} position={[0.1, 1.3, 0.01]}>
-        <meshLambertMaterial color="#500" />
+        <meshStandardMaterial color="#500" roughness={1} />
       </Box>
       <Box args={[0.15, 0.3, 0.46]} position={[-0.1, 1.8, 0.01]}>
-        <meshLambertMaterial color="#500" />
+        <meshStandardMaterial color="#500" roughness={1} />
       </Box>
     </group>
   );

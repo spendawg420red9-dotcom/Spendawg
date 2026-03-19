@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import Stripe from 'stripe';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,59 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Stripe
+  let stripeClient: Stripe | null = null;
+
+  function getStripe(): Stripe {
+    if (!stripeClient) {
+      const key = process.env.STRIPE_SECRET_KEY;
+      if (!key) {
+        throw new Error('STRIPE_SECRET_KEY environment variable is required');
+      }
+      stripeClient = new Stripe(key, {
+        apiVersion: '2026-02-25.clover',
+      });
+    }
+    return stripeClient;
+  }
+
+  app.post("/api/create-checkout-session", async (req, res) => {
+    const { priceId } = req.body;
+    
+    const products: Record<string, { name: string, amount: number }> = {
+      'points_1000': { name: '1000 Shop Points', amount: 250 },
+      'points_7500': { name: '7500 Shop Points', amount: 1000 },
+    };
+
+    const product = products[priceId];
+    if (!product) {
+      return res.status(400).json({ error: 'Invalid price ID' });
+    }
+
+    try {
+      const session = await getStripe().checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: 'gbp',
+            product_data: {
+              name: product.name,
+            },
+            unit_amount: product.amount,
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${process.env.APP_URL}/shop?success=true`,
+        cancel_url: `${process.env.APP_URL}/shop?canceled=true`,
+      });
+      res.json({ id: session.id });
+    } catch (error) {
+      console.error('Stripe error:', error);
+      res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+  });
 
   // In-memory data
   const rooms: Record<string, {

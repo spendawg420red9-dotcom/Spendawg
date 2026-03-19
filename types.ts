@@ -11,7 +11,8 @@ export enum GameStatus {
   ACHIEVEMENTS = 'ACHIEVEMENTS',
   CUSTOM_GAME = 'CUSTOM_GAME',
   LOBBY = 'LOBBY',
-  LOADOUT = 'LOADOUT'
+  LOADOUT = 'LOADOUT',
+  SHOP = 'SHOP'
 }
 
 export type GameMode = 'standard' | 'dead_ops' | 'multiplayer' | 'story' | 'multiplayer_ffa' | 'multiplayer_tdm';
@@ -42,6 +43,8 @@ export interface ScoreEntry {
   rankMasteryStars?: number;
   level?: number;
   rankMastery?: number;
+  equippedCallingCard?: string;
+  emblem?: EmblemLayer[];
 }
 
 export interface PlayerStats {
@@ -276,6 +279,31 @@ export interface PlayerScore {
   team?: number;
 }
 
+export interface EmblemLayer {
+  id: string;
+  icon: string;
+  color: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+}
+
+export interface ShopItems {
+  callingCards: string[];
+  camos: WeaponCamo[];
+  clothes: string[];
+  finisherMoves: string[];
+  hats: string[];
+  glasses: string[];
+  masks: string[];
+  helmets: string[];
+  chest: string[];
+  boots: string[];
+  gloves: string[];
+  danceMoves: string[];
+}
+
 export interface PlayerProfile {
   nickname: string;
   clanTag: string; // Up to 5 characters
@@ -299,8 +327,26 @@ export interface PlayerProfile {
     avatarVariant: number;
     bodyColor?: string;
     clothesColor?: string;
+    clothesStyle?: string;
     headAccessory?: string;
+    equippedCallingCard?: string;
+    victoryPose?: string;
+    finisherMove?: string;
+    danceMove?: string;
+    emblem?: EmblemLayer[];
+    hat?: string;
+    glasses?: string;
+    mask?: string;
+    helmet?: string;
+    chest?: string;
+    boots?: string;
+    gloves?: string;
+    cape?: string;
+    kneePads?: string;
   };
+  unlockedCallingCards: string[];
+  shopItems: ShopItems;
+  shopPoints: number;
 }
 
 export interface Progression {
@@ -312,7 +358,9 @@ export interface Progression {
   weaponXp?: Record<string, number>;
   totalKills?: number;
   totalRevives?: number;
+  killsSinceLastReward?: number;
   profile?: PlayerProfile;
+  isUnlockedAll?: boolean;
 }
 
 export const DEFAULT_PROFILE: PlayerProfile = {
@@ -338,6 +386,41 @@ export const DEFAULT_PROFILE: PlayerProfile = {
     avatarVariant: 0,
     bodyColor: '#ffffff',
     clothesColor: '#333333',
+    clothesStyle: 'default',
     headAccessory: 'none',
+    equippedCallingCard: 'default',
+    victoryPose: 'Standard Salute',
+    finisherMove: 'Tactical Takedown',
   },
+  unlockedCallingCards: ['default'],
+  shopItems: {
+    callingCards: ['default'],
+    camos: ['none'],
+    clothes: ['default'],
+    finisherMoves: ['Tactical Takedown'],
+    hats: ['none'],
+    glasses: ['none'],
+    masks: ['none'],
+    helmets: ['none'],
+    chest: ['none'],
+    boots: ['none'],
+    gloves: ['none'],
+    danceMoves: ['none'],
+  },
+  shopPoints: 0,
 };
+
+export const MAX_LEVEL = 50;
+
+export const ACHIEVEMENTS_LIST: Achievement[] = [
+  { id: 'first_kill', name: 'First Blood', description: 'Get your first kill', icon: '⚔️', category: 'combat' },
+  { id: 'round_5', name: 'Survivor', description: 'Reach round 5', icon: '🛡️', category: 'progression' },
+  { id: 'round_10', name: 'Veteran', description: 'Reach round 10', icon: '🎖️', category: 'progression' },
+  { id: 'round_20', name: 'Legend', description: 'Reach round 20', icon: '👑', category: 'progression' },
+  { id: 'boss_killer', name: 'Boss Slayer', description: 'Defeat a boss', icon: '💀', category: 'combat' },
+  { id: 'gem_collector', name: 'Gem Hoarder', description: 'Collect 100 gems', icon: '💎', category: 'progression' },
+  { id: 'shopaholic', name: 'Shopaholic', description: 'Spend 1000 shop points', icon: '🛍️', category: 'progression' },
+  { id: 'dance_master', name: 'Dance Master', description: 'Purchase 5 dance moves', icon: '💃', category: 'progression' },
+  { id: 'finisher_pro', name: 'Finisher Pro', description: 'Purchase 3 finisher moves', icon: '💥', category: 'progression' },
+];
+

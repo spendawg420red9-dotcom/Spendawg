@@ -1,13 +1,8 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { Server } from "socket.io";
 import http from "http";
 import path from "path";
-import { fileURLToPath } from "url";
 import Stripe from 'stripe';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -24,7 +19,7 @@ async function startServer() {
     pingTimeout: 60000,
     pingInterval: 25000
   });
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || "3000", 10);
 
   app.use(express.json());
 
@@ -261,15 +256,17 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get(/(.*)/, (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 

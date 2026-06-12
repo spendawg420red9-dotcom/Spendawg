@@ -39,7 +39,7 @@ export const getRoundLore = async (round: number): Promise<string> => {
 
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3.5-flash',
       contents: `Generate a very short (max 12 words) cryptic, dark message for a survivor in a zombie apocalypse starting round ${round}. Something like 'The fog thickens...' or 'They smell your fear.'`,
     });
     

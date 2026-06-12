@@ -14,7 +14,7 @@ import { getRoundLore } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { MAPS } from './maps';
 import { io, Socket } from 'socket.io-client';
-import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, Unlock, UserPlus, Users, MessageSquare, MousePointer2, Move } from 'lucide-react';
+import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, ChevronRight, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, Unlock, UserPlus, Users, MessageSquare, MousePointer2, Move, Cpu } from 'lucide-react';
 
 const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate: number, color: string, speed: number, reload: number, description?: string, unlockLevel?: number }> = {
   'M1911': { clip: 8, max: 80, damage: 65, rate: 200, color: '#999', speed: 0.1, reload: 1500, unlockLevel: 1 },
@@ -258,29 +258,29 @@ const getRankMasteryColor = (rankMastery: number) => {
   }
 };
 
-const MAP_CHALLENGES: Record<string, { id: string, desc: string, target: number, type: 'round' | 'headshots' | 'points' | 'knife' | 'revives' | 'kills' }[]> = {
+const MAP_CHALLENGES: Record<string, { id: string, desc: string, target: number, type: 'round' | 'headshots' | 'points' | 'knife' | 'revives' | 'kills', reward: number }[]> = {
   'town': [
-    { id: 'survive_10', desc: 'Survive 10 Rounds', target: 10, type: 'round' },
-    { id: 'headshots_50', desc: 'Get 50 Headshots', target: 50, type: 'headshots' },
-    { id: 'points_10k', desc: 'Earn 10,000 Points', target: 10000, type: 'points' },
+    { id: 'survive_10', desc: 'Survive 10 Rounds', target: 10, type: 'round', reward: 35 },
+    { id: 'headshots_50', desc: 'Get 50 Headshots', target: 50, type: 'headshots', reward: 40 },
+    { id: 'points_10k', desc: 'Earn 10,000 Points', target: 10000, type: 'points', reward: 30 },
   ],
   'bunker': [
-    { id: 'survive_15', desc: 'Survive 15 Rounds', target: 15, type: 'round' },
-    { id: 'knife_20', desc: 'Get 20 Knife Kills', target: 20, type: 'knife' },
+    { id: 'survive_15', desc: 'Survive 15 Rounds', target: 15, type: 'round', reward: 50 },
+    { id: 'knife_20', desc: 'Get 20 Knife Kills', target: 20, type: 'knife', reward: 45 },
   ],
   'mukkatown': [
-    { id: 'survive_20', desc: 'Survive 20 Rounds', target: 20, type: 'round' },
-    { id: 'revive_5', desc: 'Revive 5 times', target: 5, type: 'revives' },
+    { id: 'survive_20', desc: 'Survive 20 Rounds', target: 20, type: 'round', reward: 60 },
+    { id: 'revive_5', desc: 'Revive 5 times', target: 5, type: 'revives', reward: 40 },
   ],
   'king_robbos_farm': [
-    { id: 'survive_15', desc: 'Survive 15 Rounds', target: 15, type: 'round' },
-    { id: 'kills_500', desc: 'Get 500 Kills', target: 500, type: 'kills' },
+    { id: 'survive_15', desc: 'Survive 15 Rounds', target: 15, type: 'round', reward: 50 },
+    { id: 'kills_500', desc: 'Get 500 Kills', target: 500, type: 'kills', reward: 55 },
   ],
   'z-town': [
-    { id: 'survive_25', desc: 'Survive 25 Rounds', target: 25, type: 'round' },
-    { id: 'headshots_100', desc: 'Get 100 Headshots', target: 100, type: 'headshots' },
-    { id: 'points_50k', desc: 'Earn 50,000 Points', target: 50000, type: 'points' },
-    { id: 'knife_50', desc: 'Get 50 Knife Kills', target: 50, type: 'knife' },
+    { id: 'survive_25', desc: 'Survive 25 Rounds', target: 25, type: 'round', reward: 100 },
+    { id: 'headshots_100', desc: 'Get 100 Headshots', target: 100, type: 'headshots', reward: 80 },
+    { id: 'points_50k', desc: 'Earn 50,000 Points', target: 50000, type: 'points', reward: 75 },
+    { id: 'knife_50', desc: 'Get 50 Knife Kills', target: 50, type: 'knife', reward: 90 },
   ]
 };
 
@@ -393,6 +393,7 @@ const INITIAL_GAME_SETTINGS: GameSettings = {
   musicEnabled: true,
   customMusicUrl: '',
   customPlaylist: [],
+  batterySaver: false,
 };
 
 const INITIAL_GAMEPAD_SETTINGS: GamepadSettings = {
@@ -441,6 +442,8 @@ const INITIAL_KEYBIND_SETTINGS: KeybindSettings = {
   pause: 'escape',
   shoot: 'mouse0',
   aim: 'mouse1',
+  dance: 'x',
+  finisher: 'z',
 };
 
 const GunModel = ({ color, isPap, name }: { color: string, isPap: boolean, name: string }) => {
@@ -960,8 +963,8 @@ const Worm3D = () => {
 const Enemy3DViewer = ({ type }: { type: string }) => {
   return (
     <div className="w-full h-[400px] bg-black/40 rounded-sm border border-white/10 relative overflow-hidden">
-      <Canvas shadows camera={{ position: [0, 2, 10], fov: 50 }}>
-        <Stage intensity={0.5} environment="city" adjustCamera={false}>
+      <Canvas camera={{ position: [0, 2, 10], fov: 50 }}>
+        <Stage intensity={0.5} environment="city" adjustCamera={false} shadows={false}>
           <Suspense fallback={null}>
             {type === 'normal' && <Zombie3D variant="normal" />}
             {type === 'runner' && <Zombie3D variant="runner" />}
@@ -986,149 +989,47 @@ const Enemy3DViewer = ({ type }: { type: string }) => {
 };
 
 const Player3DViewer = ({ profile }: { profile: any }) => {
-  const bodyColor = profile.bodyColor || '#ffffff';
-  const clothesColor = profile.clothesColor || '#333333';
-  const { hat, glasses, mask, helmet, chest, boots, gloves } = profile;
-
-  return (
-    <div className="w-full h-[400px] bg-black/40 rounded-sm border border-white/10 relative overflow-hidden">
-      <Canvas shadows camera={{ position: [0, 2, 10], fov: 50 }}>
-        <Stage intensity={0.5} environment="city" adjustCamera={false}>
-          <Suspense fallback={null}>
-            <group>
-              {/* Torso */}
-              <Box args={[0.6, 0.9, 0.4]} position={[0, 1.25, 0]}>
-                <meshStandardMaterial color={clothesColor} roughness={0.9} />
-              </Box>
-              
-              {/* Chest Accessory */}
-              {chest !== 'none' && (
-                <Box args={[0.65, 0.6, 0.45]} position={[0, 1.3, 0]}>
-                  <meshStandardMaterial color={chest === 'plate_carrier' ? '#4a5568' : chest === 'heavy_armor' ? '#2d3748' : '#718096'} roughness={0.7} metalness={0.5} />
-                </Box>
-              )}
-
-              {/* Head */}
-              <Box args={[0.4, 0.45, 0.45]} position={[0, 1.9, 0]}>
-                <meshStandardMaterial color={bodyColor} roughness={0.8} />
-              </Box>
-
-              {/* Hat */}
-              {hat !== 'none' && (
-                <Box args={[0.45, 0.1, 0.5]} position={[0, 2.15, 0]}>
-                  <meshStandardMaterial color={hat === 'baseball_cap' ? '#e53e3e' : hat === 'beanie' ? '#3182ce' : '#1a202c'} roughness={0.9} />
-                </Box>
-              )}
-
-              {/* Glasses */}
-              {glasses !== 'none' && (
-                <Box args={[0.42, 0.1, 0.1]} position={[0, 1.95, 0.23]}>
-                  <meshStandardMaterial color="#000000" roughness={0.2} metalness={0.8} />
-                </Box>
-              )}
-
-              {/* Mask */}
-              {mask !== 'none' && (
-                <Box args={[0.42, 0.2, 0.1]} position={[0, 1.8, 0.23]}>
-                  <meshStandardMaterial color={mask === 'bandana' ? '#e53e3e' : mask === 'gas_mask' ? '#4a5568' : '#cbd5e0'} roughness={0.9} />
-                </Box>
-              )}
-
-              {/* Helmet */}
-              {helmet !== 'none' && (
-                <Box args={[0.45, 0.5, 0.5]} position={[0, 1.95, 0]}>
-                  <meshStandardMaterial color={helmet === 'combat_helmet' ? '#4a5568' : helmet === 'swat_helmet' ? '#1a202c' : '#e2e8f0'} roughness={0.6} metalness={0.4} />
-                </Box>
-              )}
-
-              {/* Arms */}
-              <Box args={[0.18, 0.8, 0.18]} position={[0.4, 1.3, 0]}>
-                <meshStandardMaterial color={clothesColor} />
-              </Box>
-              <Box args={[0.18, 0.8, 0.18]} position={[-0.4, 1.3, 0]}>
-                <meshStandardMaterial color={clothesColor} />
-              </Box>
-
-              {/* Gloves */}
-              {gloves !== 'none' && (
-                <>
-                  <Box args={[0.2, 0.2, 0.2]} position={[0.4, 0.85, 0]}>
-                    <meshStandardMaterial color={gloves === 'tactical_gloves' ? '#1a202c' : '#4a5568'} roughness={0.8} />
-                  </Box>
-                  <Box args={[0.2, 0.2, 0.2]} position={[-0.4, 0.85, 0]}>
-                    <meshStandardMaterial color={gloves === 'tactical_gloves' ? '#1a202c' : '#4a5568'} roughness={0.8} />
-                  </Box>
-                </>
-              )}
-
-              {/* Legs */}
-              <Box args={[0.22, 0.8, 0.22]} position={[0.15, 0.4, 0]}>
-                <meshStandardMaterial color={clothesColor} />
-              </Box>
-              <Box args={[0.22, 0.8, 0.22]} position={[-0.15, 0.4, 0]}>
-                <meshStandardMaterial color={clothesColor} />
-              </Box>
-
-              {/* Boots */}
-              {boots !== 'none' && (
-                <>
-                  <Box args={[0.25, 0.3, 0.3]} position={[0.15, 0.15, 0.05]}>
-                    <meshStandardMaterial color={boots === 'combat_boots' ? '#1a202c' : '#4a5568'} roughness={0.9} />
-                  </Box>
-                  <Box args={[0.25, 0.3, 0.3]} position={[-0.15, 0.15, 0.05]}>
-                    <meshStandardMaterial color={boots === 'combat_boots' ? '#1a202c' : '#4a5568'} roughness={0.9} />
-                  </Box>
-                </>
-              )}
-            </group>
-          </Suspense>
-        </Stage>
-        <OrbitControls enablePan={false} enableZoom={true} minDistance={5} maxDistance={20} autoRotate />
-      </Canvas>
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1 rounded-full border border-white/20 text-[10px] text-white/60 font-black uppercase tracking-widest pointer-events-none">
-        Drag to Rotate • Scroll to Zoom
-      </div>
-    </div>
-  );
+  return <Player3DViewerComponent customization={profile} />;
 };
 
 const ACHIEVEMENTS: Achievement[] = [
-  { id: 'red9_hero', name: 'Red9 Hero', description: 'Reach round 20 on Red9', icon: '🏆', mapId: 'Red9', category: 'map' },
-  { id: 'red9_perkaholic', name: 'Perk-a-Holic (Red9)', description: 'Obtain all perks on Red9', icon: '🍺', mapId: 'Red9', category: 'map' },
-  { id: 'red9_pap', name: 'Upgrade Master', description: 'Upgrade a weapon on Red9', icon: '🔫', mapId: 'Red9', category: 'map' },
-  { id: 'farm_hand', name: 'Farm Hand', description: 'Reach round 20 on King Robbos farm', icon: '🚜', mapId: 'king_robbos_farm', category: 'map' },
-  { id: 'farm_perkaholic', name: 'Perk-a-Holic (King Robbos farm)', description: 'Obtain all perks on King Robbos farm', icon: '🍺', mapId: 'king_robbos_farm', category: 'map' },
-  { id: 'nuke_survivor', name: 'Nuclear Survivor', description: 'Reach round 25 on MUKKATOWN', icon: '☢️', mapId: 'mukkatown', category: 'map' },
-  { id: 'nuke_perkaholic', name: 'Perk-a-Holic (MUKKATOWN)', description: 'Obtain all perks on MUKKATOWN', icon: '🍺', mapId: 'mukkatown', category: 'map' },
-  { id: 'headshot_machine', name: 'Headshot Machine', description: 'Get 100 headshots in a single game', icon: '🎯', category: 'combat' },
-  { id: 'knife_only', name: 'Knife Only', description: 'Reach round 5 using only the knife', icon: '🔪', category: 'combat' },
-  { id: 'rank_mastery_10', name: 'Rank Mastery', description: 'Reach Rank Mastery 10', icon: '🌟', category: 'progression' },
-  { id: 'star_collector', name: 'Star Collector', description: 'Obtain your first Rank Mastery Star', icon: '⭐', category: 'progression' },
-  { id: 'red9_blessing', name: 'Red9 Blessing', description: 'Complete the Red9 Quest', icon: '💎', category: 'easter_egg' },
-  { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat the Map Boss', icon: '👹', category: 'combat' },
-  { id: 'round_50', name: 'Halfway There', description: 'Reach round 50', icon: '🔥', category: 'progression' },
-  { id: 'round_100', name: 'Centurion', description: 'Reach round 100', icon: '💯', category: 'progression' },
-  { id: 'millionaire', name: 'Millionaire', description: 'Earn 1,000,000 points in a single game', icon: '💰', category: 'progression' },
-  { id: 'zombie_slayer', name: 'Zombie Slayer', description: 'Kill 10,000 zombies total', icon: '💀', category: 'combat' },
-  { id: 'revive_master', name: 'Guardian Angel', description: 'Revive 50 players/bots total', icon: '👼', category: 'combat' },
-  { id: 'headshot_king', name: 'Headshot King', description: 'Get 1,000 headshots in a single game', icon: '👑', category: 'combat' },
-  { id: 'knife_master', name: 'Knife Master', description: 'Get 500 knife kills in a single game', icon: '⚔️', category: 'combat' },
-  { id: 'dance_machine', name: 'Dance Machine', description: 'Buy all dance moves', icon: '💃', category: 'progression' },
-  { id: 'shopaholic', name: 'Shopaholic', description: 'Spend 10,000 shop points', icon: '🛍️', category: 'progression' },
-  { id: 'boss_hunter', name: 'Boss Hunter', description: 'Kill 50 bosses', icon: '👹', category: 'combat' },
-  { id: 'first_blood', name: 'First Blood', description: 'Get your first kill', icon: '🩸', category: 'combat' },
-  { id: 'survivor_10', name: 'Survivor', description: 'Reach round 10', icon: '🛡️', category: 'progression' },
-  { id: 'survivor_25', name: 'Veteran Survivor', description: 'Reach round 25', icon: '🎖️', category: 'progression' },
-  { id: 'pack_a_punch_first', name: 'Power Up', description: 'Pack-a-Punch a weapon for the first time', icon: '⚡', category: 'progression' },
-  { id: 'perk_addict', name: 'Perk Addict', description: 'Have 4 perks active at the same time', icon: '🥤', category: 'progression' },
-  { id: 'sharp_shooter', name: 'Sharp Shooter', description: 'Get 50 headshots in a single game', icon: '🎯', category: 'combat' },
-  { id: 'boss_slayer_first', name: 'David vs Goliath', description: 'Kill your first boss', icon: '👹', category: 'combat' },
-  { id: 'melee_master', name: 'Melee Master', description: 'Get 100 melee kills in a single game', icon: '🔪', category: 'combat' },
-  { id: 'rich_kid', name: 'Rich Kid', description: 'Accumulate 50,000 points in a single game', icon: '💰', category: 'progression' },
-  { id: 'shop_spender', name: 'Big Spender', description: 'Spend 5,000 shop points', icon: '🛍️', category: 'progression' },
-  { id: 'fashionista', name: 'Fashionista', description: 'Buy 5 clothing items', icon: '👕', category: 'progression' },
-  { id: 'weapon_collector', name: 'Weapon Collector', description: 'Buy 5 weapon camos', icon: '🔫', category: 'progression' },
-  { id: 'emblem_creator', name: 'Artist', description: 'Save a custom emblem', icon: '🎨', category: 'progression' }
+  { id: 'red9_hero', name: 'Red9 Hero', description: 'Reach round 20 on Red9', icon: '🏆', mapId: 'Red9', category: 'map', reward: 150 },
+  { id: 'red9_perkaholic', name: 'Perk-a-Holic (Red9)', description: 'Obtain all perks on Red9', icon: '🍺', mapId: 'Red9', category: 'map', reward: 120 },
+  { id: 'red9_pap', name: 'Upgrade Master', description: 'Upgrade a weapon on Red9', icon: '🔫', mapId: 'Red9', category: 'map', reward: 100 },
+  { id: 'farm_hand', name: 'Farm Hand', description: 'Reach round 20 on King Robbos farm', icon: '🚜', mapId: 'king_robbos_farm', category: 'map', reward: 150 },
+  { id: 'farm_perkaholic', name: 'Perk-a-Holic (King Robbos farm)', description: 'Obtain all perks on King Robbos farm', icon: '🍺', mapId: 'king_robbos_farm', category: 'map', reward: 120 },
+  { id: 'nuke_survivor', name: 'Nuclear Survivor', description: 'Reach round 25 on MUKKATOWN', icon: '☢️', mapId: 'mukkatown', category: 'map', reward: 200 },
+  { id: 'nuke_perkaholic', name: 'Perk-a-Holic (MUKKATOWN)', description: 'Obtain all perks on MUKKATOWN', icon: '🍺', mapId: 'mukkatown', category: 'map', reward: 150 },
+  { id: 'headshot_machine', name: 'Headshot Machine', description: 'Get 100 headshots in a single game', icon: '🎯', category: 'combat', reward: 100 },
+  { id: 'knife_only', name: 'Knife Only', description: 'Reach round 5 using only the knife', icon: '🔪', category: 'combat', reward: 100 },
+  { id: 'rank_mastery_10', name: 'Rank Mastery', description: 'Reach Rank Mastery 10', icon: '🌟', category: 'progression', reward: 250 },
+  { id: 'star_collector', name: 'Star Collector', description: 'Obtain your first Rank Mastery Star', icon: '⭐', category: 'progression', reward: 150 },
+  { id: 'red9_blessing', name: 'Red9 Blessing', description: 'Complete the Red9 Quest', icon: '💎', category: 'easter_egg', reward: 300 },
+  { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat the Map Boss', icon: '👹', category: 'combat', reward: 120 },
+  { id: 'round_50', name: 'Halfway There', description: 'Reach round 50', icon: '🔥', category: 'progression', reward: 300 },
+  { id: 'round_100', name: 'Centurion', description: 'Reach round 100', icon: '💯', category: 'progression', reward: 500 },
+  { id: 'millionaire', name: 'Millionaire', description: 'Earn 1,000,000 points in a single game', icon: '💰', category: 'progression', reward: 250 },
+  { id: 'zombie_slayer', name: 'Zombie Slayer', description: 'Kill 10,000 zombies total', icon: '💀', category: 'combat', reward: 350 },
+  { id: 'revive_master', name: 'Guardian Angel', description: 'Revive 50 players/bots total', icon: '👼', category: 'combat', reward: 200 },
+  { id: 'headshot_king', name: 'Headshot King', description: 'Get 1,000 headshots in a single game', icon: '👑', category: 'combat', reward: 400 },
+  { id: 'knife_master', name: 'Knife Master', description: 'Get 500 knife kills in a single game', icon: '⚔️', category: 'combat', reward: 300 },
+  { id: 'dance_machine', name: 'Dance Machine', description: 'Buy all dance moves', icon: '💃', category: 'progression', reward: 150 },
+  { id: 'shopaholic', name: 'Shopaholic', description: 'Spend 10,000 shop points', icon: '🛍️', category: 'progression', reward: 200 },
+  { id: 'boss_hunter', name: 'Boss Hunter', description: 'Kill 50 bosses', icon: '👹', category: 'combat', reward: 250 },
+  { id: 'first_blood', name: 'First Blood', description: 'Get your first kill', icon: '🩸', category: 'combat', reward: 50 },
+  { id: 'survivor_10', name: 'Survivor', description: 'Reach round 10', icon: '🛡️', category: 'progression', reward: 80 },
+  { id: 'survivor_25', name: 'Veteran Survivor', description: 'Reach round 25', icon: '🎖️', category: 'progression', reward: 150 },
+  { id: 'pack_a_punch_first', name: 'Power Up', description: 'Pack-a-Punch a weapon for the first time', icon: '⚡', category: 'progression', reward: 100 },
+  { id: 'perk_addict', name: 'Perk Addict', description: 'Have 4 perks active at the same time', icon: '🥤', category: 'progression', reward: 80 },
+  { id: 'sharp_shooter', name: 'Sharp Shooter', description: 'Get 50 headshots in a single game', icon: '🎯', category: 'combat', reward: 60 },
+  { id: 'boss_slayer_first', name: 'David vs Goliath', description: 'Kill your first boss', icon: '👹', category: 'combat', reward: 80 },
+  { id: 'melee_master', name: 'Melee Master', description: 'Get 100 melee kills in a single game', icon: '🔪', category: 'combat', reward: 100 },
+  { id: 'rich_kid', name: 'Rich Kid', description: 'Accumulate 50,000 points in a single game', icon: '💰', category: 'progression', reward: 100 },
+  { id: 'shop_spender', name: 'Big Spender', description: 'Spend 5,000 shop points', icon: '🛍️', category: 'progression', reward: 120 },
+  { id: 'fashionista', name: 'Fashionista', description: 'Buy 5 clothing items', icon: '👕', category: 'progression', reward: 120 },
+  { id: 'weapon_collector', name: 'Weapon Collector', description: 'Buy 5 weapon camos', icon: '🔫', category: 'progression', reward: 120 },
+  { id: 'emblem_creator', name: 'Artist', description: 'Save a custom emblem', icon: '🎨', category: 'progression', reward: 50 },
+  { id: 'rip_tyler', name: 'RIP Tyler (Mushrooms) 🍄', description: 'I\'ll have some mushrooms waiting for you brother x', icon: '🍄', category: 'easter_egg', reward: 250 }
 ];
 
 const getLevelData = (totalXp: number) => {
@@ -1232,9 +1133,37 @@ const EMBLEM_SHAPES = [
 const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: EmblemLayer[], onSave: (emblem: EmblemLayer[]) => void, onClose: () => void }) => {
   const [layers, setLayers] = useState<EmblemLayer[]>(initialEmblem.length > 0 ? initialEmblem : []);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(layers.length > 0 ? layers[0].id : null);
+  const [draggingLayerId, setDraggingLayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (draggingLayerId) {
+        updateLayer(draggingLayerId, {
+          // Assuming 256x256 canvas, need to map pixel movement to layer movement. 
+          // For simple drag, e.movementX/Y works fine.
+          x: (layers.find(l => l.id === draggingLayerId)?.x || 0) + e.movementX,
+          y: (layers.find(l => l.id === draggingLayerId)?.y || 0) + e.movementY
+        });
+      }
+    };
+
+    const handlePointerUp = () => {
+      setDraggingLayerId(null);
+    };
+
+    if (draggingLayerId) {
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+    }
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [draggingLayerId, layers]);
 
   const addLayer = () => {
-    if (layers.length >= 100) return; // Max 100 layers
+    if (layers.length >= 150) return; // Max 150 layers
     const newLayer: EmblemLayer = {
       id: Math.random().toString(36).substring(2, 9),
       icon: EMBLEM_SHAPES[0],
@@ -1242,7 +1171,8 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
       x: 0,
       y: 0,
       scale: 1,
-      rotation: 0
+      rotation: 0,
+      opacity: 1
     };
     setLayers([newLayer, ...layers]);
     setSelectedLayerId(newLayer.id);
@@ -1278,36 +1208,44 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
     setLayers(newLayers);
   };
 
+  const [activeTab, setActiveTab] = useState<'canvas' | 'layers' | 'properties'>('canvas');
   const selectedLayer = layers.find(l => l.id === selectedLayerId);
 
   return (
-    <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-      <div className="bg-zinc-900 border border-white/10 rounded-xl w-full max-w-5xl h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+    <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/90 backdrop-blur-md p-0 sm:p-4">
+      <div className="bg-zinc-900 border border-white/10 rounded-none sm:rounded-xl w-full h-full sm:h-[80vh] sm:max-w-5xl flex flex-col overflow-hidden shadow-2xl">
         <div className="flex justify-between items-center p-4 border-b border-white/10 bg-zinc-950">
-          <h2 className="text-2xl font-black italic uppercase text-white">Emblem Editor</h2>
+          <h2 className="text-xl sm:text-2xl font-black italic uppercase text-white">Emblem Editor</h2>
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded font-bold uppercase text-sm transition-colors">Cancel</button>
-            <button onClick={() => onSave(layers)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-black italic uppercase text-sm transition-colors">Save Emblem</button>
+            <button onClick={onClose} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/5 hover:bg-white/10 text-white rounded font-bold uppercase text-xs sm:text-sm transition-colors">Cancel</button>
+            <button onClick={() => onSave(layers)} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-black italic uppercase text-xs sm:text-sm transition-colors">Save</button>
           </div>
         </div>
         
-        <div className="flex flex-1 overflow-hidden">
+        {/* Mobile Tabs */}
+        <div className="flex sm:hidden border-b border-white/10">
+          <button onClick={() => setActiveTab('canvas')} className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'canvas' ? 'bg-zinc-800 text-white' : 'text-white/40'}`}>Canvas</button>
+          <button onClick={() => setActiveTab('layers')} className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'layers' ? 'bg-zinc-800 text-white' : 'text-white/40'}`}>Layers</button>
+          <button onClick={() => setActiveTab('properties')} className={`flex-1 py-2 text-xs font-bold uppercase ${activeTab === 'properties' ? 'bg-zinc-800 text-white' : 'text-white/40'}`}>Props</button>
+        </div>
+        
+        <div className="flex flex-1 overflow-hidden relative">
           {/* Left Panel: Layers */}
-          <div className="w-64 bg-zinc-950 border-r border-white/10 flex flex-col">
+          <div className={`${activeTab === 'layers' ? 'absolute inset-0 z-10' : 'hidden'} sm:static sm:flex w-full sm:w-64 bg-zinc-950 border-r border-white/10 flex flex-col`}>
             <div className="p-4 border-b border-white/10 flex justify-between items-center">
-              <span className="text-white font-bold uppercase text-sm">Layers ({layers.length}/100)</span>
-              <button onClick={addLayer} disabled={layers.length >= 100} className="p-1 bg-white/10 hover:bg-white/20 rounded disabled:opacity-50 text-white"><PlusCircle size={16} /></button>
+              <span className="text-white font-bold uppercase text-sm">Layers ({layers.length}/150)</span>
+              <button onClick={addLayer} disabled={layers.length >= 150} className="p-1 bg-white/10 hover:bg-white/20 rounded disabled:opacity-50 text-white"><PlusCircle size={16} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-2">
               {layers.map((layer, index) => (
                 <div 
                   key={layer.id} 
-                  className={`flex items-center justify-between p-2 rounded cursor-pointer border ${selectedLayerId === layer.id ? 'bg-white/10 border-white/30' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
-                  onClick={() => setSelectedLayerId(layer.id)}
+                  className={`flex items-center justify-between p-2 rounded cursor-pointer border ${selectedLayerId === layer.id ? 'bg-emerald-900/50 border-emerald-500/50' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
+                  onClick={() => { setSelectedLayerId(layer.id); if (window.innerWidth < 640) setActiveTab('properties'); }}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-white font-black text-xl" style={{ color: layer.color }}>{layer.icon}</span>
-                    <span className="text-white/60 text-xs font-bold uppercase">Layer {layers.length - index}</span>
+                    <span className="text-white/60 text-xs font-bold uppercase">L{layers.length - index}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="flex flex-col">
@@ -1325,21 +1263,27 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
           </div>
 
           {/* Center Panel: Canvas */}
-          <div className="flex-1 flex items-center justify-center bg-zinc-900 p-8 relative overflow-hidden">
+          <div className={`${activeTab === 'canvas' ? 'flex' : 'hidden'} sm:flex flex-1 items-center justify-center bg-black p-4 sm:p-8 relative overflow-hidden`}>
             {/* Grid Background */}
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
             
             {/* Emblem Canvas */}
-            <div className="w-64 h-64 bg-zinc-800 rounded-lg shadow-2xl relative overflow-hidden border-2 border-white/20 flex items-center justify-center">
+            <div className="w-full max-w-[256px] h-[256px] bg-zinc-800 rounded-lg shadow-2xl relative overflow-hidden border-2 border-white/20 flex items-center justify-center">
               {/* Render layers from bottom to top (reverse order of array) */}
               {[...layers].reverse().map(layer => (
                 <div 
                   key={layer.id} 
-                  className={`absolute flex items-center justify-center ${selectedLayerId === layer.id ? 'ring-1 ring-white/50 ring-offset-1 ring-offset-zinc-800' : ''}`}
+                  className={`absolute flex items-center justify-center cursor-move touch-none ${selectedLayerId === layer.id ? 'ring-2 ring-emerald-500' : ''}`}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setSelectedLayerId(layer.id);
+                    setDraggingLayerId(layer.id);
+                  }}
                   style={{
                     color: layer.color,
+                    opacity: layer.opacity ?? 1,
                     transform: `translate(${layer.x}px, ${layer.y}px) scale(${layer.scale}) rotate(${layer.rotation}deg)`,
-                    transition: 'transform 0.1s ease-out'
+                    transition: 'none'
                   }}
                 >
                   <span className="font-black" style={{ fontSize: '100px', lineHeight: 1, fontFamily: 'sans-serif' }}>{layer.icon}</span>
@@ -1349,7 +1293,7 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
           </div>
 
           {/* Right Panel: Properties */}
-          <div className="w-72 bg-zinc-950 border-l border-white/10 flex flex-col">
+          <div className={`${activeTab === 'properties' ? 'absolute inset-0 z-10' : 'hidden'} sm:static sm:flex w-full sm:w-72 bg-zinc-950 border-l border-white/10 flex flex-col`}>
             <div className="p-4 border-b border-white/10">
               <span className="text-white font-bold uppercase text-sm">Properties</span>
             </div>
@@ -1359,12 +1303,12 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
                   {/* Shape Selection */}
                   <div>
                     <label className="block text-xs font-bold text-zinc-400 uppercase mb-2">Shape</label>
-                    <div className="grid grid-cols-5 gap-1">
-                      {EMBLEM_SHAPES.map(shape => (
+                    <div className="grid grid-cols-6 sm:grid-cols-5 gap-1">
+                      {EMBLEM_SHAPES.map((shape, index) => (
                         <button 
-                          key={shape}
+                          key={`${shape}-${index}`}
                           onClick={() => updateLayer(selectedLayer.id, { icon: shape })}
-                          className={`h-10 flex items-center justify-center text-xl rounded ${selectedLayer.icon === shape ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'}`}
+                          className={`h-8 sm:h-10 flex items-center justify-center text-sm sm:text-xl rounded ${selectedLayer.icon === shape ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'}`}
                         >
                           {shape}
                         </button>
@@ -1379,8 +1323,30 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
                       type="color" 
                       value={selectedLayer.color} 
                       onChange={(e) => updateLayer(selectedLayer.id, { color: e.target.value })}
-                      className="w-full h-10 rounded cursor-pointer bg-zinc-800 border-none"
+                      className="w-full h-16 rounded cursor-pointer bg-zinc-800 border-none"
                     />
+                  </div>
+
+                  {/* Position */}
+                  <div className="bg-zinc-900 p-3 rounded-lg border border-white/5">
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-3 text-center">Move & Rotate</label>
+                    <div className="flex flex-col items-center gap-2">
+                       <div className="flex gap-2">
+                          <button onClick={() => updateLayer(selectedLayer.id, { y: selectedLayer.y - 10 })} className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded"><ChevronUp size={20} /></button>
+                       </div>
+                       <div className="flex gap-2">
+                          <button onClick={() => updateLayer(selectedLayer.id, { x: selectedLayer.x - 10 })} className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded"><ChevronLeft size={20} /></button>
+                          <div className="flex items-center justify-center p-3 text-white/50 text-2xl font-black">✥</div>
+                          <button onClick={() => updateLayer(selectedLayer.id, { x: selectedLayer.x + 10 })} className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded"><ChevronRight size={20} /></button>
+                       </div>
+                       <div className="flex gap-2">
+                          <button onClick={() => updateLayer(selectedLayer.id, { y: selectedLayer.y + 10 })} className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded"><ChevronDown size={20} /></button>
+                       </div>
+                       <div className="flex gap-2 mt-2 w-full">
+                          <button onClick={() => updateLayer(selectedLayer.id, { rotation: selectedLayer.rotation - 45 })} className="flex-1 p-2 bg-zinc-800 hover:bg-zinc-700 rounded text-xs font-bold uppercase">Rotate L</button>
+                          <button onClick={() => updateLayer(selectedLayer.id, { rotation: selectedLayer.rotation + 45 })} className="flex-1 p-2 bg-zinc-800 hover:bg-zinc-700 rounded text-xs font-bold uppercase">Rotate R</button>
+                       </div>
+                    </div>
                   </div>
 
                   {/* Position X */}
@@ -1439,6 +1405,21 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
                       min="0" max="360" 
                       value={selectedLayer.rotation} 
                       onChange={(e) => updateLayer(selectedLayer.id, { rotation: parseInt(e.target.value) })}
+                      className="w-full accent-emerald-500"
+                    />
+                  </div>
+
+                  {/* Opacity */}
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <label className="text-xs font-bold text-zinc-400 uppercase">Opacity</label>
+                      <span className="text-xs text-white/60 font-mono">{(selectedLayer.opacity ?? 1).toFixed(2)}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" max="1" step="0.05"
+                      value={selectedLayer.opacity ?? 1} 
+                      onChange={(e) => updateLayer(selectedLayer.id, { opacity: parseFloat(e.target.value) })}
                       className="w-full accent-emerald-500"
                     />
                   </div>
@@ -1773,6 +1754,85 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [joinRoomId, setJoinRoomId] = useState('');
   const [leaderboardTab, setLeaderboardTab] = useState<'personal' | 'friends' | 'world'>('personal');
+  
+  // Persistent Unique Device User ID
+  const [deviceId, setDeviceId] = useState<string>(() => {
+    let saved = localStorage.getItem('ztown_device_uuid');
+    if (!saved) {
+      saved = 'Z-' + Math.floor(100000 + Math.random() * 900000);
+      localStorage.setItem('ztown_device_uuid', saved);
+    }
+    return saved;
+  });
+
+  // Track online devices and incoming game invites from others
+  const [activeDevices, setActiveDevices] = useState<any[]>([]);
+  const [incomingInvite, setIncomingInvite] = useState<{ roomId: string, senderName: string } | null>(null);
+
+  const [isFacebookConnected, setIsFacebookConnected] = useState<boolean>(() => {
+    return localStorage.getItem('ztown_fb_connected') === 'true';
+  });
+  const [isContactsConnected, setIsContactsConnected] = useState<boolean>(() => {
+    return localStorage.getItem('ztown_contacts_connected') === 'true';
+  });
+  const [manualFriends, setManualFriends] = useState<any[]>(() => {
+    const saved = localStorage.getItem('ztown_manual_friends');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [socialLoading, setSocialLoading] = useState<{ type: 'facebook' | 'contacts' | null, message: string }>({ type: null, message: '' });
+  const [showAddFriendManualModal, setShowAddFriendManualModal] = useState(false);
+  const [addFriendTab, setAddFriendTab] = useState<'real' | 'simulated'>('real');
+  const [newFriendName, setNewFriendName] = useState('');
+  const [newFriendLevel, setNewFriendLevel] = useState('24');
+  const [newFriendRound, setNewFriendRound] = useState('15');
+  const [newFriendKills, setNewFriendKills] = useState('320');
+
+  const handleFacebookLogin = useCallback(() => {
+    if (isFacebookConnected) {
+      setConfirmModal({
+        message: 'Disconnect Facebook account? Your friends\' scores will be hidden.',
+        onConfirm: () => {
+          setIsFacebookConnected(false);
+          localStorage.removeItem('ztown_fb_connected');
+          soundService.playPowerUpPickup();
+        }
+      });
+      return;
+    }
+    
+    setSocialLoading({ type: 'facebook', message: 'Connecting to Facebook accounts...' });
+    soundService.playPowerUpPickup();
+    setTimeout(() => {
+      setIsFacebookConnected(true);
+      localStorage.setItem('ztown_fb_connected', 'true');
+      setSocialLoading({ type: null, message: '' });
+      soundService.playPowerUpPickup();
+    }, 1500);
+  }, [isFacebookConnected]);
+
+  const handleConnectContacts = useCallback(() => {
+    if (isContactsConnected) {
+      setConfirmModal({
+        message: 'Disconnect contacts list? Your contacts\' scores will be hidden.',
+        onConfirm: () => {
+          setIsContactsConnected(false);
+          localStorage.removeItem('ztown_contacts_connected');
+          soundService.playPowerUpPickup();
+        }
+      });
+      return;
+    }
+    
+    setSocialLoading({ type: 'contacts', message: 'Scanning local contacts & syncing...' });
+    soundService.playPowerUpPickup();
+    setTimeout(() => {
+      setIsContactsConnected(true);
+      localStorage.setItem('ztown_contacts_connected', 'true');
+      setSocialLoading({ type: null, message: '' });
+      soundService.playPowerUpPickup();
+    }, 1500);
+  }, [isContactsConnected]);
+
   const [worldLeaderboard, setWorldLeaderboard] = useState<any[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [syncedZombies, setSyncedZombies] = useState<any[] | null>(null);
@@ -1816,8 +1876,12 @@ const App: React.FC = () => {
       stars: isNaN(p.stars) ? 0 : (p.stars || 0), 
       achievements: Array.isArray(p.achievements) ? p.achievements : [], 
       weaponAttachments: p.weaponAttachments || {},
+      weaponXp: p.weaponXp || {},
       totalKills: isNaN(p.totalKills) ? 0 : (p.totalKills || 0),
-      totalRevives: isNaN(p.totalRevives) ? 0 : (p.totalRevives || 0)
+      totalRevives: isNaN(p.totalRevives) ? 0 : (p.totalRevives || 0),
+      killsSinceLastReward: isNaN(p.killsSinceLastReward) ? 0 : (p.killsSinceLastReward || 0),
+      profile: p.profile || DEFAULT_PROFILE,
+      isUnlockedAll: !!p.isUnlockedAll
     };
   });
   const [isCustomGameSession, setIsCustomGameSession] = useState(false);
@@ -1866,12 +1930,31 @@ const App: React.FC = () => {
     if (isCustomGameSession) return;
     setProgression(prev => {
       if (prev.achievements.includes(id)) return prev;
-      const newP = { ...prev, achievements: [...prev.achievements, id] };
-      localStorage.setItem('ztown_progression', JSON.stringify(newP));
       
       const achievement = ACHIEVEMENTS.find(a => a.id === id);
+      const reward = achievement?.reward || 50;
+      const profile = prev.profile || { ...DEFAULT_PROFILE };
+      const nextShopPoints = (profile.shopPoints || 0) + reward;
+      const nextTotalGems = (profile.totalGems || 0) + reward;
+      
+      const newP = {
+        ...prev,
+        achievements: [...prev.achievements, id],
+        profile: {
+          ...profile,
+          shopPoints: nextShopPoints,
+          totalGems: nextTotalGems
+        }
+      };
+      
+      localStorage.setItem('ztown_progression', JSON.stringify(newP));
+      
       if (achievement) {
-        setAchievementNotif({ name: achievement.name, icon: achievement.icon, show: true });
+        setAchievementNotif({ 
+          name: `${achievement.name} (+${reward} Gems 💎)`, 
+          icon: achievement.icon, 
+          show: true 
+        });
         soundService.playPowerUpPickup();
         setTimeout(() => setAchievementNotif(prev => ({ ...prev, show: false })), 5000);
       }
@@ -1990,7 +2073,20 @@ const App: React.FC = () => {
   const [teleportTarget, setTeleportTarget] = useState<THREE.Vector3 | null>(null);
   const [selectedWeaponInfo, setSelectedWeaponInfo] = useState<string | null>(null);
   const [previewMove, setPreviewMove] = useState<string | null>(null);
+  const [showMovesModal, setShowMovesModal] = useState(false);
   const [previewType, setPreviewType] = useState<'dance' | 'finisher'>('dance');
+  const [activeMove, setActiveMove] = useState<{ type: 'dance' | 'finisher', name: string } | null>(null);
+  const [isDoingMove, setIsDoingMove] = useState(false);
+
+  const triggerMove = (type: 'dance' | 'finisher', name: string) => {
+    setActiveMove({ type, name });
+    setIsDoingMove(true);
+    setTimeout(() => {
+      setIsDoingMove(false);
+      setActiveMove(null);
+    }, 3500); // 3.5s duration
+  };
+
 
   // Red9 Easter Egg State
   const [red9CurseActive, setRed9CurseActive] = useState(false);
@@ -2004,6 +2100,8 @@ const App: React.FC = () => {
   const [ztownBossStage, setZtownBossStage] = useState(0); // 0: dragon, 1: elephant, 2: ogre, 3: worm
   const [dragonHealth, setDragonHealth] = useState(250000); // 2500 * 100 (base zombie hp)
   const [bossDefeated, setBossDefeated] = useState(false);
+  const [tylerEasterEggTriggered, setTylerEasterEggTriggered] = useState(false);
+  const [rewardedChallenges, setRewardedChallenges] = useState<string[]>([]);
   
   const bossType = useMemo(() => {
     if (stats.activeMapId === 'town') return 'dragon';
@@ -2198,6 +2296,15 @@ const App: React.FC = () => {
       });
     });
 
+    newSocket.on('devices_updated', (deviceList) => {
+      setActiveDevices(deviceList);
+    });
+
+    newSocket.on('incoming_invite', (data) => {
+      setIncomingInvite(data);
+      soundService.playPowerUpPickup();
+    });
+
     newSocket.on('leaderboard_updated', (data) => {
       setWorldLeaderboard(data);
     });
@@ -2207,6 +2314,7 @@ const App: React.FC = () => {
     });
 
     newSocket.emit('get_leaderboard');
+    newSocket.emit('get_active_devices');
 
     return () => {
       newSocket.disconnect();
@@ -2563,6 +2671,239 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('ztown_leaderboard_v2');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Register and sync unique device status to server for tracking other players
+  useEffect(() => {
+    if (socket && deviceId) {
+      let currentActiveStatus = "Idle in Main Menu";
+      if (status === GameStatus.LOBBY) {
+        currentActiveStatus = `In Lobby: ${room?.id || 'Matchmaking'}`;
+      } else if (status === GameStatus.PLAYING) {
+        const mapName = MAPS.find(m => m.id === customGameConfig.mapId)?.name || customGameConfig.mapId;
+        currentActiveStatus = `Round ${stats.round || 1} on ${mapName}`;
+      } else if (status === GameStatus.GAMEOVER) {
+        currentActiveStatus = `Died on Round ${stats.round || 1}`;
+      }
+
+      socket.emit('register_device', {
+        userId: deviceId,
+        nickname: nickname || 'Survivor',
+        status: currentActiveStatus,
+        level: getLevelData(progression.xp).level,
+        highScores: leaderboard
+      });
+    }
+  }, [socket, deviceId, nickname, status, room, stats.round, customGameConfig.mapId, progression.xp, leaderboard]);
+
+  const getFriendsLeaderboardData = useCallback(() => {
+    const list: ScoreEntry[] = [];
+    
+    // 1. Add current player's personal high scores for the selected map
+    const myLeaderboard = leaderboard.filter(e => e.mapId === leaderboardMapId);
+    myLeaderboard.forEach(entry => {
+      list.push({
+        ...entry,
+        nickname: (entry.nickname || nickname || 'YOU') + ' (YOU)'
+      });
+    });
+    
+    // If we have no personal record on this map, add a default placeholder entry for YOU
+    if (myLeaderboard.length === 0) {
+      list.push({
+        nickname: (nickname || 'Player') + ' (YOU)',
+        round: 1,
+        kills: 0,
+        headshots: 0,
+        knifeKills: 0,
+        equipmentKills: 0,
+        gems: 0,
+        time: 0,
+        date: Date.now(),
+        mapId: leaderboardMapId,
+        level: getLevelData(progression.xp).level,
+        rankMastery: progression.rankMastery,
+        equippedCallingCard: progression.profile?.customization?.equippedCallingCard || 'default',
+        emblem: progression.profile?.customization?.emblem || []
+      });
+    }
+
+    // 2. Add Facebook friends (if connected)
+    if (isFacebookConnected) {
+      const fbPresets: { [key: string]: { nickname: string, round: number, kills: number, level: number }[] } = {
+        town: [
+          { nickname: 'Tyler', round: 35, kills: 1250, level: 55 },
+          { nickname: 'Spenda_Z', round: 28, kills: 890, level: 42 },
+          { nickname: 'Georgie', round: 21, kills: 450, level: 29 }
+        ],
+        bunker: [
+          { nickname: 'Tyler', round: 24, kills: 680, level: 55 },
+          { nickname: 'Spenda_Z', round: 19, kills: 520, level: 42 },
+          { nickname: 'Georgie', round: 12, kills: 230, level: 29 }
+        ],
+        mukkatown: [
+          { nickname: 'Tyler', round: 31, kills: 1100, level: 55 },
+          { nickname: 'Spenda_Z', round: 25, kills: 740, level: 42 },
+          { nickname: 'Georgie', round: 16, kills: 310, level: 29 }
+        ],
+        king_robbos_farm: [
+          { nickname: 'Tyler', round: 29, kills: 980, level: 55 },
+          { nickname: 'Spenda_Z', round: 22, kills: 640, level: 42 },
+          { nickname: 'Georgie', round: 14, kills: 270, level: 29 }
+        ],
+        'z-town': [
+          { nickname: 'Tyler', round: 40, kills: 1650, level: 55 },
+          { nickname: 'Spenda_Z', round: 32, kills: 1120, level: 42 },
+          { nickname: 'Georgie', round: 25, kills: 620, level: 29 }
+        ]
+      };
+      const mapPresets = fbPresets[leaderboardMapId] || [
+        { nickname: 'Tyler', round: 15, kills: 300, level: 55 },
+        { nickname: 'Spenda_Z', round: 12, kills: 210, level: 42 },
+        { nickname: 'Georgie', round: 8, kills: 110, level: 29 }
+      ];
+      mapPresets.forEach((p, idx) => {
+        list.push({
+          nickname: p.nickname,
+          round: p.round,
+          kills: p.kills,
+          headshots: Math.floor(p.kills * 0.3),
+          knifeKills: Math.floor(p.kills * 0.1),
+          equipmentKills: Math.floor(p.kills * 0.05),
+          gems: Math.floor(p.round * 10),
+          time: p.round * 120,
+          date: Date.now() - (idx + 1) * 24 * 3600 * 1000,
+          mapId: leaderboardMapId,
+          level: p.level,
+          rankMastery: Math.floor(p.level / 12),
+          equippedCallingCard: 'calling_card_galaxy',
+          emblem: []
+        });
+      });
+    }
+
+    // 3. Add Contacts friends (if connected)
+    if (isContactsConnected) {
+      const contactsPresets: { [key: string]: { nickname: string, round: number, kills: number, level: number }[] } = {
+        town: [
+          { nickname: 'Sarah', round: 26, kills: 780, level: 31 },
+          { nickname: 'Alex_99', round: 15, kills: 320, level: 18 },
+          { nickname: 'Danger Dave', round: 32, kills: 1100, level: 48 }
+        ],
+        bunker: [
+          { nickname: 'Sarah', round: 18, kills: 480, level: 31 },
+          { nickname: 'Alex_99', round: 11, kills: 190, level: 18 },
+          { nickname: 'Danger Dave', round: 24, kills: 690, level: 48 }
+        ],
+        mukkatown: [
+          { nickname: 'Sarah', round: 22, kills: 610, level: 31 },
+          { nickname: 'Alex_99', round: 14, kills: 270, level: 18 },
+          { nickname: 'Danger Dave', round: 28, kills: 850, level: 48 }
+        ],
+        king_robbos_farm: [
+          { nickname: 'Sarah', round: 19, kills: 520, level: 31 },
+          { nickname: 'Alex_99', round: 12, kills: 220, level: 18 },
+          { nickname: 'Danger Dave', round: 27, kills: 800, level: 48 }
+        ],
+        'z-town': [
+          { nickname: 'Sarah', round: 30, kills: 1020, level: 31 },
+          { nickname: 'Alex_99', round: 20, kills: 510, level: 18 },
+          { nickname: 'Danger Dave', round: 35, kills: 1350, level: 48 }
+        ]
+      };
+      const mapPresets = contactsPresets[leaderboardMapId] || [
+        { nickname: 'Sarah', round: 14, kills: 250, level: 31 },
+        { nickname: 'Alex_99', round: 9, kills: 120, level: 18 },
+        { nickname: 'Danger Dave', round: 18, kills: 410, level: 48 }
+      ];
+      mapPresets.forEach((p, idx) => {
+        list.push({
+          nickname: p.nickname,
+          round: p.round,
+          kills: p.kills,
+          headshots: Math.floor(p.kills * 0.28),
+          knifeKills: Math.floor(p.kills * 0.12),
+          equipmentKills: Math.floor(p.kills * 0.04),
+          gems: Math.floor(p.round * 8),
+          time: p.round * 130,
+          date: Date.now() - (idx + 3) * 24 * 3600 * 1000,
+          mapId: leaderboardMapId,
+          level: p.level,
+          rankMastery: Math.floor(p.level / 15),
+          equippedCallingCard: 'calling_card_lava',
+          emblem: []
+        });
+      });
+    }
+
+    // 4. Add Manual and Real Device Friends
+    manualFriends.forEach((f, idx) => {
+      if (f.isReal && f.userId) {
+        // Look up high scores for this friend's userId in the live worldLeaderboard
+        const friendScores = worldLeaderboard.filter(e => (e.userId === f.userId || e.nickname === f.nickname) && e.mapId === leaderboardMapId);
+        if (friendScores.length > 0) {
+          friendScores.forEach(score => {
+            list.push({
+              ...score,
+              nickname: f.nickname // Keep their user set custom alias / nickname
+            });
+          });
+        } else {
+          // If no recorded score, show a placeholder with their live active status
+          const activeDevice = activeDevices.find(d => d.userId === f.userId);
+          list.push({
+            userId: f.userId,
+            nickname: f.nickname,
+            round: activeDevice ? (activeDevice.status?.includes("Round") ? parseInt(activeDevice.status.match(/\d+/)?.[0] || "1") : 1) : 1,
+            kills: 0,
+            headshots: 0,
+            knifeKills: 0,
+            equipmentKills: 0,
+            gems: 0,
+            time: 0,
+            date: Date.now(),
+            mapId: leaderboardMapId,
+            level: activeDevice ? activeDevice.level : (f.level || 1),
+            rankMastery: Math.floor((activeDevice ? activeDevice.level : (f.level || 1)) / 10),
+            equippedCallingCard: 'calling_card_stellar',
+            emblem: []
+          });
+        }
+      } else {
+        // Simulated manual friend
+        let multiplier = 1.0;
+        if (leaderboardMapId === 'bunker') multiplier = 0.7;
+        else if (leaderboardMapId === 'mukkatown') multiplier = 0.9;
+        else if (leaderboardMapId === 'king_robbos_farm') multiplier = 0.8;
+        else if (leaderboardMapId === 'z-town') multiplier = 1.2;
+
+        const friendRound = Math.max(1, Math.round(f.maxRound * multiplier));
+        const friendKills = Math.max(0, Math.round(f.kills * multiplier));
+        
+        list.push({
+          nickname: f.nickname,
+          round: friendRound,
+          kills: friendKills,
+          headshots: Math.max(0, Math.round(f.headshots * multiplier)),
+          knifeKills: Math.max(0, Math.round((f.knifeKills || Math.floor(f.kills * 0.1)) * multiplier)),
+          equipmentKills: Math.max(0, Math.round((f.equipmentKills || Math.floor(f.kills * 0.05)) * multiplier)),
+          gems: friendRound * 10,
+          time: friendRound * 115,
+          date: f.dateAdded || (Date.now() - idx * 3600 * 1000),
+          mapId: leaderboardMapId,
+          level: f.level || 1,
+          rankMastery: Math.floor((f.level || 1) / 10),
+          equippedCallingCard: 'calling_card_solid',
+          emblem: []
+        });
+      }
+    });
+
+    // Sort by round desc, then kills desc
+    return list.sort((a, b) => {
+      if (b.round !== a.round) return b.round - a.round;
+      return b.kills - a.kills;
+    });
+  }, [leaderboard, leaderboardMapId, nickname, isFacebookConnected, isContactsConnected, manualFriends, progression.xp, progression.rankMastery, progression.profile, worldLeaderboard, activeDevices]);
   const modMenuTimer = useRef<NodeJS.Timeout | null>(null);
   const modMenuTriggered = useRef(false);
 
@@ -2965,6 +3306,7 @@ const App: React.FC = () => {
   const saveScore = useCallback((finalStats: any) => {
     if (isCustomGameSession) return;
     const entry: ScoreEntry = {
+      userId: deviceId,
       nickname: (nickname || 'Anonymous').trim() || 'Anonymous',
       round: finalStats.round,
       kills: finalStats.kills,
@@ -3070,6 +3412,58 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, [status, isCustomGameSession]);
 
+  // Monitor map challenge completion in real-time during gameplay
+  useEffect(() => {
+    if (status !== GameStatus.PLAYING) return;
+    const activeMap = stats.activeMapId || 'town';
+    const challenges = MAP_CHALLENGES[activeMap] || [];
+    
+    challenges.forEach(challenge => {
+      if (rewardedChallenges.includes(challenge.id)) return;
+      
+      let progress = 0;
+      switch (challenge.type) {
+        case 'round': progress = stats.round; break;
+        case 'headshots': progress = stats.headshots; break;
+        case 'points': progress = stats.totalPoints; break;
+        case 'knife': progress = stats.knifeKills; break;
+        case 'revives': progress = stats.revives; break;
+        case 'kills': progress = stats.kills; break;
+      }
+      
+      if (progress >= challenge.target) {
+        // Mark as rewarded in the session
+        setRewardedChallenges(prev => [...prev, challenge.id]);
+        
+        // Award Shop Points (Gems)
+        const gemReward = challenge.reward || 20;
+        setProgression(p => {
+          const profile = p.profile || { ...DEFAULT_PROFILE };
+          const nextShopPoints = (profile.shopPoints || 0) + gemReward;
+          const nextTotalGems = (profile.totalGems || 0) + gemReward;
+          const newP = {
+            ...p,
+            profile: {
+              ...profile,
+              shopPoints: nextShopPoints,
+              totalGems: nextTotalGems
+            }
+          };
+          localStorage.setItem('ztown_progression', JSON.stringify(newP));
+          return newP;
+        });
+
+        // Add to stats gems
+        setStats(prev => ({ ...prev, gems: (prev.gems || 0) + gemReward }));
+        
+        // Show notification/toast
+        setLastPerkGained(`CHALLENGE COMPLETED: ${challenge.desc}! +${gemReward} GEMS 💎`);
+        soundService.playPowerUpPickup();
+        setTimeout(() => setLastPerkGained(null), 4000);
+      }
+    });
+  }, [stats.round, stats.headshots, stats.totalPoints, stats.knifeKills, stats.revives, stats.kills, stats.activeMapId, status, rewardedChallenges]);
+
   const handleStatsUpdate = useCallback((update: any, playerId?: string, weaponUsed?: string) => {
     if (playerId && playerId.startsWith('bot-')) {
       setOtherPlayers(prev => prev.map(p => {
@@ -3109,9 +3503,10 @@ const App: React.FC = () => {
         const oldLevel = getWeaponLevelFromXp(currentXp);
         const newLevel = getWeaponLevelFromXp(newXp);
         
-        if (newLevel > oldLevel && newLevel % 5 === 0) {
-           // Notify attachment unlock? Maybe a toast later.
-           setLastPerkGained(`LEVEL ${newLevel} REACHED FOR ${baseWeapon}!`);
+        let gemReward = 0;
+        if (newLevel > oldLevel) {
+           gemReward = 10;
+           setLastPerkGained(`LEVEL ${newLevel} REACHED FOR ${baseWeapon}! +${gemReward} GEMS 💎`);
            setTimeout(() => setLastPerkGained(null), 3000);
            soundService.playPowerUpPickup();
         }
@@ -3121,7 +3516,12 @@ const App: React.FC = () => {
           weaponXp: {
             ...prev.weaponXp,
             [baseWeapon]: newXp
-          }
+          },
+          profile: prev.profile ? {
+            ...prev.profile,
+            shopPoints: (prev.profile.shopPoints || 0) + gemReward,
+            totalGems: (prev.profile.totalGems || 0) + gemReward
+          } : prev.profile
         };
         localStorage.setItem('ztown_progression', JSON.stringify(newP));
         return newP;
@@ -3206,7 +3606,24 @@ const App: React.FC = () => {
             setProgression(p => {
               // Reduce XP gain to 10% of points to make leveling harder
               const xpGain = Math.ceil(pts * 0.1);
-              const newP = { ...p, xp: p.xp + xpGain };
+              const oldLevel = getLevelData(p.xp).level;
+              const newPRaw = { ...p, xp: p.xp + xpGain };
+              const newLevel = getLevelData(newPRaw.xp).level;
+
+              let gemReward = 0;
+              if (newLevel > oldLevel) {
+                gemReward = 50;
+              }
+
+              const newP = {
+                ...newPRaw,
+                profile: newPRaw.profile ? {
+                  ...newPRaw.profile,
+                  shopPoints: (newPRaw.profile.shopPoints || 0) + gemReward,
+                  totalGems: (newPRaw.profile.totalGems || 0) + gemReward
+                } : newPRaw.profile
+              };
+              
               localStorage.setItem('ztown_progression', JSON.stringify(newP));
               return newP;
             });
@@ -3224,13 +3641,13 @@ const App: React.FC = () => {
           setProgression(p => {
             const newTotalKills = (p.totalKills || 0) + update.kills;
             const newKillsSinceLastReward = (p.killsSinceLastReward || 0) + update.kills;
-            const pointsToAdd = Math.floor(newKillsSinceLastReward / 150) * 2;
+            const pointsToAdd = Math.floor(newKillsSinceLastReward / 50) * 5;
             const newPoints = (p.profile?.shopPoints || 0) + pointsToAdd;
             
             const newP = { 
               ...p, 
               totalKills: newTotalKills, 
-              killsSinceLastReward: newKillsSinceLastReward % 150,
+              killsSinceLastReward: newKillsSinceLastReward % 50,
               profile: { ...(p.profile || DEFAULT_PROFILE), shopPoints: newPoints }
             };
             localStorage.setItem('ztown_progression', JSON.stringify(newP));
@@ -3294,10 +3711,21 @@ const App: React.FC = () => {
           next.grenades = Math.min(4, next.grenades + 2);
           next.flashbangs = Math.min(2, next.flashbangs + 1);
           
-          // Shop points: 1 point for passing 5 rounds
-          if (update.round > 5 && update.round % 5 === 0) {
-            setProgression(p => ({ ...p, profile: { ...(p.profile || DEFAULT_PROFILE), shopPoints: ((p.profile?.shopPoints || 0) + 1) } }));
-          }
+          // Shop points: much faster passive earning
+          // +3 gems for passing any round, plus +15 gems bonus on every 5th round!
+          const roundReward = 3 + (update.round % 5 === 0 ? 15 : 0);
+          setProgression(p => {
+            const profile = p.profile || { ...DEFAULT_PROFILE };
+            const newP = {
+              ...p,
+              profile: {
+                ...profile,
+                shopPoints: (profile.shopPoints || 0) + roundReward
+              }
+            };
+            localStorage.setItem('ztown_progression', JSON.stringify(newP));
+            return newP;
+          });
           
           // Revive player if downed at round end
           if (next.isDowned) {
@@ -4527,6 +4955,8 @@ const App: React.FC = () => {
     setRed9CurseActive(false);
     setRed9BlessingClaimed(false);
     setEasterEggTriggered(false);
+    setTylerEasterEggTriggered(false);
+    setRewardedChallenges([]);
     generateHeartPositions();
 
     soundService.playRoundStart();
@@ -4642,6 +5072,8 @@ const App: React.FC = () => {
     setRed9CurseActive(false);
     setRed9BlessingClaimed(false);
     setEasterEggTriggered(false);
+    setTylerEasterEggTriggered(false);
+    setRewardedChallenges([]);
     generateHeartPositions();
 
     soundService.playRoundStart();
@@ -4663,6 +5095,8 @@ const App: React.FC = () => {
     setRed9CurseActive(false);
     setRed9BlessingClaimed(false);
     setEasterEggTriggered(false);
+    setTylerEasterEggTriggered(false);
+    setRewardedChallenges([]);
     generateHeartPositions();
   };
 
@@ -4742,8 +5176,20 @@ const App: React.FC = () => {
     setBossDefeated(true);
     setCollectedHearts([false, false, false]); // Reset for next boss
     
-    // Shop points: 5 points for killing a boss
-    setProgression(p => ({ ...p, profile: { ...(p.profile || DEFAULT_PROFILE), shopPoints: ((p.profile?.shopPoints || 0) + 5) } }));
+    // Award 250 Shop points (Gems) for defeating a major boss!
+    setProgression(p => {
+      const profile = p.profile || { ...DEFAULT_PROFILE };
+      const newP = {
+        ...p,
+        profile: {
+          ...profile,
+          shopPoints: (profile.shopPoints || 0) + 250,
+          totalGems: (profile.totalGems || 0) + 250
+        }
+      };
+      localStorage.setItem('ztown_progression', JSON.stringify(newP));
+      return newP;
+    });
     
     if (stats.activeMapId === 'z-town' && ztownBossStage < 3) {
       setZtownBossStage(prev => prev + 1);
@@ -4775,13 +5221,29 @@ const App: React.FC = () => {
         hp: newMaxHp
       };
     });
-    setLastPerkGained("DRAGON DEFEATED! +20k PTS +5 PERKS");
+    setLastPerkGained("DRAGON DEFEATED! +250 GEMS 💎 +20k PTS +5 PERKS");
     setTimeout(() => setLastPerkGained(null), 5000);
   }, []);
 
   const handleRed9Blessing = useCallback(() => {
     if (red9BlessingClaimed) return;
     setRed9BlessingClaimed(true);
+    
+    // Award 150 Shop points (Gems) for completing Red9 Quest!
+    setProgression(p => {
+      const profile = p.profile || { ...DEFAULT_PROFILE };
+      const newP = {
+        ...p,
+        profile: {
+          ...profile,
+          shopPoints: (profile.shopPoints || 0) + 150,
+          totalGems: (profile.totalGems || 0) + 150
+        }
+      };
+      localStorage.setItem('ztown_progression', JSON.stringify(newP));
+      return newP;
+    });
+
     setStats(prev => {
       const allPerks = ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip', 'bandolier', 'tortoise', 'blaze', 'stronghold', 'blood', 'elemental'];
       const currentPerks = new Set(prev.perks);
@@ -4806,10 +5268,34 @@ const App: React.FC = () => {
         hp: newMaxHp
       };
     });
-    setLastPerkGained("Red9's spirit blesses you.");
+    setLastPerkGained("RED9 QUEST COMPLETED! SPIRIT BLESSED +150 GEMS 💎 +3 PERKS");
     setTimeout(() => setLastPerkGained(null), 5000);
     soundService.playPowerUpPickup();
   }, [red9BlessingClaimed]);
+
+  const handleEasterEggTriggered = useCallback(() => {
+    if (easterEggTriggered) return;
+    setEasterEggTriggered(true);
+    setProgression(p => {
+      const profile = p.profile || { ...DEFAULT_PROFILE };
+      const nextShopPoints = (profile.shopPoints || 0) + 150;
+      const nextTotalGems = (profile.totalGems || 0) + 150;
+      const newP = {
+        ...p,
+        profile: {
+          ...profile,
+          shopPoints: nextShopPoints,
+          totalGems: nextTotalGems
+        }
+      };
+      localStorage.setItem('ztown_progression', JSON.stringify(newP));
+      return newP;
+    });
+    setLastPerkGained("GUN BOX EASTER EGG COMPLETED! +150 GEMS 💎");
+    setTimeout(() => setLastPerkGained(null), 5000);
+    soundService.playPowerUpPickup();
+    unlockAchievement('easter_egg_pro');
+  }, [easterEggTriggered]);
 
   const handleRed9Curse = useCallback(() => {
     if (red9CurseActive) return;
@@ -4818,6 +5304,49 @@ const App: React.FC = () => {
     setTimeout(() => setLastPerkGained(null), 5000);
     // soundService.playLaugh();
   }, [red9CurseActive]);
+
+  const handleTylerEasterEgg = useCallback(() => {
+    if (tylerEasterEggTriggered) return;
+    setTylerEasterEggTriggered(true);
+
+    unlockAchievement('rip_tyler');
+
+    setStats(prev => {
+      const allPerks = ['jugg', 'speed', 'stamin', 'double', 'mule', 'phd', 'deadshot', 'electric', 'revive', 'vulture', 'widow', 'slider', 'winter', 'dying', 'razor', 'timeslip', 'bandolier', 'tortoise', 'blaze', 'stronghold', 'blood', 'elemental'];
+      const missingPerks = allPerks.filter(p => !prev.perks.includes(p));
+      const chosenPerks: string[] = [];
+      const shuffled = [...missingPerks].sort(() => Math.random() - 0.5);
+      for (let i = 0; i < 4 && i < shuffled.length; i++) {
+        chosenPerks.push(shuffled[i]);
+      }
+      
+      const newPerks = [...prev.perks, ...chosenPerks];
+      const hasJugg = newPerks.includes('jugg');
+      const hasTortoise = newPerks.includes('tortoise');
+      let newMaxHp = hasJugg ? 250 : 100;
+      if (hasTortoise) newMaxHp += 100;
+
+      return {
+        ...prev,
+        points: prev.points + 2500,
+        totalPoints: prev.totalPoints + 2500,
+        perks: newPerks,
+        maxHp: newMaxHp,
+        hp: newMaxHp
+      };
+    });
+
+    soundService.playPowerUpPickup();
+
+    setLastPerkGained("RIP Tyler");
+    setTimeout(() => {
+      setLastPerkGained("ill have some mushrooms waiting for you brother x");
+      setTimeout(() => {
+        setLastPerkGained(null);
+      }, 5000);
+    }, 4000);
+
+  }, [tylerEasterEggTriggered, unlockAchievement]);
 
   const instaKillTimeLeft = Math.max(0, Math.ceil((instaKillExpiry - now) / 1000));
   const doublePointsTimeLeft = Math.max(0, Math.ceil((doublePointsExpiry - now) / 1000));
@@ -4835,7 +5364,7 @@ const App: React.FC = () => {
         />
       )}
       <div className="absolute inset-0 z-0">
-        <Canvas key={gameKey} shadows gl={{ antialias: false, alpha: false }} camera={{ fov: 75, near: 0.01, far: 1000 }}>
+        <Canvas key={gameKey} gl={{ antialias: false, alpha: false }} dpr={gameSettings.batterySaver ? 1 : Math.min(window.devicePixelRatio, 2)} camera={{ fov: 75, near: 0.01, far: 1000 }}>
           <Suspense fallback={null}>
             <Scene 
               cyclingWeapon={isBoxCycling ? cyclingWeapon : null}
@@ -4907,7 +5436,8 @@ const App: React.FC = () => {
               red9BlessingClaimed={red9BlessingClaimed}
               red9CurseActive={red9CurseActive}
               easterEggTriggered={easterEggTriggered}
-              onEasterEggTriggered={() => setEasterEggTriggered(true)}
+              onEasterEggTriggered={handleEasterEggTriggered}
+              onTylerEasterEgg={handleTylerEasterEgg}
               onUnlockAchievement={unlockAchievement}
               fireSaleActive={fireSaleExpiry > now}
               zombieBloodActive={zombieBloodExpiry > now}
@@ -4917,6 +5447,8 @@ const App: React.FC = () => {
               hudSettings={hudSettings}
               thirdPersonMode={thirdPersonMode}
               difficulty={customGameConfig.difficulty}
+              isDoingMove={isDoingMove}
+              activeMove={activeMove}
             />
           </Suspense>
         </Canvas>
@@ -5543,6 +6075,20 @@ const App: React.FC = () => {
                     >
                       <Gamepad size={24} /> Controls
                     </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => { setPreviewType('dance'); setShowMovesModal(true); }} 
+                        className="flex-1 py-3 bg-purple-600 text-white font-black text-lg rounded-sm shadow-lg active:scale-95 transition-all uppercase italic tracking-tighter"
+                      >
+                        Dance
+                      </button>
+                      <button 
+                        onClick={() => { setPreviewType('finisher'); setShowMovesModal(true); }} 
+                        className="flex-1 py-3 bg-orange-600 text-white font-black text-lg rounded-sm shadow-lg active:scale-95 transition-all uppercase italic tracking-tighter"
+                      >
+                        Finisher
+                      </button>
+                    </div>
                     <button 
                       onClick={fullRestart} 
                       className={`w-full py-4 bg-white/10 text-white font-black text-xl rounded-sm shadow-2xl active:scale-95 transition-all uppercase italic tracking-tighter border border-white/20 flex items-center justify-center gap-3 ${selectedMenuIndex === (isCustomGameSession ? 5 : 4) ? 'ring-2 ring-white bg-white/20' : ''}`}
@@ -5551,6 +6097,20 @@ const App: React.FC = () => {
                     </button>
                   </div>
                </div>
+            </div>
+          )}
+
+          {showMovesModal && (                
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+              <div className="bg-zinc-900 border-2 border-white/10 p-6 rounded-lg w-full max-w-sm">
+                 <h2 className="text-2xl font-black text-white italic uppercase">{previewType === 'dance' ? 'Dance Moves' : 'Finisher Moves'}</h2>
+                 <div className="mt-4 space-y-2">
+                    {(previewType === 'dance' ? (progression.profile?.shopItems?.danceMoves || []) : (progression.profile?.shopItems?.finisherMoves || [])).map((move: string) => (
+                      <button key={move} onClick={() => { setShowMovesModal(false); setStatus(GameStatus.PLAYING); triggerMove(previewType, move); }} className="w-full py-2 bg-white/5 text-left px-4 rounded hover:bg-white/10 text-white font-bold uppercase">{move}</button>
+                    ))}
+                 </div>
+                 <button onClick={() => setShowMovesModal(false)} className="mt-6 w-full py-2 bg-red-600 text-white font-bold uppercase rounded">Close</button>
+              </div>
             </div>
           )}
 
@@ -5810,9 +6370,12 @@ const App: React.FC = () => {
                           }
                           const isDone = progress >= challenge.target;
                           return (
-                            <div key={challenge.id} className="flex flex-col gap-1 bg-black/40 p-3 rounded-sm border border-white/5">
+                            <div key={challenge.id} className="flex flex-col gap-2 bg-black/40 p-3 rounded-sm border border-white/5">
                               <div className="flex items-center justify-between">
-                                <span className="text-white/80 text-xs uppercase font-black tracking-widest">{challenge.desc}</span>
+                                <div className="flex flex-col text-left">
+                                  <span className="text-white/80 text-xs uppercase font-black tracking-widest leading-none">{challenge.desc}</span>
+                                  <span className="text-emerald-400 font-extrabold text-[10px] uppercase font-mono mt-1 flex items-center gap-1">💎 Reward: +{challenge.reward} Shop Gems</span>
+                                </div>
                                 <span className={`text-sm font-black italic ${isDone ? 'text-emerald-500' : 'text-yellow-500'}`}>
                                   {progress} / {challenge.target}
                                 </span>
@@ -7064,8 +7627,8 @@ const App: React.FC = () => {
                           {previewType === 'dance' ? (progression.profile?.shopItems?.danceMoves || []).map(m => <option key={m} value={m}>{m}</option>) : (progression.profile?.shopItems?.finisherMoves || []).map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         {previewMove && (
-                          <div className="w-full h-48 bg-black/50 rounded overflow-hidden">
-                            <Player3DViewerComponent customization={{ ...progression.profile?.customization, [previewType === 'dance' ? 'danceMove' : 'finisherMove']: previewMove }} />
+                          <div className="w-full h-[600px] bg-black/50 rounded overflow-hidden">
+                            <Player3DViewerComponent height="h-[600px]" customization={{ ...progression.profile?.customization, [previewType === 'dance' ? 'danceMove' : 'finisherMove']: previewMove }} />
                           </div>
                         )}
                       </div>
@@ -7146,10 +7709,89 @@ const App: React.FC = () => {
               ))}
             </div>
             
+            {leaderboardTab === 'friends' && (
+              <div className="space-y-3">
+                {/* Device Identification Card */}
+                <div className="p-4 bg-blue-950/20 border border-blue-500/20 rounded-sm flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600/15 rounded text-blue-400">
+                      <UserPlus size={20} />
+                    </div>
+                    <div className="text-left">
+                      <span className="block text-[9px] font-black text-blue-400 uppercase tracking-widest">Your Device User ID</span>
+                      <span className="text-lg font-black tracking-widest text-white italic">{deviceId}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(deviceId);
+                        setLastPerkGained("COPIED DEVICE ID");
+                        setTimeout(() => setLastPerkGained(null), 2000);
+                        soundService.playPowerUpPickup();
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-wider text-[10px] rounded-sm italic active:scale-95 transition-all"
+                    >
+                      Copy My ID
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setAddFriendTab('real');
+                        setShowAddFriendManualModal(true);
+                      }} 
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white font-black uppercase tracking-wider text-[10px] rounded-sm italic active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <PlusCircle size={12} /> Add Friend ID
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 p-4 bg-zinc-900 border border-white/10 rounded-sm items-center justify-between animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex flex-wrap gap-2 items-center text-xs font-bold uppercase tracking-wider text-white/60">
+                    <span>Connections:</span>
+                    <span className={`px-2.5 py-1 rounded-sm text-[10px] font-black italic tracking-wider transition-all ${isFacebookConnected ? 'bg-blue-600 text-white' : 'bg-white/5 border border-white/10 text-white/30'}`}>Facebook</span>
+                    <span className={`px-2.5 py-1 rounded-sm text-[10px] font-black italic tracking-wider transition-all ${isContactsConnected ? 'bg-emerald-600 text-white' : 'bg-white/5 border border-white/10 text-white/30'}`}>Contacts</span>
+                    <span className="px-2.5 py-1 rounded-sm text-[10px] font-black italic tracking-wider bg-white/10 border border-white/10 text-white/80">{manualFriends.length} Friends</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {!isFacebookConnected && (
+                      <button onClick={handleFacebookLogin} className="px-3 py-1.5 bg-blue-600 font-black italic text-[10px] uppercase tracking-wider rounded-sm hover:bg-blue-500 active:scale-95 transition-all text-white flex items-center gap-1.5">
+                        <UserPlus size={12} /> Connect FB
+                      </button>
+                    )}
+                    {!isContactsConnected && (
+                      <button onClick={handleConnectContacts} className="px-3 py-1.5 bg-emerald-600 font-black italic text-[10px] uppercase tracking-wider rounded-sm hover:bg-emerald-500 active:scale-95 transition-all text-white flex items-center gap-1.5">
+                        <Users size={12} /> Sync Contacts
+                      </button>
+                    )}
+                    <button onClick={() => { setAddFriendTab('simulated'); setShowAddFriendManualModal(true); }} className="px-3 py-1.5 bg-white/10 border border-white/20 font-black italic text-[10px] uppercase tracking-wider rounded-sm hover:bg-white/20 active:scale-95 transition-all text-white flex items-center gap-1.5">
+                      <PlusCircle size={12} /> Customize Bot Riva
+                    </button>
+                    <button onClick={() => {
+                      setConfirmModal({
+                        message: "Disconnect all social connections and clear friends?",
+                        onConfirm: () => {
+                          setIsFacebookConnected(false);
+                          setIsContactsConnected(false);
+                          setManualFriends([]);
+                          localStorage.removeItem('ztown_fb_connected');
+                          localStorage.removeItem('ztown_contacts_connected');
+                          localStorage.removeItem('ztown_manual_friends');
+                          soundService.playPowerUpPickup();
+                        }
+                      });
+                    }} className="px-3 py-1.5 bg-red-950/20 border border-red-900/30 font-black italic text-[10px] uppercase tracking-wider rounded-sm hover:bg-red-950/40 active:scale-95 transition-all text-red-400 flex items-center gap-1.5">
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex-grow overflow-auto bg-white/5 border border-white/10 rounded-sm shadow-2xl no-scrollbar">
               <div className="min-w-[1200px]">
                 {/* Header */}
-                <div className="grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px] gap-4 p-4 border-b border-white/10 bg-white/5 sticky top-0 z-10">
+                <div className="grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px_100px] gap-4 p-4 border-b border-white/10 bg-white/5 sticky top-0 z-10">
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Rank</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Nickname</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Rank Mastery</span>
@@ -7162,25 +7804,28 @@ const App: React.FC = () => {
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Headshots</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Knife Kills</span>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Equip Kills</span>
-                  <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Status</span>
+                  <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Quests</span>
+                  <span className="text-[10px] font-black text-white/30 uppercase tracking-widest text-center">Live Status</span>
                 </div>
 
                 {(() => {
                   const data = leaderboardTab === 'personal' ? leaderboard.filter(e => e.mapId === leaderboardMapId) : 
-                               leaderboardTab === 'friends' ? [] : 
+                               leaderboardTab === 'friends' ? getFriendsLeaderboardData() : 
                                worldLeaderboard.filter(e => e.mapId === leaderboardMapId);
                   
-                  if (leaderboardTab === 'friends') {
+                  const isAnyFriendsConnected = isFacebookConnected || isContactsConnected || manualFriends.length > 0;
+                  
+                  if (leaderboardTab === 'friends' && !isAnyFriendsConnected) {
                     return (
                       <div className="p-12 text-center flex flex-col items-center justify-center gap-6">
-                        <div className="text-white/30 italic mb-4 text-xl font-black uppercase tracking-widest">Log in to see your friends' scores</div>
-                        <button className="px-8 py-4 bg-[#1877F2] text-white font-black italic uppercase tracking-widest rounded-sm shadow-xl active:scale-95 transition-all flex items-center gap-3 w-full max-w-md justify-center">
+                        <div className="text-white/30 italic mb-4 text-xl font-black uppercase tracking-widest">Connect to see your friends' scores</div>
+                        <button onClick={handleFacebookLogin} className="px-8 py-4 bg-[#1877F2] text-white font-black italic uppercase tracking-widest rounded-sm shadow-xl active:scale-95 transition-all flex items-center gap-3 w-full max-w-md justify-center">
                           <UserPlus size={24} /> Log in with Facebook
                         </button>
-                        <button className="px-8 py-4 bg-emerald-600 text-white font-black italic uppercase tracking-widest rounded-sm shadow-xl active:scale-95 transition-all flex items-center gap-3 w-full max-w-md justify-center mt-2">
+                        <button onClick={handleConnectContacts} className="px-8 py-4 bg-emerald-600 text-white font-black italic uppercase tracking-widest rounded-sm shadow-xl active:scale-95 transition-all flex items-center gap-3 w-full max-w-md justify-center mt-2">
                           <Users size={24} /> Connect Contacts
                         </button>
-                        <button className="px-8 py-4 bg-white/10 text-white font-black italic uppercase tracking-widest rounded-sm shadow-xl active:scale-95 transition-all flex items-center gap-3 w-full max-w-md justify-center mt-2 border border-white/20">
+                        <button onClick={() => setShowAddFriendManualModal(true)} className="px-8 py-4 bg-white/10 text-white font-black italic uppercase tracking-widest rounded-sm shadow-xl active:scale-95 transition-all flex items-center gap-3 w-full max-w-md justify-center mt-2 border border-white/20">
                           <PlusCircle size={24} /> Add Friend Manually
                         </button>
                       </div>
@@ -7195,7 +7840,7 @@ const App: React.FC = () => {
                     <div 
                       key={idx} 
                       id={`menu-item-${idx + 2 + MAPS.length}`} 
-                      className={`grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px] gap-4 p-4 items-center border-b border-white/5 transition-all cursor-pointer ${
+                      className={`grid grid-cols-[60px_minmax(150px,1fr)_80px_80px_100px_80px_80px_100px_80px_80px_80px_80px_80px_100px] gap-4 p-4 items-center border-b border-white/5 transition-all cursor-pointer ${
                         selectedMenuIndex === idx + 2 + MAPS.length ? 'bg-white/10' : 'hover:bg-white/5'
                       }`}
                       onClick={() => setShowPlayerProfile({ nickname: entry.nickname, level: entry.level || 1, totalKills: entry.kills, bossKills: entry.bossDefeated ? 1 : 0, mostPlayedMode: 'standard', mostUsedGuns: {}, mostUsedPerks: {}, killsPerZombieType: { normal: 0, runner: 0, tank: 0, inferno: 0, parasite: 0, crawler: 0, brute: 0 }, achievements: [], gameHistory: [entry], clanTag: '', xp: 0, totalRevives: 0, totalDowns: 0, totalHeadshots: entry.headshots, totalKnifeKills: entry.knifeKills, totalEquipmentKills: entry.equipmentKills, totalGems: entry.gems || 0, customization: { avatarVariant: 0, bodyColor: '#ffffff', clothesColor: '#333333', headAccessory: 'none', equippedCallingCard: entry.equippedCallingCard, emblem: entry.emblem } })}
@@ -7260,6 +7905,53 @@ const App: React.FC = () => {
                             <Egg size={12} className="text-purple-400" />
                           </div>
                         )}
+                      </div>
+                      
+                      {/* Cell 13: Online tracking status & Game invite buttons */}
+                      <div className="flex flex-col justify-center items-center gap-1 min-w-0 w-full overflow-hidden text-center">
+                        {(() => {
+                          const matchedDevice = activeDevices.find(d => (entry.userId && d.userId === entry.userId) || d.nickname.toLowerCase() === entry.nickname.toLowerCase());
+                          
+                          if (matchedDevice) {
+                            const isMe = matchedDevice.userId === deviceId;
+                            const isOnlineDevice = matchedDevice.status !== 'Offline';
+                            if (isOnlineDevice) {
+                              return (
+                                <div className="flex flex-col items-center gap-1 w-full text-center">
+                                  <span className="text-[10px] font-black uppercase text-emerald-500 tracking-wider animate-pulse flex items-center justify-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> ONLINE
+                                  </span>
+                                  <span className="text-[8px] text-white/50 uppercase font-black tracking-tight truncate max-w-full block px-1">
+                                    {matchedDevice.status}
+                                  </span>
+                                  {!isMe && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (socket) {
+                                          socket.emit('invite_friend', {
+                                            targetUserId: matchedDevice.userId,
+                                            senderName: nickname || 'Survivor',
+                                            roomId: room?.id || myRoomId
+                                          });
+                                          setLastPerkGained("INVITED!");
+                                          soundService.playPowerUpPickup();
+                                          setTimeout(() => setLastPerkGained(null), 2000);
+                                        }
+                                      }}
+                                      className="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 rounded text-[9px] font-black uppercase italic tracking-wider text-white select-none whitespace-nowrap active:scale-95 transition-transform"
+                                    >
+                                      Invite
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            }
+                          }
+                          return (
+                            <span className="text-[10px] font-bold text-white/20 uppercase">OFFLINE</span>
+                          );
+                        })()}
                       </div>
                     </div>
                   ));
@@ -7573,6 +8265,18 @@ const App: React.FC = () => {
                         onChange={(e) => setGameSettings(prev => ({ ...prev, musicVolume: parseFloat(e.target.value) }))}
                         className="w-full accent-blue-600"
                       />
+                    </div>
+
+                    <div className="flex items-center justify-between bg-white/5 p-3 rounded-sm border border-white/10">
+                      <span className="text-white font-bold uppercase text-xs tracking-widest">Battery Saver</span>
+                      <button 
+                        onClick={() => setGameSettings(prev => ({ ...prev, batterySaver: !prev.batterySaver }))}
+                        className={`px-4 py-1 rounded-sm border-2 font-black italic uppercase transition-all text-xs ${
+                          gameSettings.batterySaver ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-red-600 border-red-400 text-white/50'
+                        }`}
+                      >
+                        {gameSettings.batterySaver ? 'ON' : 'OFF'}
+                      </button>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -8418,15 +9122,40 @@ const App: React.FC = () => {
             <div className="bg-white/5 border border-white/10 p-6 rounded-sm">
               <h3 className="text-xl font-black text-white uppercase italic mb-4">Players ({room.players.length}/4)</h3>
               <div className="space-y-2">
-                {room.players.map((p: any, i: number) => (
-                  <div key={p.id} className="flex items-center justify-between bg-white/5 p-4 rounded-sm border border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${p.isHost ? 'bg-yellow-500' : 'bg-emerald-500'}`} />
-                      <span className="text-white font-black text-xl uppercase italic">{p.name}</span>
+                {room.players.map((p: any, i: number) => {
+                  const isMe = p.id === socket?.id;
+                  const teamColor = p.team === 2 ? 'border-red-500 bg-red-950/40 text-red-400' : 'border-blue-500 bg-blue-950/40 text-blue-400';
+                  const teamName = p.team === 2 ? 'Team 2 (Red)' : 'Team 1 (Blue)';
+                  
+                  return (
+                    <div key={p.id} className="flex items-center justify-between bg-white/5 p-4 rounded-sm border border-white/5 hover:border-white/10 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${p.team === 2 ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]'}`} />
+                        <span className="text-white font-black text-xl uppercase italic">{p.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isMe ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              socket?.emit('toggle_team');
+                              soundService.playPowerUpPickup();
+                            }}
+                            className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider italic rounded-sm border hover:scale-105 active:scale-95 transition-all cursor-pointer ${teamColor}`}
+                            title="Click to toggle Team 1 / Team 2"
+                          >
+                            {teamName} ⇄
+                          </button>
+                        ) : (
+                          <span className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider italic rounded-sm border ${teamColor}`}>
+                            {teamName}
+                          </span>
+                        )}
+                        {p.isHost && <span className="text-yellow-500 font-bold uppercase text-xs tracking-widest border border-yellow-500/30 px-2 py-1 rounded-sm">Host</span>}
+                      </div>
                     </div>
-                    {p.isHost && <span className="text-yellow-500 font-bold uppercase text-xs tracking-widest border border-yellow-500/30 px-2 py-1 rounded-sm">Host</span>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -8995,6 +9724,13 @@ const App: React.FC = () => {
                       <p className="text-white/40 text-xs font-medium leading-tight mt-1">
                         {achievement.description}
                       </p>
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={`text-[10px] font-black uppercase font-mono px-1.5 py-0.5 rounded ${
+                          isUnlocked ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-white/30 border border-white/5'
+                        }`}>
+                          💎 +{achievement.reward || 50} Gems
+                        </span>
+                      </div>
                     </div>
                     {isUnlocked && (
                       <div className="ml-auto">
@@ -9022,7 +9758,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex bg-white/5 p-1 rounded-sm border border-white/10 gap-1">
+            <div className="flex bg-white/5 p-1 rounded-sm border border-white/10 gap-1 overflow-x-auto">
               {[
                 { id: 'guns', label: 'Guns', icon: <Swords size={16} /> },
                 { id: 'perks', label: 'Perks', icon: <Zap size={16} /> },
@@ -9035,7 +9771,7 @@ const App: React.FC = () => {
                   key={tab.id}
                   id={`menu-item-${idx + 1}`}
                   onClick={() => setInfoTab(tab.id as any)}
-                  className={`flex-1 py-3 rounded-sm flex items-center justify-center gap-2 text-[10px] font-black uppercase italic tracking-tighter transition-all ${
+                  className={`flex-1 py-3 px-2 rounded-sm flex items-center justify-center gap-2 text-[10px] font-black uppercase italic tracking-tighter transition-all min-w-[80px] sm:min-w-0 ${
                     infoTab === tab.id 
                       ? 'bg-emerald-600 text-white shadow-lg scale-[1.02]' 
                       : 'text-white/40 hover:text-white hover:bg-white/5'
@@ -9633,6 +10369,250 @@ const App: React.FC = () => {
               >
                 Confirm
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {socialLoading.type && (
+        <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-4 text-center p-6">
+            <div className="relative w-20 h-20">
+              <div 
+                className={`absolute inset-0 rounded-full border-4 border-t-transparent animate-spin ${
+                  socialLoading.type === 'facebook' ? 'border-[#1877F2]' : 'border-emerald-500'
+                }`} 
+                style={{ animationDuration: '0.8s' }} 
+              />
+              <div className="absolute inset-2 rounded-full bg-white/5 flex items-center justify-center font-black text-lg uppercase text-white/80">
+                {socialLoading.type === 'facebook' ? 'FB' : 'CN'}
+              </div>
+            </div>
+            <div className="text-xl font-black italic uppercase tracking-widest text-white mt-4">{socialLoading.message}</div>
+            <p className="text-white/40 text-xs uppercase tracking-wider animate-pulse">Establishing secure connection</p>
+          </div>
+        </div>
+      )}
+
+      {showAddFriendManualModal && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-white/20 p-6 rounded-sm max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 bg-white/5 rounded-full text-blue-500">
+                <UserPlus size={28} />
+              </div>
+              <div className="text-left">
+                <h3 className="text-xl font-black uppercase italic tracking-widest text-white">Add Friend</h3>
+                <p className="text-white/40 text-[10px] uppercase tracking-wider font-bold animate-pulse">Connect & Track other devices</p>
+              </div>
+            </div>
+
+            {/* Sub Tabs */}
+            <div className="grid grid-cols-2 gap-2 mb-6 border-b border-white/10 pb-4">
+              <button
+                type="button"
+                onClick={() => setAddFriendTab('real')}
+                className={`py-2 text-xs font-black uppercase tracking-wider italic rounded-sm transition-all ${addFriendTab === 'real' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+              >
+                Search User ID
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddFriendTab('simulated')}
+                className={`py-2 text-xs font-black uppercase tracking-wider italic rounded-sm transition-all ${addFriendTab === 'simulated' ? 'bg-indigo-600 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+              >
+                Create Bot Rival
+              </button>
+            </div>
+            
+            {addFriendTab === 'real' ? (
+              <div className="space-y-4">
+                <div className="text-left">
+                  <label className="block text-white/60 font-black uppercase text-[10px] tracking-widest mb-1">Enter Friend User ID</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Z-582910" 
+                    value={newFriendName}
+                    maxLength={18}
+                    onChange={(e) => setNewFriendName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/15 rounded-sm p-3 font-black uppercase tracking-wider italic text-white focus:outline-none focus:border-blue-500 transition-colors pointer-events-auto"
+                  />
+                  <p className="text-white/30 text-[9px] uppercase font-bold tracking-wider mt-2 leading-relaxed">
+                    Tip: Enter a code like <strong className="text-blue-400">Z-123456</strong> from another browser tab or device. You will track their progress and can send direct multiplayer invites!
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="text-left">
+                  <label className="block text-white/60 font-black uppercase text-[10px] tracking-widest mb-1">Friend Nickname</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Slayer99" 
+                    value={newFriendName}
+                    maxLength={18}
+                    onChange={(e) => setNewFriendName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/15 rounded-sm p-3 font-black uppercase tracking-wider italic text-white focus:outline-none focus:border-blue-500 transition-colors pointer-events-auto"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  <div>
+                    <label className="block text-white/60 font-black uppercase text-[10px] tracking-widest mb-1">Level</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 24" 
+                      value={newFriendLevel}
+                      min={1}
+                      max={100}
+                      onChange={(e) => setNewFriendLevel(e.target.value)}
+                      className="w-full bg-white/5 border border-white/15 rounded-sm p-3 font-black uppercase tracking-wider italic text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 font-black uppercase text-[10px] tracking-widest mb-1">Max Round</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 15" 
+                      value={newFriendRound}
+                      min={1}
+                      max={100}
+                      onChange={(e) => setNewFriendRound(e.target.value)}
+                      className="w-full bg-white/5 border border-white/15 rounded-sm p-3 font-black uppercase tracking-wider italic text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="text-left">
+                  <label className="block text-white/60 font-black uppercase text-[10px] tracking-widest mb-1">Kills</label>
+                  <input 
+                    type="number" 
+                    placeholder="e.g. 350" 
+                    value={newFriendKills}
+                    min={0}
+                    max={10000}
+                    onChange={(e) => setNewFriendKills(e.target.value)}
+                    className="w-full bg-white/5 border border-white/15 rounded-sm p-3 font-black uppercase tracking-wider italic text-white focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-4 mt-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddFriendManualModal(false);
+                  setNewFriendName('');
+                }}
+                className="flex-1 py-3 bg-white/10 text-white font-black uppercase tracking-widest rounded-sm hover:bg-white/20 transition-all text-sm italic"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!newFriendName.trim()) return;
+                  
+                  if (addFriendTab === 'real') {
+                    // Look up device info
+                    const searchId = newFriendName.trim().toUpperCase();
+                    const matchedDev = activeDevices.find(d => d.userId === searchId);
+                    
+                    const newRealFriend = {
+                      nickname: matchedDev ? matchedDev.nickname : `Player (${searchId})`,
+                      userId: searchId,
+                      isReal: true,
+                      level: matchedDev ? matchedDev.level : 1,
+                      maxRound: 1,
+                      kills: 0,
+                      headshots: 0,
+                      knifeKills: 0,
+                      equipmentKills: 0,
+                      dateAdded: Date.now()
+                    };
+
+                    setManualFriends(prev => {
+                      const updated = [...prev, newRealFriend];
+                      localStorage.setItem('ztown_manual_friends', JSON.stringify(updated));
+                      return updated;
+                    });
+                  } else {
+                    const level = parseInt(newFriendLevel) || 24;
+                    const maxRound = parseInt(newFriendRound) || 15;
+                    const kills = parseInt(newFriendKills) || 350;
+                    const headshots = Math.floor(kills * 0.25);
+                    const knifeKills = Math.floor(kills * 0.1);
+                    const equipmentKills = Math.floor(kills * 0.05);
+
+                    const newFriend = {
+                      nickname: newFriendName.trim(),
+                      level,
+                      maxRound,
+                      kills,
+                      headshots,
+                      knifeKills,
+                      equipmentKills,
+                      dateAdded: Date.now()
+                    };
+
+                    setManualFriends(prev => {
+                      const updated = [...prev, newFriend];
+                      localStorage.setItem('ztown_manual_friends', JSON.stringify(updated));
+                      return updated;
+                    });
+                  }
+                  
+                  setShowAddFriendManualModal(false);
+                  setNewFriendName('');
+                  soundService.playPowerUpPickup();
+                }}
+                className="flex-1 py-3 bg-blue-600 text-white font-black uppercase tracking-widest rounded-sm hover:bg-blue-500 transition-all text-sm italic"
+              >
+                Add Friend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Interactive Live Invite Toasts */}
+      {incomingInvite && (
+        <div className="fixed bottom-6 right-6 z-[350] max-w-sm w-full bg-zinc-900 border-2 border-emerald-500 p-5 rounded shadow-2xl animate-in slide-in-from-bottom duration-300">
+          <div className="flex gap-3 text-left">
+            <div className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-sm self-start">
+              <Activity size={24} className="animate-pulse" />
+            </div>
+            <div className="flex-grow">
+              <span className="block text-[10px] font-black uppercase text-emerald-500 tracking-widest">Co-OP Game Invitation</span>
+              <span className="block font-black text-white italic text-lg uppercase tracking-tight mt-1">
+                {incomingInvite.senderName} invited you!
+              </span>
+              <p className="text-white/60 text-xs mt-1">Lobby Room Code: <strong className="text-emerald-400">{incomingInvite.roomId}</strong></p>
+              
+              <div className="flex gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (socket) {
+                      socket.emit('join_room', { roomId: incomingInvite.roomId, name: nickname || 'Survivor' });
+                    }
+                    setIncomingInvite(null);
+                    soundService.playPowerUpPickup();
+                  }}
+                  className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-wider text-xs rounded-sm italic"
+                >
+                  Accept & Join
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncomingInvite(null);
+                    soundService.playPowerUpPickup();
+                  }}
+                  className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 font-bold uppercase tracking-wider text-xs rounded-sm"
+                >
+                  Decline
+                </button>
+              </div>
             </div>
           </div>
         </div>

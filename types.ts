@@ -26,6 +26,7 @@ export type WeaponCamo = 'none' | 'gilded' | 'crystal' | 'void_matter' | 'sakura
 export type WeaponAttachment = 'none' | 'red_dot' | 'acog' | 'foregrip' | 'extended_mag' | 'laser_sight' | 'suppressor';
 
 export interface ScoreEntry {
+  userId?: string;
   nickname: string;
   round: number;
   kills: number;
@@ -157,6 +158,7 @@ export interface GameSettings {
   musicEnabled: boolean;
   customMusicUrl: string;
   customPlaylist: { name: string; url: string }[];
+  batterySaver: boolean;
 }
 
 export interface KeybindSettings {
@@ -186,6 +188,8 @@ export interface KeybindSettings {
   pause: string;
   shoot: string;
   aim: string;
+  dance: string;
+  finisher: string;
 }
 
 export interface MapObject {
@@ -253,6 +257,7 @@ export interface Achievement {
   icon: string;
   mapId?: string;
   category: 'combat' | 'map' | 'progression' | 'easter_egg';
+  reward?: number;
 }
 
 export interface PlayerScore {
@@ -287,6 +292,7 @@ export interface EmblemLayer {
   y: number;
   scale: number;
   rotation: number;
+  opacity?: number;
 }
 
 export interface ShopItems {

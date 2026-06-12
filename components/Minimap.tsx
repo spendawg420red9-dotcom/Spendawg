@@ -157,7 +157,7 @@ export const Minimap: React.FC<MinimapProps> = ({
 
       // Draw Other Players / Bots
       otherPlayers?.forEach(p => {
-        if (!p || !p.position || p.hp <= 0) return;
+        if (!p || !p.position || (p.hp <= 0 && !p.isDowned)) return;
         const relX = (p.position.x - playerPos.current!.x) * zoom;
         const relZ = (p.position.z - playerPos.current!.z) * zoom;
 

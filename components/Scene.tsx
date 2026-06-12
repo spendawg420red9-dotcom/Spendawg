@@ -98,6 +98,8 @@ interface SceneProps {
   zombieBloodActive: boolean;
   playerName?: string;
   botNames?: string[];
+  isDoingMove?: boolean;
+  activeMove?: { type: 'dance' | 'finisher', name: string } | null;
   thirdPersonMode?: boolean;
   progression: Progression;
   gameSettings: GameSettings;
@@ -106,6 +108,7 @@ interface SceneProps {
   difficulty?: 'easy' | 'normal' | 'hard';
   cyclingWeapon?: string | null;
   scoreLimit?: number;
+  onTylerEasterEgg?: () => void;
 }
 
 interface BotData {
@@ -1645,11 +1648,13 @@ const Bus = ({ posRef, rotRef, busState }: { posRef: React.MutableRefObject<THRE
 export const Scene: React.FC<SceneProps> = ({ 
   status, mapConfig, botCount = 0, otherPlayers = [], onGameOver, moveInput, lookInput, keyboardLookInput, shootRequest, shootLeftRequest, phoneShootRequest, knifeRequest, jumpRequest, slideRequest, grenadeRequest, flashbangRequest, kingRobboRequest, sprintRequest, aimRequest, onStatsUpdate, onPowerUp, onInteractAvailable, onBotInteract, onGameEvent, isHost, syncedZombies, playerPosRef: externalPlayerPosRef, playerRotRef: externalPlayerRotRef, zombieRefsRef: externalZombieRefsRef, gameState, openDoors, teleportTarget, onTeleportComplete, teleportToPlayerId, onTeleportToPlayerComplete, teleportPlayerToMeId, onTeleportPlayerToMeComplete, heartPositions, collectedHearts, dragonActive, bossType = 'dragon', dragonHealth, setDragonHealth, onDragonDefeated, killAllZombies, setKillAllZombies, teleportZombiesToMe, setTeleportZombiesToMe, 
   spawnZombieType, onSpawnZombieComplete, changeAllZombiesType, onChangeAllZombiesComplete,
-  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, easterEggTriggered, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard', cyclingWeapon, scoreLimit = 35, teleportAllToMe, setTeleportAllToMe, difficulty = 'normal'
+  onRed9Blessing, onRed9Curse, red9BlessingClaimed, red9CurseActive, easterEggTriggered, onEasterEggTriggered, onUnlockAchievement, fireSaleActive, zombieBloodActive, playerName = 'Player', botNames = [], thirdPersonMode = false, progression, gameSettings, hudSettings, gameMode = 'standard', cyclingWeapon, scoreLimit = 35, teleportAllToMe, setTeleportAllToMe, difficulty = 'normal', onTylerEasterEgg,
+  isDoingMove, activeMove
 }) => {
   const { camera, scene, clock } = useThree();
 
   const isShooting = useRef(false);
+  const effectiveThirdPersonMode = thirdPersonMode || isDoingMove;
   const internalPlayerPos = useRef(new THREE.Vector3(0, 1.2, 15));
   const playerPos = externalPlayerPosRef || internalPlayerPos;
   
@@ -1968,24 +1973,25 @@ export const Scene: React.FC<SceneProps> = ({
         let bot = botsRef.current.find(b => b.id === player.id);
         if (bot) {
           // Update existing bot/player
-          if (bot.hp !== player.hp || bot.isDowned !== player.isDowned || bot.points !== player.points || bot.downedTimer !== player.downedTimer || bot.isReviving !== player.isReviving) {
+          if (bot.hp !== player.hp || bot.isDowned !== player.isDowned || bot.points !== player.points || bot.downedTimer !== player.downedTimer || bot.isReviving !== player.isReviving || bot.team !== player.team) {
              bot.hp = player.hp;
              bot.isDowned = player.isDowned;
              bot.points = player.points;
              bot.downedTimer = player.downedTimer || 0;
              bot.isReviving = player.isReviving || false;
+             bot.team = player.team;
              changed = true;
           }
           // Update position for other players (not local bots)
           if (!player.isBot && player.position) {
-            bot.position.copy(player.position);
+            bot.position.set(player.position.x, player.position.y - 1.2, player.position.z);
           }
         } else if (!player.isBot) {
           // Add new online player
           botsRef.current.push({
             id: player.id,
             name: player.name,
-            position: player.position ? new THREE.Vector3(player.position.x, player.position.y, player.position.z) : new THREE.Vector3(0, 0, 0),
+            position: player.position ? new THREE.Vector3(player.position.x, player.position.y - 1.2, player.position.z) : new THREE.Vector3(0, 0, 0),
             targetId: null,
             targetInteractableId: null,
             lastShot: 0,
@@ -1996,7 +2002,8 @@ export const Scene: React.FC<SceneProps> = ({
             points: player.points,
             kills: player.kills || 0,
             variant: player.variant || Math.floor(Math.random() * 1000),
-            isReviving: player.isReviving || false
+            isReviving: player.isReviving || false,
+            team: player.team
           });
           changed = true;
         }
@@ -2048,6 +2055,7 @@ export const Scene: React.FC<SceneProps> = ({
   
   const red9JumpCount = useRef(0);
   const red9ShootCount = useRef(0);
+  const perkShootCounts = useRef<Record<string, number>>({});
   const lastJumpTime = useRef(0);
   const dragonPos = useRef(new THREE.Vector3());
   const dragonRotY = useRef(0);
@@ -2432,12 +2440,24 @@ export const Scene: React.FC<SceneProps> = ({
 
   useFrame((state, rawDelta) => {
     frameCount.current++;
-    if (status !== GameStatus.PLAYING) return;
+    if (status !== GameStatus.PLAYING && status !== GameStatus.GAMEOVER) return;
 
     const gameSpeed = 1.0; // Normal time scale to prevent jumpiness
     const delta = Math.min(rawDelta, 0.1) * gameSpeed;
     gameTime.current += delta * 1000;
     const now = gameTime.current;
+
+    if (status === GameStatus.GAMEOVER) {
+      // Elegant rotating orbital cinematic camera at match-end!
+      // This allows the user to see their customized full body doing their unique dances and finishers from all angles!
+      const orbitalAngle = state.clock.getElapsedTime() * 0.45;
+      const camHeight = 1.35;
+      const camDistance = 3.0;
+      tempVec1.current.set(Math.sin(orbitalAngle) * camDistance, camHeight, Math.cos(orbitalAngle) * camDistance);
+      camera.position.copy(playerPos.current).add(tempVec1.current);
+      camera.lookAt(playerPos.current.x, playerPos.current.y + 1.0, playerPos.current.z);
+      return;
+    }
 
     // --- ESSENTIAL SMOOTH LOGIC (Runs every frame) ---
     // Player Rotation, Movement, and Basic State
@@ -2447,6 +2467,7 @@ export const Scene: React.FC<SceneProps> = ({
       const target = botsRef.current.find(b => b.id === teleportToPlayerId);
       if (target) {
         playerPos.current.copy(target.position);
+        playerPos.current.y = target.position.y + 1.2;
         verticalVelocity.current = 0;
         slideSpeed.current = 0;
         if (onTeleportToPlayerComplete) onTeleportToPlayerComplete();
@@ -2462,7 +2483,7 @@ export const Scene: React.FC<SceneProps> = ({
         const radius = 2; // Teleport them slightly around the player
         bot.position.set(
           playerPos.current.x + Math.cos(angle) * radius,
-          playerPos.current.y,
+          playerPos.current.y - 1.2,
           playerPos.current.z + Math.sin(angle) * radius
         );
       });
@@ -2474,6 +2495,7 @@ export const Scene: React.FC<SceneProps> = ({
       const target = botsRef.current.find(b => b.id === teleportPlayerToMeId);
       if (target) {
         target.position.copy(playerPos.current);
+        target.position.y = playerPos.current.y - 1.2;
         target.targetId = null;
         target.targetInteractableId = null;
         if (onTeleportPlayerToMeComplete) onTeleportPlayerToMeComplete();
@@ -2937,7 +2959,7 @@ export const Scene: React.FC<SceneProps> = ({
       tempVec1.current.set(0, 20, 10);
       camera.position.copy(playerPos.current).add(tempVec1.current); // High angle top-down
       camera.lookAt(playerPos.current);
-    } else if (thirdPersonMode) {
+    } else if (effectiveThirdPersonMode) {
       camera.quaternion.setFromEuler(playerRot.current);
       tempVec1.current.set(0.5, 0, 2.5);
       tempVec1.current.applyQuaternion(camera.quaternion);
@@ -3195,8 +3217,8 @@ export const Scene: React.FC<SceneProps> = ({
         flashTimer.current = 0.08;
         soundService.playShoot(gameState.weaponName);
         
-        let direction = tempVec1.current;
-        let rayOrigin = tempVec2.current;
+        let direction = new THREE.Vector3();
+        let rayOrigin = new THREE.Vector3();
         
         if (gameMode === 'dead_ops') {
             // Use targetRot for instant aim response in Dead Ops
@@ -3259,6 +3281,35 @@ export const Scene: React.FC<SceneProps> = ({
              });
           }
         }
+        
+        // Check for Tyler Easter Egg (shooting any perk machine 8 times)
+        interactables.forEach(i => {
+          if (i.type && i.type.startsWith('PERK:')) {
+            const perkBox = new THREE.Box3().setFromCenterAndSize(
+              i.pos.clone().add(new THREE.Vector3(0, 1.4, 0)),
+              new THREE.Vector3(1.4, 2.8, 1.2)
+            );
+            if (ray.ray.intersectBox(perkBox, new THREE.Vector3())) {
+              const currentS = perkShootCounts.current[i.id] || 0;
+              perkShootCounts.current[i.id] = currentS + 1;
+              
+              effects.current.push({
+                id: Math.random().toString(),
+                type: 'flash',
+                pos: i.pos.clone().add(new THREE.Vector3(0, 1.4, 0)),
+                life: 0.15,
+                color: i.color || '#00ff00',
+                scale: 0.4
+              });
+
+              if (perkShootCounts.current[i.id] === 8) {
+                if (onTylerEasterEgg) {
+                  onTylerEasterEgg();
+                }
+              }
+            }
+          }
+        });
         
         let closestHit = { dist: 100, zombie: null as ZombieData | null, isHeadshot: false, hitPos: new THREE.Vector3(), isDragon: false, bot: null as BotData | null };
         
@@ -3566,8 +3617,10 @@ export const Scene: React.FC<SceneProps> = ({
 
     // Bot Logic
     botsRef.current.forEach(bot => {
-      // Ensure bot stays on ground
-      bot.position.y = 0;
+      // Ensure bot stays on ground (only for local bots, not other online players)
+      if (bot.id.startsWith('bot-')) {
+        bot.position.y = 0;
+      }
 
       if (bot.isDowned) {
         // Downed bots don't move or shoot
@@ -4714,7 +4767,7 @@ export const Scene: React.FC<SceneProps> = ({
           <PowerUpModel type={p.type} />
         </group>
       ))}
-      {botsRef.current.filter(b => b.hp > 0 || b.downedTimer > 0).map(b => (
+      {botsRef.current.filter(b => b.hp > 0 || b.isDowned || b.downedTimer > 0 || !b.id.startsWith('bot-')).map(b => (
         <BotInstance 
           key={b.id} 
           position={b.position} 
@@ -5148,7 +5201,7 @@ export const Scene: React.FC<SceneProps> = ({
            <meshStandardMaterial color={p.type === 'grenade' ? '#222' : (p.type === 'flashbang' ? '#888' : '#ff0000')} emissive={p.type === 'kingRobbo' ? '#ff0000' : '#000'} emissiveIntensity={p.type === 'kingRobbo' ? 2 : 0} />
         </Sphere>
       ))}
-      {effects.current.map(e => (
+      {!gameSettings.batterySaver && effects.current.map(e => (
         <group key={e.id}>
            {e.type === 'tracer' ? <Tracer start={e.pos} end={e.dir!} color={e.color} /> : 
             e.type === 'explosion' ? <Sphere args={[4, 16, 16]} position={e.pos}><meshStandardMaterial color={e.color} transparent opacity={e.life * 2} /></Sphere> :
@@ -5157,13 +5210,13 @@ export const Scene: React.FC<SceneProps> = ({
                 <Sphere args={[e.scale ? e.scale * 2 : 6, 16, 16]}>
                   <meshStandardMaterial color={e.color || "#fff"} transparent opacity={e.life * 3} emissive={e.color || "#fff"} emissiveIntensity={2} />
                 </Sphere>
-                <pointLight intensity={e.life * 50} color={e.color || "#fff"} distance={e.scale ? e.scale * 20 : 20} />
+                {/* Dynamically spawning pointLight is bypassed to keep gameplay buttery smooth and shoot-lag-fee */}
               </group>
             ) :
             e.type === 'blood' ? <Sphere args={[0.2 * (e.scale || 1), 8, 8]} position={e.pos}><meshStandardMaterial color={e.color} transparent opacity={e.life * 3} /></Sphere> : null}
         </group>
       ))}
-      <group visible={!thirdPersonMode && gameMode !== 'dead_ops'}>
+      <group visible={!effectiveThirdPersonMode && gameMode !== 'dead_ops'}>
         <group ref={viewmodelRef}>
           <Suspense fallback={null}>
             <WeaponModel weaponName={gameState.weaponName} camo={displayCamo} attachments={gameState.attachments} />
@@ -5219,7 +5272,7 @@ export const Scene: React.FC<SceneProps> = ({
         </Html>
       )}
 
-      {(thirdPersonMode || gameMode === 'dead_ops') && (
+      {(effectiveThirdPersonMode || gameMode === 'dead_ops' || status === GameStatus.GAMEOVER) && (
         <LocalPlayerModel 
           playerPos={playerPos.current}
           playerRot={targetRot.current}
@@ -5232,14 +5285,9 @@ export const Scene: React.FC<SceneProps> = ({
           isJumping={!isGrounded.current}
           team={gameState.team}
           customization={progression.profile?.customization}
-          isVictoryPose={status === GameStatus.GAMEOVER && (() => {
-            const participants = [
-              { id: 'local', score: gameState.points },
-              ...otherPlayers.map(p => ({ id: p.id, score: p.points })),
-              ...botsRef.current.map(b => ({ id: b.id, score: b.points }))
-            ].sort((a, b) => b.score - a.score);
-            return participants.findIndex(p => p.id === 'local') < 3;
-          })()}
+          isVictoryPose={status === GameStatus.GAMEOVER}
+          isDoingMove={isDoingMove}
+          activeMove={activeMove}
         />
       )}
     </>
@@ -5625,7 +5673,9 @@ export const LocalPlayerModel: React.FC<{
   team?: number;
   customization?: any;
   isVictoryPose?: boolean;
-}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1, isJumping, team, customization, isVictoryPose }) => {
+  isDoingMove?: boolean;
+  activeMove?: { type: 'dance' | 'finisher', name: string } | null;
+}> = ({ playerPos, playerRot, isDowned, weaponName, camo, isShooting, variant, scale = 1, isJumping, team, customization, isVictoryPose, isDoingMove, activeMove }) => {
   const mesh = useRef<THREE.Group>(null);
   const leftLeg = useRef<THREE.Mesh>(null);
   const rightLeg = useRef<THREE.Mesh>(null);
@@ -5669,12 +5719,13 @@ export const LocalPlayerModel: React.FC<{
       mesh.current.position.copy(playerPos);
       if (isDowned) {
         mesh.current.rotation.x = -Math.PI / 2.2;
-        mesh.current.position.y = 0.2;
+        mesh.current.position.y = (playerPos.y - 1.2) + 0.2;
         if (leftLeg.current) leftLeg.current.rotation.x = 0;
         if (rightLeg.current) rightLeg.current.rotation.x = 0;
         if (leftArm.current) leftArm.current.rotation.x = 0;
         if (rightArm.current) rightArm.current.rotation.x = 0;
       } else {
+        mesh.current.position.y = playerPos.y - 1.2;
         mesh.current.rotation.copy(playerRot);
         mesh.current.rotation.x = isJumping ? -0.2 : 0; // Tilt forward when jumping
         mesh.current.rotation.z = 0;
@@ -5686,51 +5737,118 @@ export const LocalPlayerModel: React.FC<{
         // Base arm rotation for holding weapon
         const holdWeaponRotX = -Math.PI / 2.2; // Pointing mostly forward
 
-        if (isVictoryPose) {
+        if (isVictoryPose || isDoingMove) {
           const time = state.clock.getElapsedTime();
-          const moveType = customization?.danceMove || customization?.finisherMove || 'Tactical Takedown';
+          const moveType = (isDoingMove && activeMove) ? activeMove.name : (customization?.danceMove || customization?.finisherMove || 'Tactical Takedown');
           
           if (moveType === 'Moonwalk') {
-            mesh.current.position.z += Math.sin(time * 2) * 0.02;
-            if (leftLeg.current) leftLeg.current.rotation.x = Math.sin(time * 5) * 0.5;
-            if (rightLeg.current) rightLeg.current.rotation.x = Math.cos(time * 5) * 0.5;
-            if (leftArm.current) leftArm.current.rotation.x = 0.5;
-            if (rightArm.current) rightArm.current.rotation.x = 0.5;
+            mesh.current.position.z = playerPos.z + Math.sin(time * 2.5) * 0.4;
+            if (leftLeg.current) leftLeg.current.rotation.x = Math.sin(time * 6) * 0.6;
+            if (rightLeg.current) rightLeg.current.rotation.x = -Math.sin(time * 6) * 0.6;
+            if (leftArm.current) leftArm.current.rotation.x = 0.3;
+            if (rightArm.current) rightArm.current.rotation.x = 0.3;
           } else if (moveType === 'Floss') {
-            const swing = Math.sin(time * 10) * 0.8;
+            const swing = Math.sin(time * 12) * 0.85;
             if (leftArm.current) {
               leftArm.current.rotation.z = swing;
-              leftArm.current.rotation.x = -0.5;
+              leftArm.current.rotation.x = -0.4;
             }
             if (rightArm.current) {
               rightArm.current.rotation.z = swing;
-              rightArm.current.rotation.x = -0.5;
+              rightArm.current.rotation.x = -0.4;
             }
-            mesh.current.rotation.y += Math.sin(time * 10) * 0.1;
+            mesh.current.rotation.y = playerRot.y + Math.sin(time * 12) * 0.25;
           } else if (moveType === 'Carlton Dance') {
-            const swing = Math.sin(time * 8);
+            const swing = Math.sin(time * 9);
             if (leftArm.current) {
-              leftArm.current.rotation.z = 1 + swing * 0.5;
-              leftArm.current.rotation.x = swing * 0.5;
+              leftArm.current.rotation.z = 1.2 + swing * 0.6;
+              leftArm.current.rotation.x = swing * 0.4;
             }
             if (rightArm.current) {
-              rightArm.current.rotation.z = -1 + swing * 0.5;
-              rightArm.current.rotation.x = swing * 0.5;
+              rightArm.current.rotation.z = -1.2 + swing * 0.6;
+              rightArm.current.rotation.x = swing * 0.4;
             }
-            if (leftLeg.current) leftLeg.current.rotation.z = swing * 0.2;
-            if (rightLeg.current) rightLeg.current.rotation.z = swing * 0.2;
+            if (leftLeg.current) leftLeg.current.rotation.z = swing * 0.25;
+            if (rightLeg.current) rightLeg.current.rotation.z = swing * 0.25;
           } else if (moveType === 'Orange Justice') {
-            const swing = Math.sin(time * 12);
-            if (leftArm.current) leftArm.current.rotation.z = 0.5 + swing * 0.5;
-            if (rightArm.current) rightArm.current.rotation.z = -0.5 - swing * 0.5;
-            mesh.current.position.y = 1.2 + Math.abs(swing) * 0.2;
+            const swing = Math.sin(time * 14);
+            if (leftArm.current) leftArm.current.rotation.z = 0.6 + swing * 0.6;
+            if (rightArm.current) rightArm.current.rotation.z = -0.6 - swing * 0.6;
+            mesh.current.position.y = (playerPos.y - 1.2) + Math.abs(swing) * 0.22;
+          } else if (moveType === 'Roundhouse Kick') {
+            const activeKick = Math.sin(time * 5);
+            mesh.current.rotation.y = playerRot.y + time * 6.5; // Rapid spin
+            if (rightLeg.current) {
+              rightLeg.current.rotation.x = -Math.PI / 2.2 + Math.abs(activeKick) * 0.3;
+              rightLeg.current.rotation.z = activeKick * 0.2;
+            }
+            if (leftLeg.current) {
+              leftLeg.current.rotation.x = 0.1;
+            }
+            if (leftArm.current) {
+              leftArm.current.rotation.x = 0.4;
+              leftArm.current.rotation.z = 0.5;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -0.4;
+              rightArm.current.rotation.z = -0.5;
+            }
+          } else if (moveType === 'Suplex') {
+            const motion = Math.sin(time * 4);
+            mesh.current.position.y = (playerPos.y - 1.2) + Math.max(0, motion) * 0.4;
+            mesh.current.rotation.x = motion * 0.6; // Deep backward bend
+            if (leftArm.current) {
+              leftArm.current.rotation.x = -Math.PI * 0.8 + motion * 0.4;
+              leftArm.current.rotation.y = -0.25;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -Math.PI * 0.8 + motion * 0.4;
+              rightArm.current.rotation.y = 0.25;
+            }
+            if (leftLeg.current) leftLeg.current.rotation.x = -motion * 0.25;
+            if (rightLeg.current) rightLeg.current.rotation.x = motion * 0.25;
+          } else if (moveType === 'Zombie Finisher') {
+            const swing = Math.sin(time * 14);
+            mesh.current.rotation.x = 0.35 + swing * 0.08; // Hunch back & forth
+            if (leftArm.current) {
+              leftArm.current.rotation.x = -Math.PI / 1.8 + swing * 0.5;
+              leftArm.current.rotation.y = -0.2;
+              leftArm.current.rotation.z = Math.sin(time * 7) * 0.4;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -Math.PI / 1.8 - swing * 0.5;
+              rightArm.current.rotation.y = 0.2;
+              rightArm.current.rotation.z = -Math.sin(time * 7) * 0.4;
+            }
+            mesh.current.rotation.z = playerRot.z + Math.sin(time * 14) * 0.1; // Crazy headbanging shake
+          } else if (moveType === 'Boss Execution') {
+            const stomp = Math.sin(time * 8);
+            mesh.current.position.y = (playerPos.y - 1.2) + Math.max(0, stomp) * 0.25;
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -Math.PI * 0.75 + stomp * 0.9; // Sword / Chop swipe
+              rightArm.current.rotation.z = -0.3;
+            }
+            if (leftArm.current) {
+              leftArm.current.rotation.x = -Math.PI / 3;
+              leftArm.current.rotation.z = 0.3;
+            }
+            if (rightLeg.current) rightLeg.current.rotation.x = stomp > 0 ? -0.6 : 0;
+            if (leftLeg.current) leftLeg.current.rotation.x = stomp < 0 ? -0.3 : 0;
           } else {
-            // Default Victory Pose / Finisher
-            const swing = Math.sin(time * 4);
-            if (leftArm.current) leftArm.current.rotation.x = -Math.PI / 2 + swing * 0.2;
-            if (rightArm.current) rightArm.current.rotation.x = -Math.PI / 2 - swing * 0.2;
-            if (leftLeg.current) leftLeg.current.rotation.y = 0.3;
-            if (rightLeg.current) rightLeg.current.rotation.y = -0.3;
+            // Default Tactical Takedown or other
+            const cycle = Math.sin(time * 6);
+            mesh.current.position.y = (playerPos.y - 1.2) - Math.max(0, cycle) * 0.2;
+            mesh.current.position.z = playerPos.z + Math.sin(time * 6) * 0.1;
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -Math.PI / 2 + Math.sin(time * 12) * 0.9;
+              rightArm.current.rotation.y = Math.cos(time * 12) * 0.9;
+            }
+            if (leftArm.current) {
+              leftArm.current.rotation.x = -Math.PI / 3;
+              leftArm.current.rotation.z = 0.35;
+            }
+            if (leftLeg.current) leftLeg.current.rotation.x = 0.4;
+            if (rightLeg.current) rightLeg.current.rotation.x = -0.4;
           }
         } else if (speed > 0.1) {
           walkTime.current += delta * speed * 2;
@@ -5878,7 +5996,7 @@ const BotInstance: React.FC<{
       mesh.current.position.copy(position);
       if (isDowned) {
         mesh.current.rotation.x = -Math.PI / 2.2; // Laying down
-        mesh.current.position.y = 0.2;
+        mesh.current.position.y = position.y + 0.2;
         if (leftLeg.current) leftLeg.current.rotation.x = 0;
         if (rightLeg.current) rightLeg.current.rotation.x = 0;
         if (leftArm.current) leftArm.current.rotation.x = 0;
@@ -5906,12 +6024,79 @@ const BotInstance: React.FC<{
         const holdWeaponRotX = -Math.PI / 2.2; // Pointing mostly forward
 
         if (isVictoryPose) {
-          const time = state.clock.getElapsedTime() + (variant * 0.5); // Offset for variety
-          const swing = Math.sin(time * 4);
-          if (leftArm.current) leftArm.current.rotation.x = -Math.PI / 2 + swing * 0.2;
-          if (rightArm.current) rightArm.current.rotation.x = -Math.PI / 2 - swing * 0.2;
-          if (leftLeg.current) leftLeg.current.rotation.y = 0.3;
-          if (rightLeg.current) rightLeg.current.rotation.y = -0.3;
+          const time = state.clock.getElapsedTime() + (variant * 0.75); // Offset for variety
+          const moves = ['Tactical Takedown', 'Moonwalk', 'Floss', 'Orange Justice', 'Carlton Dance', 'Roundhouse Kick', 'Suplex', 'Zombie Finisher', 'Boss Execution'];
+          const moveType = moves[variant % moves.length];
+          
+          if (moveType === 'Moonwalk') {
+            mesh.current.position.z = position.z + Math.sin(time * 2.5) * 0.4;
+            if (leftLeg.current) leftLeg.current.rotation.x = Math.sin(time * 6) * 0.6;
+            if (rightLeg.current) rightLeg.current.rotation.x = -Math.sin(time * 6) * 0.6;
+            if (leftArm.current) leftArm.current.rotation.x = 0.3;
+            if (rightArm.current) rightArm.current.rotation.x = 0.3;
+          } else if (moveType === 'Floss') {
+            const swing = Math.sin(time * 12) * 0.85;
+            if (leftArm.current) {
+              leftArm.current.rotation.z = swing;
+              leftArm.current.rotation.x = -0.4;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.z = swing;
+              rightArm.current.rotation.x = -0.4;
+            }
+            mesh.current.rotation.y = Math.sin(time * 12) * 0.25;
+          } else if (moveType === 'Carlton Dance') {
+            const swing = Math.sin(time * 9);
+            if (leftArm.current) {
+              leftArm.current.rotation.z = 1.2 + swing * 0.6;
+              leftArm.current.rotation.x = swing * 0.4;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.z = -1.2 + swing * 0.6;
+              rightArm.current.rotation.x = swing * 0.4;
+            }
+            if (leftLeg.current) leftLeg.current.rotation.z = swing * 0.25;
+            if (rightLeg.current) rightLeg.current.rotation.z = swing * 0.25;
+          } else if (moveType === 'Orange Justice') {
+            const swing = Math.sin(time * 14);
+            if (leftArm.current) leftArm.current.rotation.z = 0.6 + swing * 0.6;
+            if (rightArm.current) rightArm.current.rotation.z = -0.6 - swing * 0.6;
+            mesh.current.position.y = (position.y - 1.2) + Math.abs(swing) * 0.22;
+          } else if (moveType === 'Roundhouse Kick') {
+            const activeKick = Math.sin(time * 5);
+            mesh.current.rotation.y = time * 6.5; 
+            if (rightLeg.current) {
+              rightLeg.current.rotation.x = -Math.PI / 2.2 + Math.abs(activeKick) * 0.3;
+              rightLeg.current.rotation.z = activeKick * 0.2;
+            }
+            if (leftLeg.current) leftLeg.current.rotation.x = 0.1;
+            if (leftArm.current) {
+              leftArm.current.rotation.x = 0.4;
+              leftArm.current.rotation.z = 0.5;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -0.4;
+              rightArm.current.rotation.z = -0.5;
+            }
+          } else if (moveType === 'Suplex') {
+            const motion = Math.sin(time * 4);
+            mesh.current.position.y = (position.y - 1.2) + Math.max(0, motion) * 0.4;
+            mesh.current.rotation.x = motion * 0.6;
+            if (leftArm.current) {
+              leftArm.current.rotation.x = -Math.PI * 0.8 + motion * 0.4;
+              leftArm.current.rotation.y = -0.25;
+            }
+            if (rightArm.current) {
+              rightArm.current.rotation.x = -Math.PI * 0.8 + motion * 0.4;
+              rightArm.current.rotation.y = 0.25;
+            }
+          } else {
+            const swing = Math.sin(time * 4);
+            if (leftArm.current) leftArm.current.rotation.x = -Math.PI / 2 + swing * 0.2;
+            if (rightArm.current) rightArm.current.rotation.x = -Math.PI / 2 - swing * 0.2;
+            if (leftLeg.current) leftLeg.current.rotation.y = 0.3;
+            if (rightLeg.current) rightLeg.current.rotation.y = -0.3;
+          }
         } else if (speed > 0.1) {
           walkTime.current += delta * speed * 2;
           const swing = Math.sin(walkTime.current) * 0.5;
@@ -6035,45 +6220,42 @@ const ZombieInstance: React.FC<{ position: THREE.Vector3; variant: number; hitFl
 
   const frameCounter = useRef(0);
   useFrame((state, delta) => {
-    frameCounter.current++;
-    if (frameCounter.current % 2 !== 0) return;
     if (paused) return;
     const meshRef = mesh.current;
     if (meshRef && playerPosRef.current) {
       const pPos = playerPosRef.current;
-      // Base position
-      meshRef.position.set(position.x, 0, position.z);
+      
+      // Basic movement bobbing & position logic (runs EVERY frame for buttery-smooth visual tracking)
+      const bobSpeed = type === 'runner' ? 15 : (type === 'tank' ? 2 : 4);
+      let yOffset = Math.abs(Math.sin(state.clock.elapsedTime * bobSpeed + variant * 10)) * 0.12;
+      
+      if (type === 'parasite') {
+        yOffset = 2.0 + Math.sin(state.clock.elapsedTime * 2) * 0.5; // Flying height
+      } else if (type === 'crawler') {
+        yOffset = -0.5 + Math.abs(Math.sin(state.clock.elapsedTime * 10)) * 0.1; // Low profile
+      }
+
+      meshRef.position.set(position.x, position.y + yOffset, position.z);
       
       if (!isStunned) {
-        const distSq = meshRef.position.distanceToSquared(pPos);
-        if (distSq < 900) { // Only update rotation if within 30 units
-          dummy.position.copy(meshRef.position);
-          dummy.lookAt(pPos.x, 0, pPos.z);
-          meshRef.quaternion.slerp(dummy.quaternion, 6 * delta);
+        // Heavy rotation lerping (Throttled to run every 2 frames or only when close enough)
+        frameCounter.current++;
+        if (frameCounter.current % 2 === 0) {
+          const distSq = meshRef.position.distanceToSquared(pPos);
+          if (distSq < 900) { // Only update rotation if within 30 units
+            dummy.position.copy(meshRef.position);
+            dummy.lookAt(pPos.x, 0, pPos.z);
+            meshRef.quaternion.slerp(dummy.quaternion, 6 * delta * 2);
+          }
         }
         
-        // Basic movement bobbing
-        const bobSpeed = type === 'runner' ? 15 : (type === 'tank' ? 2 : 4);
-        let yOffset = Math.abs(Math.sin(state.clock.elapsedTime * bobSpeed + variant * 10)) * 0.12;
-        
-        if (type === 'parasite') {
-             yOffset = 2.0 + Math.sin(state.clock.elapsedTime * 2) * 0.5; // Flying height
-        } else if (type === 'crawler') {
-             yOffset = -0.5 + Math.abs(Math.sin(state.clock.elapsedTime * 10)) * 0.1; // Low profile
-        }
-
-        meshRef.position.y = position.y + yOffset;
-
         // HIT ANIMATION: Flinch backward and jitter
         if (hitFlash > 0) {
-           // Local tilt backward
-           meshRef.rotateX(-hitFlash * 0.5);
-           // Impact jitter
-           meshRef.position.x += (Math.random() - 0.5) * hitFlash * 0.15;
-           meshRef.position.z += (Math.random() - 0.5) * hitFlash * 0.15;
+          meshRef.rotateX(-hitFlash * 0.5);
+          meshRef.position.x += (Math.random() - 0.5) * hitFlash * 0.15;
+          meshRef.position.z += (Math.random() - 0.5) * hitFlash * 0.15;
         }
       } else {
-        meshRef.position.y = position.y;
         meshRef.rotation.z = Math.sin(state.clock.elapsedTime * 10) * 0.1;
       }
     }

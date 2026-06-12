@@ -91,8 +91,58 @@ async function startServer() {
     world: [] as any[],
   };
 
+  // Device & User Registry for Tracking Activity & Inviting each other
+  const devices: Record<string, {
+    userId: string;
+    socketId: string;
+    nickname: string;
+    status: string; // e.g. 'Idle', 'In Lobby ABCDEF', 'Fighting R15 (Bunker)', 'Offline'
+    level: number;
+    lastActive: number;
+    highScores: any[];
+  }> = {};
+
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
+
+    // Register a device to track active users
+    socket.on("register_device", (data) => {
+      console.log("Registering device:", data.userId, socket.id);
+      if (data.userId) {
+        devices[data.userId] = {
+          userId: data.userId,
+          socketId: socket.id,
+          nickname: data.nickname || 'Survivor',
+          status: data.status || 'Idle',
+          level: data.level || 1,
+          lastActive: Date.now(),
+          highScores: data.highScores || []
+        };
+        // Broadcast active users to everyone online
+        io.emit("devices_updated", Object.values(devices).filter(d => Date.now() - d.lastActive < 300000));
+      }
+    });
+
+    // Request active devices list
+    socket.on("get_active_devices", () => {
+      socket.emit("devices_updated", Object.values(devices).filter(d => Date.now() - d.lastActive < 300000));
+    });
+
+    // Send invite to friend's device
+    socket.on("invite_friend", (data) => {
+      // data: { friendUserId, roomId, senderName }
+      const targetUser = devices[data.friendUserId];
+      if (targetUser && targetUser.socketId) {
+        console.log(`Sending app lobby invite from ${data.senderName} to ${targetUser.userId} (socket ${targetUser.socketId})`);
+        io.to(targetUser.socketId).emit("incoming_invite", {
+          roomId: data.roomId,
+          senderName: data.senderName || 'A Friend'
+        });
+      } else {
+        // If simulated or not connected, send error to sender
+        socket.emit("error", "Player of this User ID is offline or inactive.");
+      }
+    });
 
     socket.on("create_room", (data) => {
       console.log("Creating room:", data);
@@ -117,7 +167,7 @@ async function startServer() {
       }
       
       if (!rooms[roomId].players.find((p: any) => p.id === socket.id)) {
-        rooms[roomId].players.push({ id: socket.id, name: data.name || 'Survivor', isHost: true });
+        rooms[roomId].players.push({ id: socket.id, name: data.name || 'Survivor', isHost: true, team: 1 });
       }
 
       socket.join(roomId);
@@ -145,11 +195,23 @@ async function startServer() {
         return;
       }
       
-      room.players.push({ id: socket.id, name: data.name || 'Survivor', isHost: false });
+      room.players.push({ id: socket.id, name: data.name || 'Survivor', isHost: false, team: 1 });
       socket.join(data.roomId);
       console.log("User joined room:", socket.id, data.roomId);
       socket.emit("room_joined", room);
       io.to(data.roomId).emit("room_updated", room);
+    });
+
+    socket.on("toggle_team", (roomId) => {
+      const room = rooms[roomId];
+      if (room) {
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+          player.team = player.team === 2 ? 1 : 2;
+          console.log(`Player ${player.name} toggled team to Team ${player.team}`);
+          io.to(roomId).emit("room_updated", room);
+        }
+      }
     });
 
     socket.on("start_game", (roomId) => {
@@ -213,11 +275,29 @@ async function startServer() {
     });
 
     socket.on("submit_score", (data) => {
-      leaderboards.world.push({
-        ...data,
-        date: new Date().toISOString(),
+      // Avoid duplicate entries from same user on same round
+      const existingIdx = leaderboards.world.findIndex(e => e.userId === data.userId && e.mapId === data.mapId && e.round === data.round);
+      if (existingIdx !== -1) {
+        leaderboards.world[existingIdx] = {
+          ...leaderboards.world[existingIdx],
+          ...data,
+          date: new Date().toISOString()
+        };
+      } else {
+        leaderboards.world.push({
+          ...data,
+          date: new Date().toISOString(),
+        });
+      }
+      
+      // Sort properly by round (descending) first, then kills (descending)
+      leaderboards.world.sort((a, b) => {
+        if ((b.round || 0) !== (a.round || 0)) {
+          return (b.round || 0) - (a.round || 0);
+        }
+        return (b.kills || 0) - (a.kills || 0);
       });
-      leaderboards.world.sort((a, b) => b.score - a.score);
+
       if (leaderboards.world.length > 100) {
         leaderboards.world = leaderboards.world.slice(0, 100);
       }
@@ -230,6 +310,16 @@ async function startServer() {
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
+      
+      // Mark device as Offline
+      for (const userId in devices) {
+        if (devices[userId].socketId === socket.id) {
+          devices[userId].status = 'Offline';
+          break;
+        }
+      }
+      io.emit("devices_updated", Object.values(devices).filter(d => Date.now() - d.lastActive < 300000));
+
       for (const roomId in rooms) {
         const room = rooms[roomId];
         const playerIndex = room.players.findIndex(p => p.id === socket.id);

@@ -308,6 +308,12 @@ async function startServer() {
       socket.emit("leaderboard_updated", leaderboards.world);
     });
 
+    socket.on("admin_reset_leaderboard", () => {
+      console.log("Admin resetting leaderboard");
+      leaderboards.world = [];
+      io.emit("leaderboard_updated", leaderboards.world);
+    });
+
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
       

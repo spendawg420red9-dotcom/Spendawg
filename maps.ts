@@ -339,6 +339,8 @@ export const MAPS: MapConfig[] = [
     craftingTablePos: [0, 1.5, -10],
     interactables: [
       // Bus Depot Area (Start) - Building at (0, 0, -25)
+      { id: 'bus_door', type: 'Open Bus', cost: 0, pos: [0, 0, -30] },
+      { id: 'truck_door', type: 'Open Truck', cost: 0, pos: [0, 0, 30] },
       { id: 'revive', type: 'PERK: Life Brew', cost: 1500, pos: [-10, 0, -25], color: '#3b82f6' },
       { id: 'wall_olympia', type: 'WALLBUY: OLYMPIA', cost: 500, pos: [10, 1.5, -20], rotation: [0, -Math.PI / 2, 0] },
       { id: 'wall_m14', type: 'WALLBUY: M14', cost: 500, pos: [10, 1.5, -30], rotation: [0, -Math.PI / 2, 0] },

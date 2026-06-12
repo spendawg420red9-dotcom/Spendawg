@@ -14,7 +14,7 @@ import { getRoundLore } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { MAPS } from './maps';
 import { io, Socket } from 'socket.io-client';
-import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, ChevronRight, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, Unlock, UserPlus, Users, MessageSquare, MousePointer2, Move, Cpu } from 'lucide-react';
+import { Skull, Target, Database, RefreshCw, Activity, ShoppingCart, Zap, Gauge, Heart, Shield, Box as BoxIcon, Crosshair, TrendingUp, Pause, Play, LogOut, PlusCircle, UserX, Wind, RotateCcw, AlertCircle, Timer, Swords, Bomb, Sun, Crosshair as HeadshotIcon, Zap as PapIcon, Trophy, User, ChevronLeft, ChevronRight, Trash2, ArrowUp, Zap as SlideIcon, Snowflake, Flame, Scissors, Hourglass, Map as MapIcon, Gamepad, Bluetooth, Keyboard, Eye, X, Gem, Egg, Wrench, Star, Medal, Award, Crown, ChevronUp, ChevronDown, CheckCircle2, Droplet, CircleDot, Search, Hand, Layers, VolumeX, Lock, Unlock, UserPlus, Users, MessageSquare, MousePointer2, Move, Cpu, Copy } from 'lucide-react';
 
 const WEAPONS: Record<string, { clip: number, max: number, damage: number, rate: number, color: string, speed: number, reload: number, description?: string, unlockLevel?: number }> = {
   'M1911': { clip: 8, max: 80, damage: 65, rate: 200, color: '#999', speed: 0.1, reload: 1500, unlockLevel: 1 },
@@ -1186,6 +1186,20 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
     }
   };
 
+  const duplicateLayer = (id: string) => {
+    const layerToCopy = layers.find(l => l.id === id);
+    if (!layerToCopy) return;
+
+    const newLayer: EmblemLayer = {
+      ...layerToCopy,
+      id: Math.random().toString(36).substring(2, 9),
+      x: layerToCopy.x + 20,
+      y: layerToCopy.y + 20
+    };
+    setLayers([newLayer, ...layers]);
+    setSelectedLayerId(newLayer.id);
+  };
+
   const updateLayer = (id: string, updates: Partial<EmblemLayer>) => {
     setLayers(layers.map(l => l.id === id ? { ...l, ...updates } : l));
   };
@@ -1252,6 +1266,7 @@ const EmblemEditor = ({ initialEmblem, onSave, onClose }: { initialEmblem: Emble
                       <button onClick={(e) => { e.stopPropagation(); moveLayerUp(index); }} disabled={index === 0} className="text-white/40 hover:text-white disabled:opacity-30"><ChevronUp size={12} /></button>
                       <button onClick={(e) => { e.stopPropagation(); moveLayerDown(index); }} disabled={index === layers.length - 1} className="text-white/40 hover:text-white disabled:opacity-30"><ChevronDown size={12} /></button>
                     </div>
+                    <button onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }} className="p-1 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/20 rounded ml-1"><Copy size={14} /></button>
                     <button onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }} className="p-1 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 rounded ml-1"><Trash2 size={14} /></button>
                   </div>
                 </div>
@@ -7663,7 +7678,7 @@ const App: React.FC = () => {
             <div className="flex items-center justify-between flex-shrink-0">
               <button id="menu-item-0" onClick={() => setStatus(GameStatus.START)} className={`p-3 bg-white/5 rounded-full text-white/60 active:scale-90 transition-all border border-white/10 ${selectedMenuIndex === 0 ? 'ring-2 ring-white bg-white/20' : ''}`}><ChevronLeft size={24} /></button>
               <h2 className="text-3xl sm:text-5xl font-black text-white italic tracking-tighter uppercase flex items-center gap-2 sm:gap-4"><Trophy className="text-yellow-500 w-6 h-6 sm:w-10 sm:h-10" /> Hall of Fame</h2>
-              <button id="menu-item-1" onClick={() => { setConfirmModal({ message: 'Clear leaderboard?', onConfirm: () => { setLeaderboard([]); localStorage.removeItem('ztown_leaderboard_v2'); } }); }} className={`p-3 bg-red-900/20 rounded-full text-red-500/60 active:scale-90 transition-all border border-red-900/20 ${selectedMenuIndex === 1 ? 'ring-2 ring-red-500 bg-red-900/40' : ''}`} style={{ display: 'none' }}><Trash2 size={24} /></button>
+              <button id="menu-item-1" onClick={() => { setConfirmModal({ message: 'Clear leaderboard?', onConfirm: () => { setLeaderboard([]); localStorage.removeItem('ztown_leaderboard_v2'); socket?.emit('admin_reset_leaderboard'); } }); }} className={`p-3 bg-red-900/20 rounded-full text-red-500/60 active:scale-90 transition-all border border-red-900/20 ${selectedMenuIndex === 1 ? 'ring-2 ring-red-500 bg-red-900/40' : ''}`}><Trash2 size={24} /></button>
             </div>
 
             {/* Leaderboard Tabs */}
